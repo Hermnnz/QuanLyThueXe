@@ -1,0 +1,18 @@
+# Môi trường ảo Python và cache
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+
+# Cấu hình IDE / Editor
+.vscode/
+.idea/
+
+# File tạm và log
+*.log
+.DS_Store
+
+# (Tùy chọn) Bỏ qua mật khẩu master cục bộ nếu có
+# config/odoo.conf
