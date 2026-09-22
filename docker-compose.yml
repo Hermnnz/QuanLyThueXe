@@ -1,8 +1,6 @@
-version: '3.8'
-
 services:
   web:
-    image: odoo:19.0
+    image: odoo:18.0
     depends_on:
       - db
     ports:
@@ -10,6 +8,7 @@ services:
     volumes:
       - ./config:/etc/odoo
       - ./custom_addons:/mnt/extra-addons
+      - odoo-web-data:/var/lib/odoo
     environment:
       - HOST=db
       - USER=odoo
@@ -26,4 +25,5 @@ services:
       - odoo-db-data:/var/lib/postgresql/data/pgdata
 
 volumes:
+  odoo-web-data:
   odoo-db-data:

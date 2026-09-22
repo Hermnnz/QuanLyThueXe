@@ -1,10 +1,13 @@
 # Môi trường ảo Python và cache
 __pycache__/
 *.py[cod]
+*.pyc
+*.pyo
 *$py.class
 .venv/
 env/
 venv/
+.env
 
 # Cấu hình IDE / Editor
 .vscode/
