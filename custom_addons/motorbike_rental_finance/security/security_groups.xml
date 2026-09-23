@@ -1,0 +1,82 @@
+<!--"""
+id
+→ mã kỹ thuật của rule
+
+name
+→ tên dễ đọc
+
+model_id:id
+→ rule này áp dụng cho model nào
+
+group_id:id
+→ nhóm user nào được hưởng quyền
+
+perm_read
+→ được xem?
+
+perm_write
+→ được sửa?
+
+perm_create
+→ được tạo?
+
+perm_unlink
+→ được xóa?
+
+
+các quyền dùng:
+1 = Có
+0 = Không
+
+"""
+-->
+
+
+
+
+
+
+
+
+<odoo>
+
+    <!-- Nhóm quyền của module Finance -->
+    <!-- Tạo một bản ghi nhóm quyền trong ir.module.category -->
+    <record id="module_category_motorbike_rental_finance" model="ir.module.category">
+        <field name="name">Motorbike Rental Finance</field>  
+        <field name="sequence">30</field>
+    </record>
+
+
+    <!-- Nhân viên tài chính -->
+    <!-- Tạo một nhóm quyền trong model res.groups -->
+    <record id="group_motorbike_finance_user" model="res.groups">
+
+
+        <field name="name">Nhân viên tài chính</field>
+
+        <!-- Liên kết với nhóm quyền của module Finance đã tạo ở trên -->
+        <field name="category_id"
+               ref="module_category_motorbike_rental_finance"/>
+
+        <!-- Nhân viên tài chính kế thừa quyền của người dùng nội bộ -->
+        <field name="implied_ids"
+               eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+
+    <!-- Quản lý tài chính -->
+    
+    <record id="group_motorbike_finance_manager" model="res.groups">   <!-- Tạo thêm một nhóm quyền trong model res.groups -->
+        <field name="name">Quản lý tài chính</field> 
+
+        <!-- Liên kết với nhóm quyền của module Finance đã tạo ở trên -->
+        <field name="category_id"
+               ref="module_category_motorbike_rental_finance"/>
+
+        <!-- Quản lý tài chính kế thừa nhóm Nhân viên tài chính -->
+        <field name="implied_ids"
+               eval="[(4, ref('group_motorbike_finance_user'))]"/>
+    </record>
+
+</odoo>

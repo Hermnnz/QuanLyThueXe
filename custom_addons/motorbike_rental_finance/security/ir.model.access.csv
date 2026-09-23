@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_price_catalog_user,Price Catalog Finance User,model_motorbike_rental_price_catalog,group_motorbike_finance_user,1,0,0,0
+access_rental_payment_user,Rental Payment Finance User,model_motorbike_rental_payment,group_motorbike_finance_user,1,1,1,0
+access_rental_charge_user,Rental Charge Finance User,model_motorbike_rental_charge,group_motorbike_finance_user,1,1,1,0
+access_price_catalog_manager,Price Catalog Finance Manager,model_motorbike_rental_price_catalog,group_motorbike_finance_manager,1,1,1,0
