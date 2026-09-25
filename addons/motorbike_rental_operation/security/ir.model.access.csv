@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_rental_operation_ticket,rental.operation.ticket.user,model_rental_operation_ticket,base.group_user,1,1,1,1
+access_rental_operation_ticket_vehicle,rental.operation.ticket.vehicle.user,model_rental_operation_ticket_vehicle,base.group_user,1,1,1,1
+access_rental_incident_log,rental.operation.incident.log.user,model_rental_operation_incident_log,base.group_user,1,1,1,1
+access_rental_vehicle_replacement,rental.operation.vehicle_replacement.user,model_rental_operation_vehicle_replacement,base.group_user,1,1,1,1
