@@ -1,0 +1,63 @@
+<odoo>
+    <record id="vehicle_form_electric" model="ir.ui.view">
+        <field name="name">fleet.vehicle.form.electric.motorbike</field>
+        <field name="model">fleet.vehicle</field>
+        <field name="inherit_id" ref="fleet.fleet_vehicle_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Xe máy điện" name="electric_motorbike">
+                    <group><field name="is_electric_motorbike"/></group>
+                    <group invisible="not is_electric_motorbike">
+                        <group string="Pin">
+                            <field name="battery_serial"/>
+                            <field name="battery_capacity_kwh"/>
+                            <field name="battery_voltage"/>
+                            <field name="battery_health"/>
+                        </group>
+                        <group string="Sạc và bảo hành">
+                            <field name="charging_time_hours"/>
+                            <field name="battery_warranty_until"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+    <record id="vehicle_search_electric" model="ir.ui.view">
+        <field name="name">fleet.vehicle.search.electric.motorbike</field>
+        <field name="model">fleet.vehicle</field>
+        <field name="inherit_id" ref="fleet.fleet_vehicle_view_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter name="electric_motorbike" string="Xe máy điện" domain="[('is_electric_motorbike', '=', True)]"/>
+            </xpath>
+        </field>
+    </record>
+    <record id="service_form_motorbike" model="ir.ui.view">
+        <field name="name">fleet.service.form.motorbike</field>
+        <field name="model">fleet.vehicle.log.services</field>
+        <field name="inherit_id" ref="fleet.fleet_vehicle_log_services_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <field name="is_electric_motorbike" invisible="1"/>
+                <group string="Bảo dưỡng xe điện" invisible="not is_electric_motorbike">
+                    <group>
+                        <field name="maintenance_component"/>
+                        <field name="technician_id"/>
+                        <field name="next_maintenance_date"/>
+                    </group>
+                    <group><field name="maintenance_result"/></group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+    <record id="action_electric_motorbikes" model="ir.actions.act_window">
+        <field name="name">Xe máy điện</field>
+        <field name="res_model">fleet.vehicle</field>
+        <field name="view_mode">list,form,kanban</field>
+        <field name="domain">[('is_electric_motorbike', '=', True)]</field>
+        <field name="context">{'default_is_electric_motorbike': True, 'default_fuel_type': 'electric'}</field>
+    </record>
+    <menuitem id="menu_electric_motorbikes" name="Xe máy điện" parent="fleet.fleet_vehicles" action="action_electric_motorbikes" sequence="1" groups="fleet.fleet_group_user"/>
+</odoo>

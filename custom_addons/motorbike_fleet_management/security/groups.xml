@@ -1,0 +1,6 @@
+<odoo>
+    <record id="group_motorbike_technician" model="res.groups">
+        <field name="name">Kỹ thuật viên xe điện</field>
+        <field name="implied_ids" eval="[(4, ref('fleet.fleet_group_user'))]"/>
+    </record>
+</odoo>
