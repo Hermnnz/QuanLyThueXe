@@ -10,15 +10,14 @@ class RentalOperationTicket(models.Model):
     
     # Tiền thuê gốc và giấy tờ
     total_rent_amount = fields.Float(string='Tổng tiền cần thu (Tiền thuê)')
-    rent_payment_proof = fields.Binary(string='Ảnh minh chứng CK tiền thuê')
+    is_rent_paid = fields.Boolean(string='Đã thanh toán tiền thuê')
     is_id_card_kept = fields.Boolean(string='Đã thu CCCD gốc')
-    scanned_contract = fields.Binary(string='Bản scan hợp đồng giấy')
     
     # Tài chính phát sinh (Ship + Đền bù)
     total_incurred_cost = fields.Float(string='Tổng chi phí phát sinh', compute='_compute_costs', store=True)
     paid_incurred_cost = fields.Float(string='Chi phí phát sinh đã thanh toán', compute='_compute_costs', store=True)
     remaining_cost = fields.Float(string='Chi phí phát sinh còn lại', compute='_compute_costs', store=True)
-    transfer_evidence = fields.Binary(string='Ảnh minh chứng CK tiền phát sinh')
+    is_incurred_cost_paid = fields.Boolean(string='Đã thanh toán chi phí phát sinh')
     
     # Liên kết bảng con
     vehicle_detail_ids = fields.One2many('rental.operation.ticket.vehicle', 'ticket_id', string='Chi tiết Xe')
