@@ -1,0 +1,64 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+  <record id="battery_list" model="ir.ui.view">
+    <field name="name">battery_list</field>
+    <field name="model">motorbike.battery</field>
+    <field name="arch" type="xml">
+      <list>
+        <field name="battery_code"/>
+        <field name="serial_number"/>
+        <field name="soc"/>
+        <field name="soh"/>
+        <field name="status"/>
+        <field name="current_vehicle_id"/>
+      </list>
+    </field>
+  </record>
+  <record id="battery_form" model="ir.ui.view">
+    <field name="name">battery_form</field>
+    <field name="model">motorbike.battery</field>
+    <field name="arch" type="xml">
+      <form>
+        <sheet>
+          <group>
+            <group>
+              <field name="battery_code"/>
+              <field name="serial_number"/>
+              <field name="capacity_kwh"/>
+              <field name="voltage"/>
+              <field name="warranty_expiry"/>
+            </group>
+            <group>
+              <field name="soc"/>
+              <field name="soh"/>
+              <field name="cycle_count"/>
+              <field name="status"/>
+              <field name="current_vehicle_id"/>
+              <field name="active"/>
+            </group>
+          </group>
+          <notebook>
+            <page string="Lịch sử gắn pin">
+              <field name="assignment_ids">
+                <list editable="bottom">
+                  <field name="vehicle_id"/>
+                  <field name="installed_at"/>
+                  <field name="removed_at"/>
+                  <field name="install_odo"/>
+                  <field name="remove_odo"/>
+                  <field name="reason"/>
+                </list>
+              </field>
+            </page>
+          </notebook>
+        </sheet>
+      </form>
+    </field>
+  </record>
+  <record id="action_batteries" model="ir.actions.act_window">
+    <field name="name">Pin xe điện</field>
+    <field name="res_model">motorbike.battery</field>
+    <field name="view_mode">list,form</field>
+  </record>
+  <menuitem id="menu_batteries" name="Pin xe điện" parent="fleet.fleet_vehicles" action="action_batteries" groups="fleet.fleet_group_user"/>
+</odoo>
