@@ -1,0 +1,24 @@
+{
+  "before": {
+    "fleet_vehicle": {
+      "count": 39,
+      "digest": "1dcf34a85a988c1cdd61d8dee62a33c6"
+    },
+    "fleet_vehicle_log_services": {
+      "count": 300,
+      "digest": "fb88bcdc02c1fb109493756a0231c644"
+    }
+  },
+  "after": {
+    "fleet_vehicle": {
+      "count": 39,
+      "digest": "1dcf34a85a988c1cdd61d8dee62a33c6"
+    },
+    "fleet_vehicle_log_services": {
+      "count": 300,
+      "digest": "fb88bcdc02c1fb109493756a0231c644"
+    }
+  },
+  "equal": true,
+  "installed_version": "19.0.3.1.0"
+}

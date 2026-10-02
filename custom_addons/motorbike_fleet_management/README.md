@@ -1,98 +1,76 @@
-# Fleet & Maintenance tuần 6 — Odoo 19
+# Fleet & Maintenance — dừng ở tuần 6
 
-Module `motorbike_fleet_management`, phiên bản `19.0.2.0.0`, triển khai model và UI/CRUD theo Database Final V2 trong phạm vi tuần 6.
+Module `motorbike_fleet_management`, Odoo 19, phiên bản `19.0.3.1.0`.
 
-## Những gì đã có
+Phạm vi theo kế hoạch `ERP_Odoo (1).xlsx`, sheet `Ke hoach Sprint`, hàng 13: menu/action, List/Form cho hồ sơ xe và bảo dưỡng, nhập thử bản ghi để kiểm tra Create/Read/Update. Giữ model, quan hệ và ACL cơ bản của tuần 5. Không triển khai nhiệm vụ tuần 7 trở đi.
 
-- Mở rộng `fleet.vehicle`: mã xe, vòng đời, trạng thái vận hành, technical ready, khóa thuê, SOC tối thiểu và mốc bảo dưỡng.
-- Mở rộng `fleet.vehicle.odometer`: nguồn ghi nhận, liên kết bảo dưỡng và ghi chú; dùng List/Form ODO chuẩn.
-- Mở rộng `fleet.vehicle.log.services`: loại bảo dưỡng, thời gian dự kiến/thực tế, khóa lịch thuê, kỹ thuật viên, kết quả; dùng vendor và chi phí chuẩn.
-- `motorbike.battery`: tài sản pin riêng, mã/serial duy nhất, dung lượng, điện áp, SOC/SOH, chu kỳ sạc, trạng thái, bảo hành.
-- `motorbike.battery.assignment`: lịch sử gắn/tháo. Pin hiện tại trên xe và xe hiện tại trên pin được lấy từ lần gắn chưa tháo. SOC/SOH trên xe chỉ đọc từ pin.
-- `motorbike.maintenance.plan`: chu kỳ km/ngày, lần trước, lần tiếp theo và ngưỡng cảnh báo.
-- Fleet → Fleet: Xe máy điện, Pin xe điện, Bảo dưỡng xe điện; mỗi action mới dùng List/Form.
-- Kế hoạch bảo dưỡng ở Fleet → Configuration và trong tab hồ sơ xe. Lịch sử pin nằm trong hồ sơ xe/pin, không thêm menu chính.
+## Những gì có thể dùng
 
-## Cách nhập liệu tuần 6
+- Fleet → Xe máy điện: danh sách, tạo hồ sơ xe, xem và sửa thông tin.
+- Fleet → Bảo dưỡng xe điện: danh sách, tạo hồ sơ bảo dưỡng, xem và sửa chi phí/kết quả/thời gian/trạng thái.
+- Hai model nghiệp vụ: `fleet.vehicle` và `fleet.vehicle.log.services` (kế thừa chuẩn Odoo).
+- Danh mục model xe, loại dịch vụ, partner/vendor, công ty và tiền tệ dùng lại của Odoo.
+- Không quản lý pin như tài sản riêng, không lịch sử gắn/tháo pin, không kế hoạch bảo dưỡng riêng, không mở rộng ODO. ODO chuẩn vẫn tồn tại.
 
-1. Với tài khoản Fleet Administrator, tạo pin tại Pin xe điện.
-2. Tạo xe tại Xe máy điện, chọn model, nhập biển số và mã xe, mở tab Xe máy điện.
-3. Mở Lịch sử pin, thêm pin và thời điểm gắn, lưu. Trường Pin hiện tại tự cập nhật.
-4. Để thay pin: điền thời điểm tháo cho dòng cũ và lưu trước; sau đó thêm dòng pin mới và lưu. Một xe/một pin chỉ có một lần gắn chưa tháo; không được trùng khoảng lịch sử. Chưa có wizard thay pin.
-5. Trạng thái pin (đã gắn/sẵn sàng/đang sạc...), trạng thái xe, technical ready và các mốc bảo dưỡng hiện được cập nhật thủ công. Lịch sử gắn pin là nguồn xác định pin hiện tại, không phải trường trạng thái pin.
-6. Tạo hồ sơ Bảo dưỡng xe điện; nhập loại, hạng mục, thời gian, kỹ thuật viên/vendor, mô tả, chi phí và kết quả. Sửa chi phí rồi lưu để kiểm tra Update.
-7. Tạo kế hoạch ở tab Kế hoạch bảo dưỡng trên xe hoặc menu Configuration; thử chu kỳ 5.000 km/180 ngày. Mốc tiếp theo nhập tay ở tuần 6, chưa tự tính hoặc tổng hợp về xe.
-8. Xem/thêm/sửa ODO bằng giao diện Odometers chuẩn; chưa chặn ODO thấp hơn lịch sử trong phạm vi tuần 6.
+## Nhập liệu thủ công
 
-## Mapping với Database V2
+Trên form xe, nhập mã xe, model/biển số, `operational_status`, `technical_ready`, `rental_blocked`, lý do và ngày bảo dưỡng tiếp theo. Tất cả trường nghiệp vụ này đều sửa được theo quyền xe chuẩn; chưa có workflow hay validation nghiệp vụ tùy chỉnh. `active` chuẩn dùng lưu trữ xe.
 
-| Khái niệm V2 | Cách triển khai trên Odoo |
-| --- | --- |
-| Draft / Scheduled / In Progress / Done / Cancelled | Giữ `state`: `new` / `scheduled` / `running` / `done` / `cancelled`; không đổi key chuẩn Odoo |
-| `cost` | Alias ghi được của `amount`, tránh lưu chi phí hai nơi |
-| `result` | Alias ghi được của `maintenance_result` tuần 5 |
-| Mô tả chi tiết | Tái sử dụng `description` và `notes` của dịch vụ Fleet |
-| `technician_id` | Tiếp tục liên kết `res.partner` như tuần 5 |
-| `inspection_id`, `incident_id` | Chờ model/Data Contract Operations ở tuần tích hợp; không tạo quan hệ giả |
+Trên form bảo dưỡng, chọn xe và loại dịch vụ, nhập loại bảo dưỡng, kỹ thuật viên/vendor, thời gian dự kiến/thực tế, trạng thái, chi phí và kết quả. `state` giữ key Odoo `new`, `scheduled`, `running`, `done`, `cancelled`; trạng thái được chọn trực tiếp. `actual_start`/`actual_end` do người dùng nhập, không tự ghi giờ hiện tại.
 
-`technical_ready` mặc định false và xe mặc định chờ kiểm tra. `operational_status = available` chưa phải kết quả kiểm tra khả dụng theo lịch.
+`cost` là alias ghi được của `amount`, không lưu chi phí hai nơi. `technician_id` liên kết `res.partner`. Quan hệ xe–bảo dưỡng là 1:N, dùng `vehicle_id` và `log_services` chuẩn.
 
-## Quyền truy cập
+**Ghi nhận chặn/khóa thuê chỉ là dữ liệu nhập ở tuần 6.** Chưa có cơ chế chặn thuê thực tế. Sửa trạng thái bảo dưỡng không đổi trạng thái xe, điều kiện kỹ thuật hoặc ngày bảo dưỡng tiếp theo của xe; nhân viên nhập các thông tin đó riêng.
 
-ACL Odoo cộng dồn theo các nhóm. Giữ quyền Fleet có sẵn, không giả lập hạn chế bằng cách chỉ ẩn nút trên form.
+Không có các nút xác nhận kỹ thuật/giao/trả/bắt đầu/hoàn tất tùy chỉnh. Không có Search/Filter/Kanban/report tùy chỉnh; các công cụ chuẩn đi kèm module Fleet vẫn tồn tại. Hai action mới chỉ mở List/Form.
 
-| Nhóm | Xe/ODO | Bảo dưỡng | Pin / lịch sử pin / kế hoạch |
-| --- | --- | --- | --- |
-| Fleet Officer | CRUD theo Fleet chuẩn | Đọc | Đọc |
-| Kỹ thuật viên xe điện | Kế thừa Officer, vẫn có CRUD | Tạo/đọc/sửa, không cấp xóa | Đọc |
-| Fleet Administrator | CRUD | CRUD | CRUD |
-| Nội bộ không có nhóm Fleet | Không cấp quyền | Không cấp quyền | Không cấp quyền |
+## Quyền cơ bản
 
-Nếu cần kỹ thuật viên chỉ đọc xe như ví dụ trong tài liệu tham khảo, phải thiết kế lại nhóm kế thừa ở giai đoạn rà quyền. Chưa thay đổi mô hình này trong tuần 6. Các model custom phục vụ một cửa hàng, chưa bổ sung phân tách đa công ty; quy tắc công ty của model Fleet chuẩn được giữ nguyên.
+| Nhóm | Xe | Bảo dưỡng |
+| --- | --- | --- |
+| Fleet Officer | CRUD chuẩn Odoo | Đọc |
+| Kỹ thuật viên xe điện | Kế thừa Officer | Tạo/đọc/sửa, không cấp xóa |
+| Fleet Administrator | CRUD | CRUD |
+| Nội bộ không thuộc Fleet | Không cấp quyền | Không cấp quyền |
 
-## Nâng cấp từ tuần 5
+Giữ ACL và quy tắc công ty chuẩn. Chưa thêm quyền riêng cho từng thao tác nghiệp vụ.
 
-Migration `migrations/19.0.2.0.0/post-migrate.py` chuyển thông tin pin cũ của xe điện sang pin riêng và tạo lịch sử gắn hiện tại.
+## Chưa triển khai
 
-- Giữ serial, dung lượng, điện áp, SOH và hạn bảo hành; mã pin chuyển đổi là `LEGACY-VEH-<id>`.
-- SOC cũ chưa tồn tại nên để 0, cần nhập mức thực tế sau nâng cấp.
-- Thời điểm gắn tạo khi nâng cấp và có ghi chú đây không phải thời điểm gắn lịch sử thực tế.
-- Nếu serial cũ trùng nhau, dừng nâng cấp và yêu cầu đối chiếu, không tự đoán hai xe đang dùng chung một pin.
-- Các field pin tuần 5 được giữ để bảo toàn dữ liệu, nhưng ẩn khỏi UI mới và không dùng làm nguồn thông số pin hiện tại. Code bên ngoài đang ghi các field cũ cần chuyển sang model pin.
-- Mốc bảo dưỡng tuần 5 trên từng dịch vụ được giữ nguyên; không tự suy diễn thành kế hoạch định kỳ.
+Tuần 7: Search/Filter/Kanban tùy chỉnh, validation nghiệp vụ, workflow trạng thái và tự cập nhật mốc bảo dưỡng.
+Tuần 8: API availability, kiểm tra lịch Rental/Maintenance, đồng bộ giao/trả, liên kết Inspection/Rental.
+Các tuần sau: xử lý ngoại lệ liên module, báo cáo mới và E2E hệ thống. Không để API stub hoặc nút nghiệp vụ chưa làm trên bản tuần 6.
 
-Sao lưu database và filestore trước khi nâng cấp môi trường khác. Với Python/môi trường Odoo đã cấu hình:
+ERD hiện hành: `docs/Fleet_Minimal_ERD.md`. SQL schema: `handoff/fleet_minimal/Fleet_Minimal_Current.sql`. Các bản bàn giao pin/ODO/kế hoạch tuần 6 cũ là lịch sử trước khi chốt kiến trúc tối giản.
+
+## Demo và dữ liệu
+
+- URL: http://localhost:8072.
+- Database: `motorbike_fleet_simple_20261002`.
+- Tài khoản demo: `admin` / `admin`.
+- Giữ nguyên bộ dữ liệu đã tạo: 39 xe và 300 hồ sơ bảo dưỡng, bao gồm xe/hồ sơ lưu trữ. Số liệu một năm chỉ là fixture có sẵn để nhập/xem/sửa; không coi là hoàn thành nhiệm vụ báo cáo tuần 10.
+- Xem `docs/FLEET_YEAR_DEMO.md` để biết dữ liệu giả lập và cách xem hồ sơ lưu trữ.
+
+Khởi động trên máy hiện tại:
 
 ```powershell
-& <python-odoo> <odoo-bin> -c <config> -d <database-demo> -i motorbike_fleet_management --without-demo=all --test-enable --test-tags /motorbike_fleet_management --stop-after-init
-& <python-odoo> <odoo-bin> -c <config> -d <database-demo> -u motorbike_fleet_management --test-enable --test-tags /motorbike_fleet_management --stop-after-init
+& "$env:USERPROFILE/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe" `
+  "$env:TEMP/codex-fleet-week6-20261001/run_odoo.py" `
+  -c "$env:TEMP/codex-fleet-simple-20261002/odoo.conf"
 ```
 
-## Bản demo trên máy hiện tại
+Config, log và filestore demo nằm tại `%TEMP%/codex-fleet-simple-20261002`; không lưu mật khẩu kết nối trong repo.
 
-- Địa chỉ: http://localhost:8071
-- Database: `motorbike_fleet_week6_upgrade_20261001` — bản sao nâng cấp từ demo tuần 5.
-- Giữ tài khoản đăng nhập của demo tuần 5. File thông tin đăng nhập nằm ngoài Git: `%TEMP%/codex-fleet-demo-20260925/demo-login.txt`.
-- Cấu hình và trình chạy: `%TEMP%/codex-fleet-week6-20261001/odoo.conf` và `run_odoo.py`.
-- Có XE001–XE003, BAT001–BAT003, ba lịch sử gắn pin, ba kế hoạch, ODO và hồ sơ bảo dưỡng đã thử sửa chi phí 500.000 → 650.000.
-- Database demo tuần 5 không bị nâng cấp trực tiếp. Bản sao lưu trước nâng cấp: `%TEMP%/codex-fleet-week6-20261001/week5-before-upgrade.dump`.
-
-Khởi động lại nếu server đã dừng:
+## Cài đặt và kiểm tra
 
 ```powershell
-& "$env:USERPROFILE/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe" "$env:TEMP/codex-fleet-week6-20261001/run_odoo.py" -c "$env:TEMP/codex-fleet-week6-20261001/odoo.conf"
+& <python-odoo> <odoo-bin> -c <config> -d <database-moi> -i motorbike_fleet_management --without-demo=all --test-enable --test-tags /motorbike_fleet_management --stop-after-init
 ```
 
-Trình chạy dùng thư viện Odoo hiện có tại `C:/odoo/venv/Lib/site-packages`. Cấu hình, log và filestore demo đang ở thư mục tạm, cần lưu sang vị trí bền vững nếu dùng lâu dài.
+`scripts/validate_local.py --fresh` cài trên database kiểm thử tuần 6 riêng, không ghi đè database đã có. `--upgrade` nâng cấp demo tối giản hiện tại và chạy kiểm thử CRUD. Không dùng script này để nâng cấp trực tiếp database tuần 6 có kiến trúc pin cũ.
 
-## Kết quả kiểm tra ngày 01/10/2026
+Bộ kiểm thử hiện hành: Form xe/bảo dưỡng Create/Read/Update/Delete; quyền cơ bản; quy tắc công ty chuẩn; trạng thái/thời gian sửa bằng tay; sửa bảo dưỡng không đồng bộ xe; phạm vi chỉ List/Form. Kết quả xem `docs/VALIDATION.md`.
 
-- Cài mới trên database riêng: 6/6 test đạt, không lỗi.
-- Nâng cấp bản sao tuần 5: 6/6 test đạt; migration giữ serial, dung lượng và SOH của xe demo cũ.
-- Sau khi bổ sung kiểm thử Form và giao diện ODO: 7/7 test đạt trên bản nâng cấp.
-- Test bao gồm CRUD các model mới, pin hiện tại và SOC liên quan, đóng/thay/xóa lịch sử pin, khoảng gắn trùng, chi phí/kết quả alias, quyền theo nhóm, cách ly xe theo công ty và Form xe/pin/ODO/bảo dưỡng/kế hoạch.
-- Bộ dữ liệu mẫu đã tạo và lưu qua Odoo Form; trang đăng nhập demo đã mở thành công trên trình duyệt. Chưa thực hiện toàn bộ kịch bản CRUD bằng click trong trình duyệt.
+## Sao lưu
 
-## Ngoài phạm vi tuần 6
-
-Chưa triển khai availability, overlap Rental/Maintenance, integration với Rental/Operations/Finance, automation giao/trả/đổi pin/bảo dưỡng, tính mốc kế hoạch tự động, Kanban custom, bộ lọc mới hoặc báo cáo. Bộ lọc xe điện và các view chuẩn đã có của Odoo được giữ lại.
+Trước khi đưa về tuần 6, lưu code/database/filestore ở `archive/before-week6-scope-20261002/`. Bộ dữ liệu một năm còn bản backup tại `archive/year-demo-20261002/`; các backup database không đưa vào Git. Bản code trước tối giản pin nằm ở `archive/fleet-before-simplification.zip`.

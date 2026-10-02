@@ -1,0 +1,197 @@
+// Fleet & Maintenance, Week 6 only, Odoo 19 / motorbike_fleet_management 19.0.3.1.0.
+// Core business tables: fleet_vehicle and fleet_vehicle_log_services.
+// Brand/model catalogs show relevant verified columns; other shared tables are ID-only placeholders.
+// When merging: retain the group definition of each shared table and remove duplicate placeholders.
+// No Rental/Inspection model, availability, workflow, custom battery or custom odometer.
+// No SQL defaults, ENUM, UNIQUE or CHECK added beyond the implemented schema.
+// Physical ERD: every stored column, FK and explicit index of the two Fleet tables in the SQL snapshot.
+
+Project Fleet_Week6 {
+  database_type: 'PostgreSQL'
+  Note: 'Phạm vi tuần 6: hai model, ACL cơ bản, menu/action, List/Form và CRUD thủ công. Không phải sơ đồ toàn bộ dự án.'
+}
+
+Table fleet_vehicle {
+  id integer [pk, increment, not null]
+  manager_id integer
+  company_id integer
+  driver_id integer
+  future_driver_id integer
+  model_id integer [not null]
+  brand_id integer
+  state_id integer
+  seats integer
+  doors integer
+  category_id integer
+  vehicle_range integer
+  create_uid integer
+  write_uid integer
+  name varchar
+  license_plate varchar
+  vin_sn varchar
+  color varchar
+  location varchar
+  model_year varchar
+  odometer_unit varchar [not null]
+  transmission varchar
+  fuel_type varchar
+  power_unit varchar [not null]
+  co2_emission_unit varchar [not null]
+  co2_standard varchar
+  frame_type varchar
+  range_unit varchar [not null]
+  next_assignation_date date
+  order_date date
+  acquisition_date date
+  write_off_date date
+  contract_date_start date
+  vehicle_properties jsonb
+  description text
+  active boolean [note: 'Trường lưu trữ chuẩn Odoo.']
+  trailer_hook boolean
+  plan_to_change_car boolean
+  plan_to_change_bike boolean
+  electric_assistance boolean
+  create_date "timestamp without time zone"
+  write_date "timestamp without time zone"
+  horsepower "double precision"
+  horsepower_tax "double precision"
+  power "double precision"
+  co2 "double precision"
+  car_value "double precision"
+  net_car_value "double precision"
+  residual_value "double precision"
+  frame_size "double precision"
+  vehicle_code varchar [note: 'Mã xe. Có index; hiện chưa có UNIQUE hoặc NOT NULL trong database.']
+  operational_status varchar [not null, note: 'available / rented / inspection / maintenance. Nhập tay; không phải PostgreSQL enum.']
+  next_service_date date [note: 'Nhập tay, không tự đồng bộ giữa xe và hồ sơ bảo dưỡng.']
+  block_reason text
+  is_electric_motorbike boolean
+  technical_ready boolean [note: 'Nhập tay ở tuần 6; chưa có workflow xác nhận kỹ thuật.']
+  rental_blocked boolean [note: 'Ghi nhận khóa thuê; chưa có cơ chế chặn Rental.']
+
+  indexes {
+    vehicle_code [name: 'fleet_vehicle__vehicle_code_index', type: btree]
+  }
+
+  Note: 'Hồ sơ xe: kế thừa fleet.vehicle. Các trạng thái và mốc bảo dưỡng nhập bằng tay.'
+}
+
+Table fleet_vehicle_log_services {
+  id integer [pk, increment, not null]
+  vehicle_id integer [not null]
+  model_id integer
+  brand_id integer
+  manager_id integer
+  odometer_id integer
+  company_id integer
+  purchaser_id integer
+  vendor_id integer
+  service_type_id integer [not null]
+  create_uid integer
+  write_uid integer
+  description varchar
+  inv_ref varchar
+  state varchar [note: 'new / scheduled / running / done / cancelled. Trạng thái chuẩn Fleet mở rộng, nhập tay.']
+  date date
+  notes text
+  amount numeric [note: 'Chi phí chuẩn Odoo. cost là alias ORM, không có cột cost riêng.']
+  active boolean [note: 'Trường lưu trữ chuẩn Odoo.']
+  create_date "timestamp without time zone"
+  write_date "timestamp without time zone"
+  technician_id integer [note: 'FK tới res_partner, không phải res_users hoặc hr_employee.']
+  maintenance_type varchar [not null, note: 'preventive / corrective / emergency. Selection Odoo lưu varchar.']
+  next_service_date date [note: 'Nhập tay, không tự đồng bộ giữa xe và hồ sơ bảo dưỡng.']
+  result text
+  blocks_rental boolean [note: 'Ghi nhận bảo dưỡng chặn thuê; chưa kiểm tra availability.']
+  scheduled_start "timestamp without time zone"
+  scheduled_end "timestamp without time zone"
+  actual_start "timestamp without time zone" [note: 'Thời gian thực tế nhập tay; timestamp UTC không timezone.']
+  actual_end "timestamp without time zone" [note: 'Thời gian thực tế nhập tay; timestamp UTC không timezone.']
+
+  indexes {
+    vehicle_id [name: 'fleet_vehicle_log_services__vehicle_id_index', type: btree]
+  }
+
+  Note: 'Hồ sơ bảo dưỡng: kế thừa fleet.vehicle.log.services. Quan hệ 1:N với xe; nhập tay trạng thái, thời gian và kết quả.'
+}
+
+// STANDARD ODOO CATALOGS AND SHARED REFERENCES — not newly created custom models.
+// Replace these with the shared tables owned by the group; do not create duplicate tables.
+
+Table fleet_service_type {
+  id integer [pk]
+  Note: 'Bảng chuẩn Odoo dùng chung. Chỉ khai báo id để vẽ FK; đây không phải toàn bộ định nghĩa của bảng.'
+}
+
+Table fleet_vehicle_model {
+  id integer [pk, increment, not null]
+  brand_id integer [not null]
+  name varchar [not null]
+  vehicle_type varchar [not null]
+  active boolean
+  Note: 'Dòng/mẫu xe chuẩn Odoo, thuộc một hãng. Các cột cần thiết cho ERD; không phải schema đầy đủ.'
+}
+
+Table fleet_vehicle_model_brand {
+  id integer [pk, increment, not null]
+  name varchar [not null]
+  active boolean
+  Note: 'Hãng xe chuẩn Odoo. Các cột cần thiết cho ERD; không phải schema đầy đủ.'
+}
+
+Table fleet_vehicle_model_category {
+  id integer [pk]
+  Note: 'Bảng chuẩn Odoo dùng chung. Chỉ khai báo id để vẽ FK; đây không phải toàn bộ định nghĩa của bảng.'
+}
+
+Table fleet_vehicle_odometer {
+  id integer [pk]
+  Note: 'Bảng chuẩn Odoo dùng chung. Chỉ khai báo id để vẽ FK; đây không phải toàn bộ định nghĩa của bảng.'
+}
+
+Table fleet_vehicle_state {
+  id integer [pk]
+  Note: 'Bảng chuẩn Odoo dùng chung. Chỉ khai báo id để vẽ FK; đây không phải toàn bộ định nghĩa của bảng.'
+}
+
+Table res_company {
+  id integer [pk]
+  Note: 'Bảng chuẩn Odoo dùng chung. Chỉ khai báo id để vẽ FK; đây không phải toàn bộ định nghĩa của bảng.'
+}
+
+Table res_partner {
+  id integer [pk]
+  Note: 'Bảng chuẩn Odoo dùng chung. Chỉ khai báo id để vẽ FK; đây không phải toàn bộ định nghĩa của bảng.'
+}
+
+Table res_users {
+  id integer [pk]
+  Note: 'Bảng chuẩn Odoo dùng chung. Chỉ khai báo id để vẽ FK; đây không phải toàn bộ định nghĩa của bảng.'
+}
+
+// FOREIGN KEYS — preserved from the implemented schema.
+
+Ref fleet_vehicle_brand_id_fkey: fleet_vehicle.brand_id > fleet_vehicle_model_brand.id [delete: set null]
+Ref fleet_vehicle_category_id_fkey: fleet_vehicle.category_id > fleet_vehicle_model_category.id [delete: set null]
+Ref fleet_vehicle_company_id_fkey: fleet_vehicle.company_id > res_company.id [delete: set null]
+Ref fleet_vehicle_create_uid_fkey: fleet_vehicle.create_uid > res_users.id [delete: set null]
+Ref fleet_vehicle_driver_id_fkey: fleet_vehicle.driver_id > res_partner.id [delete: set null]
+Ref fleet_vehicle_future_driver_id_fkey: fleet_vehicle.future_driver_id > res_partner.id [delete: set null]
+Ref fleet_vehicle_manager_id_fkey: fleet_vehicle.manager_id > res_users.id [delete: set null]
+Ref fleet_vehicle_model_id_fkey: fleet_vehicle.model_id > fleet_vehicle_model.id [delete: restrict]
+Ref fleet_vehicle_state_id_fkey: fleet_vehicle.state_id > fleet_vehicle_state.id [delete: set null]
+Ref fleet_vehicle_write_uid_fkey: fleet_vehicle.write_uid > res_users.id [delete: set null]
+Ref fleet_vehicle_log_services_brand_id_fkey: fleet_vehicle_log_services.brand_id > fleet_vehicle_model_brand.id [delete: set null]
+Ref fleet_vehicle_log_services_company_id_fkey: fleet_vehicle_log_services.company_id > res_company.id [delete: set null]
+Ref fleet_vehicle_log_services_create_uid_fkey: fleet_vehicle_log_services.create_uid > res_users.id [delete: set null]
+Ref fleet_vehicle_log_services_manager_id_fkey: fleet_vehicle_log_services.manager_id > res_users.id [delete: set null]
+Ref fleet_vehicle_log_services_model_id_fkey: fleet_vehicle_log_services.model_id > fleet_vehicle_model.id [delete: set null]
+Ref fleet_vehicle_log_services_odometer_id_fkey: fleet_vehicle_log_services.odometer_id > fleet_vehicle_odometer.id [delete: set null]
+Ref fleet_vehicle_log_services_purchaser_id_fkey: fleet_vehicle_log_services.purchaser_id > res_partner.id [delete: set null]
+Ref fleet_vehicle_log_services_service_type_id_fkey: fleet_vehicle_log_services.service_type_id > fleet_service_type.id [delete: restrict]
+Ref fleet_vehicle_log_services_technician_id_fkey: fleet_vehicle_log_services.technician_id > res_partner.id [delete: set null]
+Ref fleet_vehicle_log_services_vehicle_id_fkey: fleet_vehicle_log_services.vehicle_id > fleet_vehicle.id [delete: restrict]
+Ref fleet_vehicle_log_services_vendor_id_fkey: fleet_vehicle_log_services.vendor_id > res_partner.id [delete: set null]
+Ref fleet_vehicle_log_services_write_uid_fkey: fleet_vehicle_log_services.write_uid > res_users.id [delete: set null]
+Ref fleet_vehicle_model_brand_id_fkey: fleet_vehicle_model.brand_id > fleet_vehicle_model_brand.id [delete: restrict]

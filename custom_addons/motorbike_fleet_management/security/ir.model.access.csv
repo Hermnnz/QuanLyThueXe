@@ -1,8 +1,2 @@
 id,name,model_id/id,group_id/id,perm_read,perm_write,perm_create,perm_unlink
 access_service_technician,Motorbike technician services,fleet.model_fleet_vehicle_log_services,group_motorbike_technician,1,1,1,0
-access_battery_user,battery user,model_motorbike_battery,fleet.fleet_group_user,1,0,0,0
-access_battery_manager,battery manager,model_motorbike_battery,fleet.fleet_group_manager,1,1,1,1
-access_battery_assignment_user,battery_assignment user,model_motorbike_battery_assignment,fleet.fleet_group_user,1,0,0,0
-access_battery_assignment_manager,battery_assignment manager,model_motorbike_battery_assignment,fleet.fleet_group_manager,1,1,1,1
-access_maintenance_plan_user,maintenance_plan user,model_motorbike_maintenance_plan,fleet.fleet_group_user,1,0,0,0
-access_maintenance_plan_manager,maintenance_plan manager,model_motorbike_maintenance_plan,fleet.fleet_group_manager,1,1,1,1

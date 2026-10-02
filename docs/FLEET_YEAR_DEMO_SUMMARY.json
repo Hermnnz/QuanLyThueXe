@@ -1,0 +1,61 @@
+{
+  "database": "motorbike_fleet_simple_20261002",
+  "period_start": "2025-10-02",
+  "period_end_exclusive": "2026-10-02",
+  "synthetic": true,
+  "currency": "VND",
+  "new_vehicles": 36,
+  "vehicles_total_including_initial_demo": 39,
+  "new_models": 4,
+  "new_vendors": 3,
+  "new_technicians": 4,
+  "services": 298,
+  "service_states": {
+    "running": 3,
+    "new": 2,
+    "scheduled": 12,
+    "done": 275,
+    "cancelled": 6
+  },
+  "vehicle_states": {
+    "available": 20,
+    "rented": 8,
+    "inspection": 3,
+    "maintenance": 3,
+    "archived": 2
+  },
+  "blocked_active_vehicles": 2,
+  "completed_maintenance_cost_vnd": 102450000,
+  "monthly_completed_services": {
+    "2025-10": 1,
+    "2025-11": 28,
+    "2025-12": 14,
+    "2026-01": 21,
+    "2026-02": 25,
+    "2026-03": 17,
+    "2026-04": 26,
+    "2026-05": 23,
+    "2026-06": 36,
+    "2026-07": 19,
+    "2026-08": 30,
+    "2026-09": 33,
+    "2026-10": 2
+  },
+  "monthly_cost_vnd": {
+    "2025-10": 650000,
+    "2025-11": 8440000,
+    "2025-12": 6630000,
+    "2026-01": 6000000,
+    "2026-02": 9220000,
+    "2026-03": 6870000,
+    "2026-04": 8780000,
+    "2026-05": 9210000,
+    "2026-06": 16150000,
+    "2026-07": 4920000,
+    "2026-08": 8750000,
+    "2026-09": 16230000,
+    "2026-10": 600000
+  },
+  "rental_contracts_created": 0,
+  "inspection_records_created": 0
+}
