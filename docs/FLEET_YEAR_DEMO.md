@@ -73,4 +73,4 @@ Script dùng external IDs `fleet_year_demo.*`; chạy lại sau khi đã seed ch
 
 ## Phạm vi hiện hành
 
-Module `19.0.3.1.0` dừng ở tuần 6: mọi trạng thái/mốc bảo dưỡng do người dùng sửa trực tiếp. Dữ liệu một năm được giữ để xem và thử CRUD, không có báo cáo mới, availability hoặc tự động giao/trả. Sau nâng cấp, fingerprint toàn bộ 39 dòng xe và 300 dòng bảo dưỡng không đổi.
+Module hiện tại `19.0.4.0.0` hoàn thành tuần 7: Search/Kanban, validation và luồng bảo dưỡng cơ bản. Dữ liệu một năm tiếp tục giữ nguyên, không có báo cáo mới, availability hoặc tự động giao/trả. Import lịch sử done/cancelled không tự thay đổi trạng thái xe; hồ sơ running chặn thuê áp dụng rule tuần 7. Sau nâng cấp tuần 7, fingerprint toàn bộ 39 dòng xe và 300 dòng bảo dưỡng không đổi; xem `docs/WEEK7_DATA_PRESERVATION.json`. Cấu hình/runner mới nằm trong README module; các lệnh dùng thư mục tạm tuần 6 ở trên là hướng dẫn lịch sử.

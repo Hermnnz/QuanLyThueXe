@@ -1,9 +1,9 @@
 {
     'name': 'Motorbike Fleet & Maintenance',
-    'version': '19.0.3.1.0',
+    'version': '19.0.4.0.0',
     'category': 'Human Resources/Fleet',
-    'summary': 'Week 6: vehicle and maintenance List/Form with basic CRUD',
-    'description': 'Minimal Fleet models, basic ACL and manually entered vehicle/maintenance records. No custom workflow or availability.',
+    'summary': 'Week 7: Fleet search, Kanban, validation and maintenance workflow',
+    'description': 'Minimal Fleet with core maintenance logic. No Rental/Inspection integration or availability API.',
     'license': 'LGPL-3',
     'depends': ['fleet'],
     'data': [

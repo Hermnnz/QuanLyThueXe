@@ -1,76 +1,65 @@
-# Fleet & Maintenance — dừng ở tuần 6
+# Fleet & Maintenance — hoàn thành tuần 7
 
-Module `motorbike_fleet_management`, Odoo 19, phiên bản `19.0.3.1.0`.
+Odoo 19, module `motorbike_fleet_management`, phiên bản `19.0.4.0.0`.
+Phạm vi: `ERP_Odoo (1).xlsx`, `Ke hoach Sprint!F17:I17`, điều chỉnh theo kiến trúc tối giản đã chốt.
 
-Phạm vi theo kế hoạch `ERP_Odoo (1).xlsx`, sheet `Ke hoach Sprint`, hàng 13: menu/action, List/Form cho hồ sơ xe và bảo dưỡng, nhập thử bản ghi để kiểm tra Create/Read/Update. Giữ model, quan hệ và ACL cơ bản của tuần 5. Không triển khai nhiệm vụ tuần 7 trở đi.
+## Chức năng
 
-## Những gì có thể dùng
+- Fleet → Xe máy điện: List/Form và Kanban nhóm theo available/rented/inspection/maintenance. Kanban hiển thị đủ bốn cột kể cả cột trống; không kéo thả trạng thái.
+- Tìm xe theo mã/biển số/dòng xe; lọc trạng thái, khóa thuê, chưa đạt kỹ thuật, đến hạn bảo dưỡng, lưu trữ. Nhóm theo trạng thái/dòng xe.
+- Fleet → Bảo dưỡng xe điện: List/Form/Search, tìm theo xe/mô tả/loại/trạng thái, lọc lịch dự kiến/chặn thuê/lưu trữ; nhóm theo xe/trạng thái/loại. Không làm Kanban bảo dưỡng.
+- Chỉ hai model nghiệp vụ kế thừa: `fleet.vehicle`, `fleet.vehicle.log.services`. Hãng và dòng xe sử dụng danh mục Fleet chuẩn.
+- Kiểm tra ODO trên model chuẩn `fleet.vehicle.odometer`: không âm, có ngày, không giảm theo ngày; hỗ trợ nhập bổ sung lịch sử nằm giữa hai mốc. Không thêm field/bảng/menu ODO custom.
+- Không thêm pin asset, SOC/SOH, bảng pin hay battery_status.
 
-- Fleet → Xe máy điện: danh sách, tạo hồ sơ xe, xem và sửa thông tin.
-- Fleet → Bảo dưỡng xe điện: danh sách, tạo hồ sơ bảo dưỡng, xem và sửa chi phí/kết quả/thời gian/trạng thái.
-- Hai model nghiệp vụ: `fleet.vehicle` và `fleet.vehicle.log.services` (kế thừa chuẩn Odoo).
-- Danh mục model xe, loại dịch vụ, partner/vendor, công ty và tiền tệ dùng lại của Odoo.
-- Không quản lý pin như tài sản riêng, không lịch sử gắn/tháo pin, không kế hoạch bảo dưỡng riêng, không mở rộng ODO. ODO chuẩn vẫn tồn tại.
+## Luồng bảo dưỡng
 
-## Nhập liệu thủ công
+`new → scheduled → running → done`, hoặc hủy từ new/scheduled/running. Có thể bắt đầu trực tiếp từ new. Done/cancelled không quay lại trạng thái trước.
 
-Trên form xe, nhập mã xe, model/biển số, `operational_status`, `technical_ready`, `rental_blocked`, lý do và ngày bảo dưỡng tiếp theo. Tất cả trường nghiệp vụ này đều sửa được theo quyền xe chuẩn; chưa có workflow hay validation nghiệp vụ tùy chỉnh. `active` chuẩn dùng lưu trữ xe.
+1. Nhập lịch bắt đầu/kết thúc rồi **Lên lịch**. Lịch tương lai chưa đổi trạng thái hiện tại của xe.
+2. **Bắt đầu**: tự điền actual_start nếu chưa nhập. Nếu blocks_rental=True, xe phải đang khai thác và không đang thuê; chuyển xe sang maintenance, technical_ready=False.
+3. Nhập kết quả rồi **Hoàn tất**: tự điền actual_end nếu chưa nhập. Khi không còn bảo dưỡng chạy đang chặn, xe về inspection và vẫn chưa đạt kỹ thuật.
+4. Trên hồ sơ xe, **Xác nhận đạt kỹ thuật**: kiểm tra không còn bảo dưỡng chạy chặn thuê, xe không đang thuê/đã lưu trữ; cập nhật technical_ready=True và available. Khóa thuê chủ động vẫn giữ nguyên.
 
-Trên form bảo dưỡng, chọn xe và loại dịch vụ, nhập loại bảo dưỡng, kỹ thuật viên/vendor, thời gian dự kiến/thực tế, trạng thái, chi phí và kết quả. `state` giữ key Odoo `new`, `scheduled`, `running`, `done`, `cancelled`; trạng thái được chọn trực tiếp. `actual_start`/`actual_end` do người dùng nhập, không tự ghi giờ hiện tại.
+Hủy bảo dưỡng đang chạy cũng yêu cầu kiểm tra kỹ thuật lại. Hủy lịch chưa bắt đầu không đổi xe. Bảo dưỡng không chặn thuê không đổi trạng thái/điều kiện kỹ thuật xe.
 
-`cost` là alias ghi được của `amount`, không lưu chi phí hai nơi. `technician_id` liên kết `res.partner`. Quan hệ xe–bảo dưỡng là 1:N, dùng `vehicle_id` và `log_services` chuẩn.
+Khi chuyển running → done, next_service_date của hồ sơ hoàn thành gần nhất (theo date rồi id) cập nhật lên xe nếu có. Không xóa mốc xe khi hồ sơ chưa nhập mốc tiếp theo. Import/sửa ghi chú hồ sơ đã hoàn thành trong lịch sử không tự đổi tình trạng hiện tại hay mốc xe.
 
-**Ghi nhận chặn/khóa thuê chỉ là dữ liệu nhập ở tuần 6.** Chưa có cơ chế chặn thuê thực tế. Sửa trạng thái bảo dưỡng không đổi trạng thái xe, điều kiện kỹ thuật hoặc ngày bảo dưỡng tiếp theo của xe; nhân viên nhập các thông tin đó riêng.
+## Ràng buộc
 
-Không có các nút xác nhận kỹ thuật/giao/trả/bắt đầu/hoàn tất tùy chỉnh. Không có Search/Filter/Kanban/report tùy chỉnh; các công cụ chuẩn đi kèm module Fleet vẫn tồn tại. Hai action mới chỉ mở List/Form.
+- Xe available phải đạt kỹ thuật. Xe có bảo dưỡng chạy chặn thuê phải maintenance và technical_ready=False.
+- Khóa thuê cần lý do; technical_ready và rental_blocked độc lập.
+- Chi phí không âm; cho phép bảo dưỡng miễn phí (0).
+- Kết thúc cần có bắt đầu và không trước bắt đầu; scheduled cần đủ lịch dự kiến; next_service_date phải sau date hồ sơ.
+- Hoàn tất cần kết quả công việc. Kiểm tra state flow ở server, kể cả cập nhật qua RPC/import.
+- Hồ sơ đang running không đổi xe, đổi blocks_rental, lưu trữ hay xóa; phải hoàn tất/hủy trước. Hồ sơ kết thúc không đổi xe.
+- Quy tắc tùy chỉnh chỉ áp dụng xe điện; vẫn giữ ACL/công ty của Fleet chuẩn.
 
-## Quyền cơ bản
+## Quyền
 
-| Nhóm | Xe | Bảo dưỡng |
-| --- | --- | --- |
-| Fleet Officer | CRUD chuẩn Odoo | Đọc |
-| Kỹ thuật viên xe điện | Kế thừa Officer | Tạo/đọc/sửa, không cấp xóa |
-| Fleet Administrator | CRUD | CRUD |
-| Nội bộ không thuộc Fleet | Không cấp quyền | Không cấp quyền |
+Fleet Officer: quản lý xe, đọc bảo dưỡng. Kỹ thuật viên xe điện: thêm/sửa bảo dưỡng, không xóa. Fleet Administrator: CRUD. Người ngoài nhóm Fleet không được cấp quyền. Các nút vẫn kiểm tra quyền server.
 
-Giữ ACL và quy tắc công ty chuẩn. Chưa thêm quyền riêng cho từng thao tác nghiệp vụ.
+## Dừng trước tuần 8
 
-## Chưa triển khai
+Không có availability theo khoảng thời gian, kiểm tra trùng lịch thuê, API giao/trả, tích hợp Rental/Inspection, báo cáo tùy chỉnh hay Calendar/Gantt. Trạng thái rented vẫn do nhân viên nhập; chưa phải luồng giao/trả liên module.
 
-Tuần 7: Search/Filter/Kanban tùy chỉnh, validation nghiệp vụ, workflow trạng thái và tự cập nhật mốc bảo dưỡng.
-Tuần 8: API availability, kiểm tra lịch Rental/Maintenance, đồng bộ giao/trả, liên kết Inspection/Rental.
-Các tuần sau: xử lý ngoại lệ liên module, báo cáo mới và E2E hệ thống. Không để API stub hoặc nút nghiệp vụ chưa làm trên bản tuần 6.
+DBML đã tạm bỏ company_id/vendor/service_type/technician và bảng partner/company vẫn giữ nguyên quyết định chờ giáo viên. Tuần 7 không thêm cột hay bảng nghiệp vụ; DBML/SQL tuần 6 vẫn mô tả cấu trúc dữ liệu đó.
 
-ERD hiện hành: `docs/Fleet_Minimal_ERD.md`. SQL schema: `handoff/fleet_minimal/Fleet_Minimal_Current.sql`. Các bản bàn giao pin/ODO/kế hoạch tuần 6 cũ là lịch sử trước khi chốt kiến trúc tối giản.
-
-## Demo và dữ liệu
-
-- URL: http://localhost:8072.
-- Database: `motorbike_fleet_simple_20261002`.
-- Tài khoản demo: `admin` / `admin`.
-- Giữ nguyên bộ dữ liệu đã tạo: 39 xe và 300 hồ sơ bảo dưỡng, bao gồm xe/hồ sơ lưu trữ. Số liệu một năm chỉ là fixture có sẵn để nhập/xem/sửa; không coi là hoàn thành nhiệm vụ báo cáo tuần 10.
-- Xem `docs/FLEET_YEAR_DEMO.md` để biết dữ liệu giả lập và cách xem hồ sơ lưu trữ.
-
-Khởi động trên máy hiện tại:
+## Chạy và kiểm thử tại máy hiện tại
 
 ```powershell
-& "$env:USERPROFILE/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe" `
-  "$env:TEMP/codex-fleet-week6-20261001/run_odoo.py" `
-  -c "$env:TEMP/codex-fleet-simple-20261002/odoo.conf"
+# Cài mới trên database kiểm thử riêng, không ghi đè database đã có.
+& "$env:USERPROFILE/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe" -X utf8 scripts/validate_week7_local.py
+
+# Sao lưu rồi nâng cấp demo hiện tại, chạy kiểm thử và đối chiếu dữ liệu.
+& "$env:USERPROFILE/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe" -X utf8 scripts/validate_week7_local.py --upgrade
+
+# Chạy demo sau nâng cấp.
+& "$env:USERPROFILE/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe" -X utf8 scripts/run_odoo_local.py -c "$env:LOCALAPPDATA/Temp/codex-fleet-week7-20261009/demo.conf"
 ```
 
-Config, log và filestore demo nằm tại `%TEMP%/codex-fleet-simple-20261002`; không lưu mật khẩu kết nối trong repo.
+Runtime cần Odoo tại `C:/odoo`, PostgreSQL cấu hình trong `C:/odoo/odoo.conf`. Script không đưa mật khẩu vào repo. Config/log/data mới ở `%LOCALAPPDATA%/Temp/codex-fleet-week7-20261009`. Khi database test đã tồn tại, chọn `--database <ten-moi>`.
 
-## Cài đặt và kiểm tra
+Demo: http://localhost:8072, database `motorbike_fleet_simple_20261002`, tài khoản `admin` / `admin`. Dữ liệu giả lập một năm giữ nguyên, không nhập lại. Backup trước nâng cấp ở `archive/before-week7-*`, được Git bỏ qua.
 
-```powershell
-& <python-odoo> <odoo-bin> -c <config> -d <database-moi> -i motorbike_fleet_management --without-demo=all --test-enable --test-tags /motorbike_fleet_management --stop-after-init
-```
-
-`scripts/validate_local.py --fresh` cài trên database kiểm thử tuần 6 riêng, không ghi đè database đã có. `--upgrade` nâng cấp demo tối giản hiện tại và chạy kiểm thử CRUD. Không dùng script này để nâng cấp trực tiếp database tuần 6 có kiến trúc pin cũ.
-
-Bộ kiểm thử hiện hành: Form xe/bảo dưỡng Create/Read/Update/Delete; quyền cơ bản; quy tắc công ty chuẩn; trạng thái/thời gian sửa bằng tay; sửa bảo dưỡng không đồng bộ xe; phạm vi chỉ List/Form. Kết quả xem `docs/VALIDATION.md`.
-
-## Sao lưu
-
-Trước khi đưa về tuần 6, lưu code/database/filestore ở `archive/before-week6-scope-20261002/`. Bộ dữ liệu một năm còn bản backup tại `archive/year-demo-20261002/`; các backup database không đưa vào Git. Bản code trước tối giản pin nằm ở `archive/fleet-before-simplification.zip`.
+Kết quả kiểm tra: `docs/VALIDATION.md`; đối chiếu dữ liệu: `docs/WEEK7_DATA_PRESERVATION.json`. Dữ liệu test trong TransactionCase được rollback.

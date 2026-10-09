@@ -1,15 +1,15 @@
-// Fleet & Maintenance, Week 6 only, Odoo 19 / motorbike_fleet_management 19.0.3.1.0.
+// Fleet & Maintenance, schema from Week 6, logic through Week 7, Odoo 19 / 19.0.4.0.0.
 // Core business tables: fleet_vehicle and fleet_vehicle_log_services.
 // Brand/model catalogs show relevant verified columns; other shared tables are ID-only placeholders.
 // When merging: retain the group definition of each shared table and remove duplicate placeholders.
-// No Rental/Inspection model, availability, workflow, custom battery or custom odometer.
+// No Rental/Inspection model, availability, custom battery or custom odometer fields.
 // No SQL defaults, ENUM, UNIQUE or CHECK added beyond the implemented schema.
 // Business ERD: only selected relevant columns; use the Physical file for all stored columns.
 // Pending teacher review: company_id, vendor_id, service_type_id, technician_id and their shared tables are omitted from this business diagram only.
 
 Project Fleet_Week6 {
   database_type: 'PostgreSQL'
-  Note: 'Phạm vi tuần 6: hai model, ACL cơ bản, menu/action, List/Form và CRUD thủ công. Không phải sơ đồ toàn bộ dự án.'
+  Note: 'Hai model nghiệp vụ; tuần 7 thêm Search/Kanban, validation và luồng bảo dưỡng, không thêm cột/bảng. Không phải sơ đồ toàn bộ dự án.'
 }
 
 Table fleet_vehicle {
@@ -23,7 +23,7 @@ Table fleet_vehicle {
   next_service_date date [note: 'Nhập tay, không tự đồng bộ giữa xe và hồ sơ bảo dưỡng.']
   block_reason text
   is_electric_motorbike boolean
-  technical_ready boolean [note: 'Nhập tay ở tuần 6; chưa có workflow xác nhận kỹ thuật.']
+  technical_ready boolean [note: 'Bắt đầu bảo dưỡng chặn thuê đặt false; xác nhận đạt kỹ thuật đặt true. Độc lập với khóa thuê chủ động.']
   rental_blocked boolean [note: 'Ghi nhận khóa thuê; chưa có cơ chế chặn Rental.']
 
   indexes {
@@ -37,7 +37,7 @@ Table fleet_vehicle_log_services {
   id integer [pk, increment, not null]
   vehicle_id integer [not null]
   description varchar
-  state varchar [note: 'new / scheduled / running / done / cancelled. Trạng thái chuẩn Fleet mở rộng, nhập tay.']
+  state varchar [note: 'new / scheduled / running / done / cancelled. Tuần 7: chuyển qua nút và kiểm tra state flow ở server.']
   date date
   notes text
   amount numeric [note: 'Chi phí chuẩn Odoo. cost là alias ORM, không có cột cost riêng.']
@@ -48,14 +48,14 @@ Table fleet_vehicle_log_services {
   blocks_rental boolean [note: 'Ghi nhận bảo dưỡng chặn thuê; chưa kiểm tra availability.']
   scheduled_start "timestamp without time zone"
   scheduled_end "timestamp without time zone"
-  actual_start "timestamp without time zone" [note: 'Thời gian thực tế nhập tay; timestamp UTC không timezone.']
-  actual_end "timestamp without time zone" [note: 'Thời gian thực tế nhập tay; timestamp UTC không timezone.']
+  actual_start "timestamp without time zone" [note: 'Tự điền khi bắt đầu nếu chưa nhập; timestamp UTC không timezone.']
+  actual_end "timestamp without time zone" [note: 'Tự điền khi kết thúc hồ sơ đang chạy nếu chưa nhập; timestamp UTC không timezone.']
 
   indexes {
     vehicle_id [name: 'fleet_vehicle_log_services__vehicle_id_index', type: btree]
   }
 
-  Note: 'Hồ sơ bảo dưỡng: kế thừa fleet.vehicle.log.services. Quan hệ 1:N với xe; nhập tay trạng thái, thời gian và kết quả.'
+  Note: 'Hồ sơ bảo dưỡng kế thừa Fleet, quan hệ 1:N với xe. Luồng lên lịch/bắt đầu/hoàn tất/hủy; hoàn tất không tự xác nhận xe đạt kỹ thuật.'
 }
 
 // STANDARD ODOO CATALOGS AND SHARED REFERENCES — not newly created custom models.

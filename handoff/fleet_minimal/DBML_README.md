@@ -25,6 +25,6 @@ Bản nghiệp vụ trước khi lược cột đã được lưu tại `archive
 
 Mở `Fleet_Week6.dbml`, sao chép toàn bộ nội dung và dán vào vùng soạn thảo DBML tại https://dbdiagram.io/. Không gộp hai file DBML cùng lúc vì chúng định nghĩa trùng bảng Fleet.
 
-Chi phí lưu ở `amount`; `cost` chỉ là alias ORM. Các trạng thái vẫn là varchar/Selection Odoo, nhập tay trong phạm vi tuần 6. Chưa có workflow, availability, Rental/Inspection integration hoặc báo cáo tùy chỉnh.
+Chi phí lưu ở `amount`; `cost` chỉ là alias ORM. Tên file giữ mốc schema tuần 6. Tuần 7 đã thêm Search/Kanban, validation và workflow bảo dưỡng nhưng không thêm cột/bảng, nên sơ đồ vẫn dùng được. Chưa có availability, Rental/Inspection integration hoặc báo cáo tùy chỉnh.
 
 Tạo/sửa DBML không thay đổi database demo hoặc bộ dữ liệu một năm. File `.dbml` dùng để thiết kế và đối chiếu, không dùng cài/nâng cấp module Odoo.

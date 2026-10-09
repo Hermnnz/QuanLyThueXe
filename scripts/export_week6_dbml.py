@@ -24,16 +24,16 @@ shared = sorted({ref[3] for ref in refs} - set(tables))
 notes = {
     'vehicle_code': 'Mã xe. Có index; hiện chưa có UNIQUE hoặc NOT NULL trong database.',
     'operational_status': 'available / rented / inspection / maintenance. Nhập tay; không phải PostgreSQL enum.',
-    'technical_ready': 'Nhập tay ở tuần 6; chưa có workflow xác nhận kỹ thuật.',
+    'technical_ready': 'Bắt đầu bảo dưỡng chặn thuê đặt false; xác nhận đạt kỹ thuật đặt true. Độc lập với khóa thuê chủ động.',
     'rental_blocked': 'Ghi nhận khóa thuê; chưa có cơ chế chặn Rental.',
     'blocks_rental': 'Ghi nhận bảo dưỡng chặn thuê; chưa kiểm tra availability.',
     'maintenance_type': 'preventive / corrective / emergency. Selection Odoo lưu varchar.',
-    'state': 'new / scheduled / running / done / cancelled. Trạng thái chuẩn Fleet mở rộng, nhập tay.',
+    'state': 'new / scheduled / running / done / cancelled. Tuần 7: chuyển qua nút và kiểm tra state flow ở server.',
     'amount': 'Chi phí chuẩn Odoo. cost là alias ORM, không có cột cost riêng.',
     'technician_id': 'FK tới res_partner, không phải res_users hoặc hr_employee.',
     'next_service_date': 'Nhập tay, không tự đồng bộ giữa xe và hồ sơ bảo dưỡng.',
-    'actual_start': 'Thời gian thực tế nhập tay; timestamp UTC không timezone.',
-    'actual_end': 'Thời gian thực tế nhập tay; timestamp UTC không timezone.',
+    'actual_start': 'Tự điền khi bắt đầu nếu chưa nhập; timestamp UTC không timezone.',
+    'actual_end': 'Tự điền khi kết thúc hồ sơ đang chạy nếu chưa nhập; timestamp UTC không timezone.',
     'active': 'Trường lưu trữ chuẩn Odoo.',
 }
 
@@ -63,11 +63,11 @@ def generate(filename, selected=None):
         externals.append('fleet_vehicle_model_brand')
         externals.sort()
     lines = [
-        '// Fleet & Maintenance, Week 6 only, Odoo 19 / motorbike_fleet_management 19.0.3.1.0.',
+        '// Fleet & Maintenance, schema from Week 6, logic through Week 7, Odoo 19 / 19.0.4.0.0.',
         '// Core business tables: fleet_vehicle and fleet_vehicle_log_services.',
         '// Brand/model catalogs show relevant verified columns; other shared tables are ID-only placeholders.',
         '// When merging: retain the group definition of each shared table and remove duplicate placeholders.',
-        '// No Rental/Inspection model, availability, workflow, custom battery or custom odometer.',
+        '// No Rental/Inspection model, availability, custom battery or custom odometer fields.',
         '// No SQL defaults, ENUM, UNIQUE or CHECK added beyond the implemented schema.',
         '// ' + ('Business ERD: only selected relevant columns; use the Physical file for all stored columns.' if is_core
                   else 'Physical ERD: every stored column, FK and explicit index of the two Fleet tables in the SQL snapshot.'),
@@ -75,7 +75,7 @@ def generate(filename, selected=None):
         '',
         'Project Fleet_Week6 {',
         "  database_type: 'PostgreSQL'",
-        "  Note: 'Phạm vi tuần 6: hai model, ACL cơ bản, menu/action, List/Form và CRUD thủ công. Không phải sơ đồ toàn bộ dự án.'",
+        "  Note: 'Hai model nghiệp vụ; tuần 7 thêm Search/Kanban, validation và luồng bảo dưỡng, không thêm cột/bảng. Không phải sơ đồ toàn bộ dự án.'",
         '}', '',
     ]
     for table, cols in chosen.items():
@@ -88,7 +88,7 @@ def generate(filename, selected=None):
                 lines.append('    ' + col + " [name: '" + name + "', type: btree]")
             lines += ['  }']
         lines += ['', "  Note: '" + ('Hồ sơ xe: kế thừa fleet.vehicle. Các trạng thái và mốc bảo dưỡng nhập bằng tay.' if table == 'fleet_vehicle'
-                   else 'Hồ sơ bảo dưỡng: kế thừa fleet.vehicle.log.services. Quan hệ 1:N với xe; nhập tay trạng thái, thời gian và kết quả.') + "'", '}', '']
+                   else 'Hồ sơ bảo dưỡng kế thừa Fleet, quan hệ 1:N với xe. Luồng lên lịch/bắt đầu/hoàn tất/hủy; hoàn tất không tự xác nhận xe đạt kỹ thuật.') + "'", '}', '']
     lines += ['// STANDARD ODOO CATALOGS AND SHARED REFERENCES — not newly created custom models.',
               '// Replace these with the shared tables owned by the group; do not create duplicate tables.', '']
     for table in externals:
