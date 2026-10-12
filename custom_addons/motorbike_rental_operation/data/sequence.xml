@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <!-- Sequence for Phiếu Vận Hành -->
+        <record id="seq_rental_operation_ticket" model="ir.sequence">
+            <field name="name">Mã Phiếu Vận Hành</field>
+            <field name="code">rental.operation.ticket</field>
+            <field name="prefix">OP-</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <!-- Sequence for Sự cố &amp; Hư hỏng -->
+        <record id="seq_rental_incident_log" model="ir.sequence">
+            <field name="name">Mã Ghi nhận Sự cố</field>
+            <field name="code">rental.operation.incident.log</field>
+            <field name="prefix">INC-</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <!-- Sequence for Đổi xe -->
+        <record id="seq_rental_vehicle_replacement" model="ir.sequence">
+            <field name="name">Mã Yêu cầu Đổi xe</field>
+            <field name="code">rental.operation.vehicle.replacement</field>
+            <field name="prefix">REP-</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+    </data>
+</odoo>
