@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_rental_vehicle_type_list" model="ir.ui.view">
+        <field name="name">rental.vehicle.type.price.list</field>
+        <field name="model">rental.vehicle.type</field>
+        <field name="arch" type="xml">
+            <list string="Bảng giá thuê theo dòng xe" decoration-muted="not active">
+                <field name="name"/>
+                <field name="brand"/>
+                <field name="model"/>
+                <field name="daily_rate"/>
+                <field name="active" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_rental_vehicle_type_form" model="ir.ui.view">
+        <field name="name">rental.vehicle.type.price.form</field>
+        <field name="model">rental.vehicle.type</field>
+        <field name="arch" type="xml">
+            <form string="Bảng giá thuê theo dòng xe">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="Ví dụ: Honda Vision"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="brand"/>
+                            <field name="model"/>
+                        </group>
+                        <group>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="daily_rate"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_rental_vehicle_type_search" model="ir.ui.view">
+        <field name="name">rental.vehicle.type.search</field>
+        <field name="model">rental.vehicle.type</field>
+        <field name="arch" type="xml">
+            <search string="Tìm bảng giá theo dòng xe">
+                <field name="name"/>
+                <field name="brand"/>
+                <field name="model"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_rental_vehicle_type" model="ir.actions.act_window">
+        <field name="name">Bảng giá thuê theo dòng xe</field>
+        <field name="res_model">rental.vehicle.type</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_rental_vehicle_type_search"/>
+    </record>
+
+</odoo>
