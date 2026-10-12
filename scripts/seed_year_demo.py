@@ -1,4 +1,4 @@
-"""Existing optional one-year fixture, compatible with Week 6 manual CRUD.
+"""Existing optional one-year fixture, using the shared Fleet integration status keys.
 
 Execute through Odoo shell. Historical dates are imported directly; no workflow,
 clock simulation, availability or Rental/Inspection integration is required.
@@ -152,7 +152,7 @@ if not E.ref(MODULE + '.seed_complete', raise_if_not_found=False):
                     vehicle.next_service_date = service.next_service_date
 
     snapshot = fields.Datetime.now()
-    # 20 available (two administratively blocked), 8 rented, 3 inspection,
+    # 20 available (two administratively blocked), 8 renting, 3 pending_inspection,
     # 3 running maintenance, 2 archived; all are synthetic current snapshots.
     for idx, vehicle in enumerate(vehicles):
         if idx < 20:
@@ -163,12 +163,12 @@ if not E.ref(MODULE + '.seed_complete', raise_if_not_found=False):
                     'Tạm giữ xe phục vụ đào tạo nhân viên — tình huống demo'})
         elif idx < 28:
             vehicle.write({'operational_status': 'available', 'technical_ready': True})
-            vehicle.operational_status = 'rented'
+            vehicle.operational_status = 'renting'
             vehicle.location = 'Đang giao khách — trạng thái demo, chưa có đơn Rental'
         elif idx < 31:
             vehicle.write({'operational_status': 'available', 'technical_ready': True})
-            vehicle.operational_status = 'rented'
-            vehicle.write({'operational_status': 'inspection', 'technical_ready': False})
+            vehicle.operational_status = 'renting'
+            vehicle.write({'operational_status': 'pending_inspection', 'technical_ready': False})
             vehicle.location = 'Khu vực chờ kiểm tra sau trả xe — demo'
         elif idx < 34:
             start = snapshot - timedelta(hours=3 + idx % 3)
@@ -187,13 +187,13 @@ if not E.ref(MODULE + '.seed_complete', raise_if_not_found=False):
             vehicle.location = 'Xưởng sửa chữa — demo'
         else:
             vehicle.write({'operational_status': 'available', 'technical_ready': True})
-            vehicle.operational_status = 'rented'
-            vehicle.write({'operational_status': 'inspection', 'technical_ready': False})
+            vehicle.operational_status = 'renting'
+            vehicle.write({'operational_status': 'pending_inspection', 'technical_ready': False})
             vehicle.write({'active': False, 'rental_blocked': True,
                 'block_reason': 'Ngừng khai thác phục vụ đối chiếu tài sản — demo',
                 'location': 'Khu vực xe đã ngừng khai thác'})
 
-    # Future bookings are kept away from running/inspection/archived vehicles.
+    # Future bookings are kept away from running/pending_inspection/archived vehicles.
     for idx in range(12):
         vehicle = vehicles[idx]
         day = END + timedelta(days=3 + idx * 2)
@@ -225,7 +225,7 @@ services = E['fleet.vehicle.log.services'].with_context(active_test=False).brows
 assert len(vehicles) == 36
 assert all(v.company_id == E.company for v in vehicles)
 assert all(s.vehicle_id in vehicles and s.company_id == E.company for s in services)
-assert all(v.technical_ready for v in vehicles if v.operational_status in ('available', 'rented'))
+assert all(v.technical_ready for v in vehicles if v.operational_status in ('available', 'renting'))
 assert all((v.block_reason or '').strip() for v in vehicles if v.rental_blocked)
 completed = services.filtered(lambda s: s.state == 'done')
 assert all(s.result and s.actual_start and s.actual_end >= s.actual_start for s in completed)

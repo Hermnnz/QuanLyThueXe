@@ -86,7 +86,7 @@ class TestWeek7Fleet(TransactionCase):
             self.vehicle.write({'technical_ready': True, 'operational_status': 'available'})
         service.action_done()
         self.assertTrue(service.actual_end)
-        self.assertEqual(self.vehicle.operational_status, 'inspection')
+        self.assertEqual(self.vehicle.operational_status, 'pending_inspection')
         self.assertFalse(self.vehicle.technical_ready)
         self.assertEqual(str(self.vehicle.next_service_date), '2026-12-01')
         self.vehicle.action_confirm_technical_ready()
@@ -100,7 +100,7 @@ class TestWeek7Fleet(TransactionCase):
         with self.assertRaises(UserError), self.cr.savepoint():
             self.vehicle.action_confirm_technical_ready()
         second.action_cancel()
-        self.assertEqual(self.vehicle.operational_status, 'inspection')
+        self.assertEqual(self.vehicle.operational_status, 'pending_inspection')
 
     def test_nonblocking_and_cancel_scheduled(self):
         self.vehicle.action_confirm_technical_ready()
@@ -136,13 +136,13 @@ class TestWeek7Fleet(TransactionCase):
             service.unlink()
 
     def test_rented_or_archived_vehicle(self):
-        self.vehicle.operational_status = 'rented'
+        self.vehicle.operational_status = 'renting'
         service = self.service()
         with self.assertRaises(UserError), self.cr.savepoint():
             service.action_start()
         with self.assertRaises(UserError), self.cr.savepoint():
             self.vehicle.action_confirm_technical_ready()
-        self.vehicle.write({'operational_status': 'inspection', 'active': False})
+        self.vehicle.write({'operational_status': 'pending_inspection', 'active': False})
         with self.assertRaises(UserError), self.cr.savepoint():
             self.vehicle.action_confirm_technical_ready()
         with self.assertRaises(UserError), self.cr.savepoint():
@@ -170,11 +170,16 @@ class TestWeek7Fleet(TransactionCase):
         first = logs.create({'vehicle_id': self.vehicle.id, 'date': '2026-10-01', 'value': 100})
         logs.create({'vehicle_id': self.vehicle.id, 'date': '2026-10-09', 'value': 200})
         for values in [{'date': '2026-10-02', 'value': -1}, {'date': '2026-10-02', 'value': 99},
-                       {'date': '2026-10-02', 'value': 201}]:
+                       {'date': '2026-10-02', 'value': 201},
+                       {'date': '2026-10-02', 'value': float('nan')},
+                       {'date': '2026-10-02', 'value': float('inf')}]:
             with self.assertRaises(ValidationError), self.cr.savepoint():
                 logs.create({'vehicle_id': self.vehicle.id, **values})
         with self.assertRaises(ValidationError), self.cr.savepoint():
             first.value = 201
+        for value in [float('nan'), float('inf')]:
+            with self.assertRaises(ValidationError), self.cr.savepoint():
+                first.write({'value': value})
         with self.assertRaises(UserError), self.cr.savepoint():
             self.vehicle.odometer = -1
 
@@ -208,7 +213,7 @@ class TestWeek7Fleet(TransactionCase):
         service = self.env['fleet.vehicle.log.services'].create({'vehicle_id': ordinary.id})
         service.write({'state': 'done'})
         service.write({'state': 'new'})
-        self.vehicle.operational_status = 'rented'
+        self.vehicle.operational_status = 'renting'
         with self.assertRaises(UserError), self.cr.savepoint():
             service.write({'vehicle_id': self.vehicle.id, 'state': 'running'})
         self.assertEqual(service.vehicle_id, ordinary)
@@ -235,8 +240,8 @@ class TestWeek7Fleet(TransactionCase):
         groups = self.env['fleet.vehicle'].with_context(read_group_expand=True).formatted_read_group([('id', '=', self.vehicle.id)],
                                                                ['operational_status'], ['__count'])
         self.assertEqual({g['operational_status'] for g in groups},
-                         {'available', 'rented', 'inspection', 'maintenance'})
+                         {'available', 'renting', 'pending_inspection', 'maintenance'})
         for model in ['motorbike.battery', 'motorbike.battery.assignment', 'motorbike.maintenance.plan']:
             self.assertNotIn(model, self.env.registry)
-        for method in ['check_availability', 'check_fleet_availability', 'action_mark_rented', 'action_return_for_inspection']:
+        for method in ['check_availability', 'action_mark_rented', 'action_return_for_inspection']:
             self.assertFalse(hasattr(self.vehicle, method))

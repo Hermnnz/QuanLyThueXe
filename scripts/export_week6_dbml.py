@@ -4,6 +4,9 @@ import re
 
 folder = Path('handoff/fleet_minimal')
 sql = (folder/'Fleet_Minimal_Current.sql').read_text(encoding='utf-8')
+if 'Week 6' not in sql.splitlines()[0]:
+    raise SystemExit('Week 6 exporter requires its historical SQL snapshot. '
+                     'Use Fleet_Week8.dbml for the current integration; do not overwrite historical diagrams.')
 tables = {}
 for table, body in re.findall(r'CREATE TABLE "([^"]+)" \((.*?)\n\);', sql, re.S):
     cols = []

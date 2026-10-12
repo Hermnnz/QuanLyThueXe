@@ -59,12 +59,12 @@ try:
     rejected('fleet.vehicle', 'action_confirm_technical_ready', [[vehicle]])
     call('fleet.vehicle.log.services', 'action_done', [[service]])
     row = call('fleet.vehicle', 'read', [[vehicle], ['operational_status', 'technical_ready', 'next_service_date']])[0]
-    assert row['operational_status'] == 'inspection' and not row['technical_ready']
+    assert row['operational_status'] == 'pending_inspection' and not row['technical_ready']
     assert row['next_service_date'] == '2026-12-01'
     call('fleet.vehicle', 'action_confirm_technical_ready', [[vehicle]])
     groups = call('fleet.vehicle', 'formatted_read_group', [[['id', '=', vehicle]], ['operational_status'], ['__count']],
                   {'context': {'read_group_expand': True}})
-    assert {r['operational_status'] for r in groups} == {'available', 'rented', 'inspection', 'maintenance'}
+    assert {r['operational_status'] for r in groups} == {'available', 'renting', 'pending_inspection', 'maintenance'}
     results = call('fleet.vehicle', 'search_read', [[['vehicle_code', 'ilike', 'TEMP-W7'], ['operational_status', '=', 'available']]],
                    {'fields': ['id']})
     assert [r['id'] for r in results] == [vehicle]

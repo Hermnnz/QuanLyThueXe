@@ -1,5 +1,6 @@
 """Export and validate two-table schema from the minimal demo, without business data."""
 import configparser
+import argparse
 import os
 from pathlib import Path
 import sys
@@ -7,16 +8,20 @@ sys.path.insert(0, 'C:/odoo/venv/Lib/site-packages')
 import psycopg2
 from psycopg2 import sql
 
+parser = argparse.ArgumentParser()
+parser.add_argument('--config', default=str(Path(os.environ['TEMP']) / 'codex-fleet-integration-20261012/demo.conf'))
+args = parser.parse_args()
 cfg = configparser.ConfigParser()
-cfg.read(Path(os.environ['TEMP']) / 'codex-fleet-simple-20261002' / 'odoo.conf')
+if not cfg.read(args.config):
+    raise SystemExit('Local Odoo configuration not found')
 o = cfg['options']
 conn = psycopg2.connect(dbname=o['db_name'], host=o['db_host'], port=o['db_port'],
                         user=o['db_user'], password=o['db_password'])
 tables = ['fleet_vehicle', 'fleet_vehicle_log_services']
-parts = ['-- Fleet minimal Week 6 CRUD 19.0.3.1.0, snapshot 2026-10-02.',
+parts = ['-- Fleet integration 19.0.5.1.0, snapshot 2026-10-12.',
          '-- Schema-only, includes Odoo core fields; NOT an Odoo installer or migration.',
          '-- Use only an isolated schema with shared Odoo reference tables available.',
-         '-- No Rental/Inspection integration or custom availability/workflow in Week 6.',
+         '-- Fleet methods and workflow live in ORM, not in this schema export.',
          '-- UTC timestamps; ORM defaults/ACL are not represented as SQL logic.', 'BEGIN;']
 with conn.cursor() as cr:
     for table in tables:

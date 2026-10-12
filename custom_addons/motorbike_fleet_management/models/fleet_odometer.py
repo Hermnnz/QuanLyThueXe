@@ -1,3 +1,5 @@
+import math
+
 from odoo import api, models
 from odoo.exceptions import ValidationError
 
@@ -8,6 +10,8 @@ class FleetVehicleOdometer(models.Model):
     @api.constrains('value', 'date', 'vehicle_id')
     def _check_motorbike_odometer(self):
         for log in self.filtered(lambda r: r.vehicle_id.is_electric_motorbike):
+            if not math.isfinite(log.value):
+                raise ValidationError('ODO phải là một số hữu hạn.')
             if log.value < 0:
                 raise ValidationError('ODO không được âm.')
             if not log.date:

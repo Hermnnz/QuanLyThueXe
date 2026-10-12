@@ -1,9 +1,9 @@
 {
     'name': 'Motorbike Fleet & Maintenance',
-    'version': '19.0.4.0.0',
+    'version': '19.0.5.1.0',
     'category': 'Human Resources/Fleet',
-    'summary': 'Week 7: Fleet search, Kanban, validation and maintenance workflow',
-    'description': 'Minimal Fleet with core maintenance logic. No Rental/Inspection integration or availability API.',
+    'summary': 'Fleet delivery/return interface, standard ODO and maintenance eligibility',
+    'description': 'Minimal Fleet with shared renting/pending_inspection states and explicit return inspection results. Rental owns contract overlap; Operations owns trip records.',
     'license': 'LGPL-3',
     'depends': ['fleet'],
     'data': [

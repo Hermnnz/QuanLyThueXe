@@ -47,7 +47,7 @@ class FleetVehicleLogServices(models.Model):
                 raise UserError('Không bắt đầu bảo dưỡng cho hồ sơ hoặc xe đã lưu trữ.')
             if service.blocks_rental:
                 vehicle.check_access('write')
-            if service.blocks_rental and vehicle.operational_status == 'rented':
+            if service.blocks_rental and vehicle.operational_status == 'renting':
                 raise UserError('Xe đang được thuê; chưa thể bắt đầu bảo dưỡng chặn thuê.')
 
     def _start_vehicle_maintenance(self):
@@ -57,7 +57,7 @@ class FleetVehicleLogServices(models.Model):
     def _release_vehicle_maintenance(self):
         for vehicle in self.filtered(lambda s: s.is_electric_motorbike and s.blocks_rental).vehicle_id:
             if not vehicle._running_blocking_services() and vehicle.operational_status == 'maintenance':
-                vehicle.write({'operational_status': 'inspection', 'technical_ready': False})
+                vehicle.write({'operational_status': 'pending_inspection', 'technical_ready': False})
 
     @api.model_create_multi
     def create(self, vals_list):

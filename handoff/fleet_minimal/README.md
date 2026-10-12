@@ -1,13 +1,9 @@
-# SQL bàn giao Fleet tối giản — tuần 6
+# SQL và DBML Fleet hiện hành
 
-Phiên bản `19.0.3.1.0`, 02/10/2026. Snapshot cấu trúc hai bảng `fleet_vehicle` và `fleet_vehicle_log_services`, bao gồm cột chuẩn Odoo, PK/FK/index. Không chứa dữ liệu kinh doanh hoặc mật khẩu.
+Snapshot `19.0.5.1.0`, 12/10/2026. `Fleet_Minimal_Current.sql` chứa cấu trúc hai bảng Fleet chuẩn được mở rộng, gồm PK/FK/index và UNIQUE(vehicle_code); không chứa dữ liệu kinh doanh/mật khẩu. `Fleet_Week8.dbml` dùng cho ERD nghiệp vụ, giữ quyết định tạm ẩn trường chờ giáo viên.
 
-Dùng để đối chiếu ERD/schema. SQL không thay thế cài/nâng cấp module Odoo: không tạo metadata, menu/action, ACL, related field hoặc giao diện. `cost` là alias của `amount`, `result` là cột Text. Default ORM không tự trở thành SQL DEFAULT.
+Mã đã cấp là duy nhất kể cả xe lưu trữ; cho phép nhiều NULL khi chưa cấp mã. ODO là compute/inverse chuẩn, không phải cột SQL trên xe. Các phương thức giao/trả, validation, quyền và workflow nằm trong ORM nên SQL này không thay thế cài/nâng cấp module.
 
-Tuần 6 chỉ có nhập liệu CRUD. Các cột trạng thái/kỹ thuật/khóa thuê/thời gian/ngày bảo dưỡng là dữ liệu nhập tay; không có trigger hoặc logic tự động đồng bộ. Không có availability, Rental/Inspection relation hoặc workflow tùy chỉnh.
+`scripts/export_minimal_schema.py --config <local-config>` xuất schema thực tế và thực thi DDL trong schema tạm để đối chiếu rồi rollback; không thay đổi dữ liệu public. File Week6/Physical và các ZIP cũ là snapshot lịch sử trước khi thêm UNIQUE, không dùng để suy ra ràng buộc hiện hành.
 
-Tái sử dụng danh mục chuẩn: res_users/res_partner/res_company, fleet_vehicle_model/brand/category/state, fleet_service_type và ODO chuẩn khi FK gốc tham chiếu. Nếu nhóm đã có các bảng Fleet, hợp nhất định nghĩa thay vì tạo chồng bảng.
-
-`scripts/export_minimal_schema.py` xuất schema thực tế, thực thi DDL trong schema tạm, so sánh cột/kiểu/nullability rồi rollback đối tượng kiểm tra. Không chỉnh dữ liệu public.
-
-Xem `docs/Fleet_Minimal_ERD.md` và README module. Các bàn giao Week6 có model pin ở thư mục bên cạnh là lịch sử trước khi chốt kiến trúc tối giản.
+Hướng dẫn gọi phương thức: `handoff/Fleet_Integration_Week8.md`. Cài/chạy: README module. Không đưa dump database hoặc cấu hình có mật khẩu lên GitHub.

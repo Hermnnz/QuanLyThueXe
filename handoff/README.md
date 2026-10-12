@@ -1,12 +1,12 @@
-# Bản bàn giao hiện hành — cấu trúc tối giản, code đến tuần 7
+# Bàn giao Fleet–Maintenance hiện hành
 
-Module `motorbike_fleet_management` `19.0.4.0.0`: hai model Xe/Bảo dưỡng, Search/Filter, Kanban đội xe, validation và workflow bảo dưỡng. Tuần 7 không thêm cột/bảng nghiệp vụ nên SQL/DBML giữ mốc tên tuần 6 vẫn dùng để đối chiếu cấu trúc. DBML nghiệp vụ vẫn tạm bỏ các trường chờ giáo viên chốt.
+Module `motorbike_fleet_management` `19.0.5.1.0`, thêm phần Fleet cho tích hợp tuần 8: trạng thái thống nhất, giao/trả có kết quả kiểm tra, ODO chuẩn và điều kiện Fleet theo lịch bảo dưỡng.
 
-- ERD: `docs/Fleet_Minimal_ERD.md`.
-- Hướng dẫn: `custom_addons/motorbike_fleet_management/README.md`.
-- SQL hiện hành: `handoff/fleet_minimal/Fleet_Minimal_Current.sql`.
-- Kiểm tra tuần 7 và lịch sử tuần 6: `docs/VALIDATION.md`.
+- Cách thành viên Rental/Operations gọi: `Fleet_Integration_Week8.md`.
+- DBML đưa vào dbdiagram: `fleet_minimal/Fleet_Week8.dbml`. Vẫn tạm ẩn company/vendor/service type/technician trong sơ đồ theo yêu cầu chờ giáo viên.
+- Hướng dẫn chạy: `custom_addons/motorbike_fleet_management/README.md`.
+- Kiểm thử: `docs/VALIDATION.md`; bảo toàn dữ liệu: `docs/FLEET_INTEGRATION_DATA_PRESERVATION.json`.
 
-Các thư mục `fleet_week6`, `Fleet_Week6_SQL_Handoff` và ZIP tuần 6 cũ là tài liệu lịch sử của kiến trúc có pin/ODO/kế hoạch riêng. Không dùng để hợp nhất schema hiện hành.
+Không thêm cột/bảng nghiệp vụ mới. SQL hiện hành `fleet_minimal/Fleet_Minimal_Current.sql` mô tả cấu trúc có UNIQUE mã xe, không chứa dữ liệu demo và không thay thế nâng cấp module Odoo. Các DBML/ZIP tuần 6 và báo cáo tuần 7 là snapshot lịch sử; không dùng chúng để suy ra workflow hiện tại. Không đưa dump database, mật khẩu hoặc filestore lên GitHub.
 
-Chưa có availability theo thời gian, tích hợp Rental/Inspection, giao/trả liên module hoặc report tùy chỉnh. Bộ dữ liệu một năm được giữ lại làm dữ liệu thử, không phải chức năng báo cáo mới. Các ZIP đã xuất ở tuần 6 là snapshot tài liệu tại thời điểm đó; README trong repo phản ánh logic tuần 7.
+Repo chỉ có Fleet. Các thành viên khác cần nối model và gọi phương thức đã bàn giao trước khi kiểm thử xuyên module.

@@ -9,7 +9,7 @@ if not env['fleet.vehicle'].with_context(active_test=False).search_count([('vehi
     vehicles = env['fleet.vehicle'].create([
         {'model_id': model.id, 'is_electric_motorbike': True, 'fuel_type': 'electric',
          'vehicle_code': 'XE00' + str(i), 'license_plate': 'MIN-EV-00' + str(i),
-         'operational_status': ['available', 'inspection', 'maintenance'][i-1],
+         'operational_status': ['available', 'pending_inspection', 'maintenance'][i-1],
          'technical_ready': i == 1} for i in range(1, 4)])
     start = fields.Datetime.now() + timedelta(days=2)
     env['fleet.vehicle.log.services'].create({

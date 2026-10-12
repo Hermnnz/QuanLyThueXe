@@ -2,7 +2,7 @@
 
 ## Bản nghiệp vụ hiện hành
 
-Dùng `Fleet_Week6.dbml` để dán vào dbdiagram.io. Sơ đồ hiện chỉ có 4 bảng:
+Dùng `Fleet_Week8.dbml` để dán vào dbdiagram.io. Sơ đồ hiện chỉ có 4 bảng:
 
 `fleet_vehicle_model_brand` → `fleet_vehicle_model` → `fleet_vehicle` → `fleet_vehicle_log_services`.
 
@@ -17,14 +17,16 @@ Còn 28 cột thuộc hai bảng nghiệp vụ Fleet, 8 cột danh mục Hãng/D
 
 ## Bản đối chiếu thực tế
 
-`Fleet_Week6_Physical.dbml` giữ nguyên để đối chiếu database Odoo hiện tại: 87 cột trong hai bảng Fleet, các FK gốc cùng quan hệ Hãng–Dòng xe. Các bảng tham chiếu ngoài Hãng/Dòng xe chỉ có id để vẽ quan hệ, không phải schema đầy đủ của chúng. Không dùng bản vật lý này thay cho bản nghiệp vụ tạm khi trao đổi phạm vi với giáo viên.
+`Fleet_Week6_Physical.dbml` giữ nguyên để đối chiếu cấu trúc database tại mốc xuất tuần 6: 87 cột trong hai bảng Fleet, các FK gốc cùng quan hệ Hãng–Dòng xe. Các bảng tham chiếu ngoài Hãng/Dòng xe chỉ có id để vẽ quan hệ, không phải schema đầy đủ của chúng. Không dùng bản vật lý này thay cho bản nghiệp vụ tạm khi trao đổi phạm vi với giáo viên.
 
-Bản nghiệp vụ trước khi lược cột đã được lưu tại `archive/Fleet_Week6_before_teacher_review.dbml`. Script `scripts/export_week6_dbml.py` đã cập nhật để chạy lại không tự thêm những cột đang chờ chốt.
+Bản nghiệp vụ trước khi lược cột đã được lưu tại `archive/Fleet_Week6_before_teacher_review.dbml`. Script `scripts/export_week6_dbml.py` chỉ phục vụ snapshot SQL tuần 6 và dừng nếu nhận SQL hiện hành, tránh ghi đè sơ đồ lịch sử với ràng buộc thiếu.
 
 ## Cách sử dụng
 
-Mở `Fleet_Week6.dbml`, sao chép toàn bộ nội dung và dán vào vùng soạn thảo DBML tại https://dbdiagram.io/. Không gộp hai file DBML cùng lúc vì chúng định nghĩa trùng bảng Fleet.
+Mở `Fleet_Week8.dbml`, sao chép toàn bộ nội dung và dán vào vùng soạn thảo DBML tại https://dbdiagram.io/. Không gộp hai file DBML cùng lúc vì chúng định nghĩa trùng bảng Fleet.
 
-Chi phí lưu ở `amount`; `cost` chỉ là alias ORM. Tên file giữ mốc schema tuần 6. Tuần 7 đã thêm Search/Kanban, validation và workflow bảo dưỡng nhưng không thêm cột/bảng, nên sơ đồ vẫn dùng được. Chưa có availability, Rental/Inspection integration hoặc báo cáo tùy chỉnh.
+Chi phí lưu ở `amount`; `cost` chỉ là alias ORM. Bản Week8 (19.0.5.1.0) cập nhật trạng thái/cách kiểm tra lịch và UNIQUE mã xe đúng Word, không thêm cột/bảng. Ràng buộc duy nhất áp dụng cả xe lưu trữ; nhiều NULL được phép khi chưa cấp mã. ODO tính toán chuẩn không phải cột SQL trên xe. Rental/Operations tự khai báo quan hệ tới xe trong sơ đồ toàn nhóm và gọi phương thức Fleet theo `handoff/Fleet_Integration_Week8.md`.
+
+Các file Week6 là snapshot lịch sử; script `export_week6_dbml.py` xuất tài liệu cho mốc đó, không dùng để ghi đè bản Week8.
 
 Tạo/sửa DBML không thay đổi database demo hoặc bộ dữ liệu một năm. File `.dbml` dùng để thiết kế và đối chiếu, không dùng cài/nâng cấp module Odoo.

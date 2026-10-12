@@ -1,3 +1,5 @@
+> Cập nhật tích hợp 12/10/2026: chỉ đổi khóa trạng thái rented → renting, inspection → pending_inspection. Giữ dữ liệu một năm, không seed lại; xem `FLEET_INTEGRATION_DATA_PRESERVATION.json`. Các số liệu và mốc thời gian dưới đây là bộ mẫu đã tạo trước đó.
+
 # Dữ liệu Fleet giả lập một năm
 
 Đã nhập vào database `motorbike_fleet_simple_20261002`, truy cập http://localhost:8072. Tài khoản demo vẫn là `admin` / `admin`.
@@ -24,7 +26,7 @@ Lịch sử nghiệp vụ từ **02/10/2025 đến hết 01/10/2026**. Toàn b�
 | Đang bảo dưỡng | 3 |
 | Đã ngừng khai thác/lưu trữ | 2 |
 
-Trong 20 xe sẵn sàng, 2 xe bị khóa thuê vì kiểm kê/đào tạo; đạt kỹ thuật không tự gỡ khóa. Lịch bảo dưỡng tương lai là dữ liệu nhập tay; bản tuần 6 chưa có kiểm tra/chặn lịch thuê.
+Trong 20 xe sẵn sàng, 2 xe bị khóa thuê vì kiểm kê/đào tạo; đạt kỹ thuật không tự gỡ khóa. Lịch bảo dưỡng tương lai là dữ liệu mẫu. Bản tích hợp hiện hành đã kiểm tra lịch bảo dưỡng qua phương thức Fleet; Rental vẫn kiểm tra hợp đồng trùng lịch riêng.
 
 ## Phân bố lịch sử
 

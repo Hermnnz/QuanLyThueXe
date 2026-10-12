@@ -1,10 +1,10 @@
--- Fleet minimal Week 6 CRUD 19.0.3.1.0, snapshot 2026-10-02.
+-- Fleet integration 19.0.5.1.0, snapshot 2026-10-12.
 
 -- Schema-only, includes Odoo core fields; NOT an Odoo installer or migration.
 
 -- Use only an isolated schema with shared Odoo reference tables available.
 
--- No Rental/Inspection integration or custom availability/workflow in Week 6.
+-- Fleet methods and workflow live in ORM, not in this schema export.
 
 -- UTC timestamps; ORM defaults/ACL are not represented as SQL logic.
 
@@ -122,6 +122,8 @@ ALTER TABLE "fleet_vehicle" ADD CONSTRAINT "fleet_vehicle_model_id_fkey" FOREIGN
 ALTER TABLE "fleet_vehicle" ADD CONSTRAINT "fleet_vehicle_pkey" PRIMARY KEY (id);
 
 ALTER TABLE "fleet_vehicle" ADD CONSTRAINT "fleet_vehicle_state_id_fkey" FOREIGN KEY (state_id) REFERENCES fleet_vehicle_state(id) ON DELETE SET NULL;
+
+ALTER TABLE "fleet_vehicle" ADD CONSTRAINT "fleet_vehicle_vehicle_code_unique" UNIQUE (vehicle_code);
 
 ALTER TABLE "fleet_vehicle" ADD CONSTRAINT "fleet_vehicle_write_uid_fkey" FOREIGN KEY (write_uid) REFERENCES res_users(id) ON DELETE SET NULL;
 

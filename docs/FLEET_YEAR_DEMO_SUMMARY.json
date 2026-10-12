@@ -19,8 +19,8 @@
   },
   "vehicle_states": {
     "available": 20,
-    "rented": 8,
-    "inspection": 3,
+    "renting": 8,
+    "pending_inspection": 3,
     "maintenance": 3,
     "archived": 2
   },

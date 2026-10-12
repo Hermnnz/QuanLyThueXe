@@ -11,10 +11,10 @@
           <group invisible="not is_electric_motorbike">
             <group string="Tình trạng xe">
               <field name="vehicle_code"/>
-              <field name="operational_status"/>
-              <field name="technical_ready"/>
+              <field name="operational_status" readonly="1"/>
+              <field name="technical_ready" readonly="1"/>
               <button name="action_confirm_technical_ready" type="object" string="Xác nhận đạt kỹ thuật"
-                      class="btn-primary" invisible="not active or operational_status == 'rented'"/>
+                      class="btn-primary" invisible="not active or operational_status == 'renting'"/>
               <field name="next_service_date"/>
             </group>
             <group string="Ghi nhận khóa thuê">
@@ -87,8 +87,8 @@
         <field name="model_id"/>
         <field name="operational_status"/>
         <filter name="available" string="Sẵn sàng" domain="[('operational_status', '=', 'available')]"/>
-        <filter name="rented" string="Đang thuê" domain="[('operational_status', '=', 'rented')]"/>
-        <filter name="inspection" string="Chờ kiểm tra" domain="[('operational_status', '=', 'inspection')]"/>
+        <filter name="rented" string="Đang thuê" domain="[('operational_status', '=', 'renting')]"/>
+        <filter name="inspection" string="Chờ kiểm tra" domain="[('operational_status', '=', 'pending_inspection')]"/>
         <filter name="maintenance" string="Bảo dưỡng" domain="[('operational_status', '=', 'maintenance')]"/>
         <separator/>
         <filter name="blocked" string="Khóa thuê" domain="[('rental_blocked', '=', True)]"/>
