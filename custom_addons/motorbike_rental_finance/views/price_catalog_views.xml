@@ -1,0 +1,83 @@
+<odoo>
+
+    <record id="view_motorbike_rental_price_catalog_list" model="ir.ui.view">
+
+        <field name="name">motorbike.rental.price.catalog.list</field>
+
+        <field name="model">motorbike.rental.price.catalog</field>
+
+        <field name="arch" type="xml">
+
+            <list string="Bảng giá">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="category"/>
+                <field name="unit_price"/>
+                <field name="currency_id"/>
+                <field name="unit"/>
+                <field name="effective_from"/>
+                <field name="effective_to"/>
+                <field name="active"/>
+            </list>
+
+        </field>
+
+    </record>
+
+    <record id="view_motorbike_rental_price_catalog_form" model="ir.ui.view">
+
+        <field name="name">motorbike.rental.price.catalog.form</field>
+
+        <field name="model">motorbike.rental.price.catalog</field>
+
+        <field name="arch" type="xml">
+
+            <form string="Bảng giá">
+                <sheet>
+                    <group string="Thông tin chung">
+                        <field name="name"/>
+                        <field name="code"/>
+                        <field name="category"/>
+                    </group>
+                    <group string="Thông tin giá">
+                        <field name="unit_price"/>
+                        <field name="currency_id"/>
+                        <field name="unit"/>
+                    </group>
+                    <group string="Hiệu lực">
+                        <field name="effective_from"/>
+                        <field name="effective_to"/>
+                        <field name="active"/>
+                    </group>
+
+                    <group string="Ghi chú">
+                        <field name="note"/>
+                    </group>
+
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_motorbike_rental_price_catalog_search" model="ir.ui.view">
+        <field name="name">motorbike.rental.price.catalog.search</field>
+        <field name="model">motorbike.rental.price.catalog</field>
+
+        <field name="arch" type="xml">
+            <search string="Tìm kiếm bảng giá">
+                <field name="name"/>
+                <field name="code"/>
+                
+                <filter name="filter_service" string="Dịch vụ" domain="[('category','=','service')]"/>
+                <filter name="filter_surcharge" string="Phụ phí" domain="[('category','=','surcharge')]"/>
+                <filter name="filter_compensation" string="Bồi thường" domain="[('category','=','compensation')]"/>
+
+                <group expand="0" string="Nhóm theo">
+                    <filter string="Loại bảng giá" name="group_category" context="{'group_by': 'category'}"/>
+                    <filter string="Đơn vị" name="group_unit" context="{'group_by': 'unit'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+</odoo>

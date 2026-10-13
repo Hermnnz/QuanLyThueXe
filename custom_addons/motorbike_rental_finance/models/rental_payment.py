@@ -1,9 +1,14 @@
-from odoo import fields, models
+    # 1. Đầu file: Các dòng import
+from odoo import api, fields, models
+from odoo.exceptions import ValidationError
 
+
+    # 2. Khai báo Class và các thuộc tính Model ( _name , _description ...)
 class MotorbikeRentalPayment(models.Model):
     _name = "motorbike.rental.payment"
     _description = "Motorbike Rental Payment"
-    
+
+    # 3. Khai báo các trường dữ liệu ( fields )
     name= fields.Char(
         string="Mã thanh toán", 
         required=True,
@@ -64,3 +69,33 @@ class MotorbikeRentalPayment(models.Model):
     note = fields.Text(
         string="Ghi chú",
     )
+    
+    invoice_id=fields.Many2one(
+        "account.move",
+        string="Hóa đơn",
+    )
+
+# 4. Các hàm Constraints ( @api.constrains , _sql_constraints )
+    @api.constrains('amount')
+    def _check_amount(self):
+        for record in self:
+            if record.amount <= 0:
+                raise ValidationError("Số tiền thanh toán phải lớn hơn 0!")
+
+    # 5. Các hàm tính toán ( @api.depends , @api.onchange )
+
+    # 6. Các hàm Action / Nghiệp vụ (nút bấm button)
+    
+    def action_confirm(self):
+        for record in self:
+            record.state = 'confirmed'
+
+    def action_cancel(self):
+        for record in self:
+            record.state = 'cancelled'
+    
+    def action_draft(self):
+        for record in self:
+            record.state = 'draft'  
+        
+        

@@ -17,6 +17,12 @@
     "data": [
         "security/security_groups.xml",
         "security/ir.model.access.csv",
+        "views/price_catalog_views.xml",
+        "views/rental_payment_views.xml",
+        "views/rental_charge_views.xml",
+        "views/finance_actions.xml",
+        "views/finance_menu.xml",
+        "data/finance_demo.xml",
     ],
 
     "installable": True,

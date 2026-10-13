@@ -1,3 +1,4 @@
+# 1. Đầu file: Các dòng import
 from odoo import fields, models 
 
 # Lấy 2 thứ từ odoo 
@@ -5,11 +6,12 @@ from odoo import fields, models
 # fields → dùng để tạo các trường dữ liệu
 
 
-
+# 2. Khai báo Class và các thuộc tính Model ( _name , _description ...)
 class MotorbikeRentalPriceCatalog(models.Model):        #Tạo class mới (model mới) kế thừa từ hệ thống model của odoo 
     _name = "motorbike.rental.price.catalog"             #tên(model) trong hệ thống odoo, sinh bảng tương ứng
     _description = "Motorbike Rental Price Catalog"      #Mô tả  (model) trong hệ thống odoo
 
+    # 3. Khai báo các trường dữ liệu ( fields )
     name = fields.Char(   #Thuộc tính của đối tượng
         string="Tên khoản giá",
         required=True,
@@ -62,4 +64,10 @@ class MotorbikeRentalPriceCatalog(models.Model):        #Tạo class mới (mode
     note=fields.Text(
         string="Ghi chú",
     )
+
+    # 4. Các hàm Constraints ( @api.constrains , _sql_constraints )
+
+    # 5. Các hàm tính toán ( @api.depends , @api.onchange )
+
+    # 6. Các hàm Action / Nghiệp vụ (nút bấm button)
     
