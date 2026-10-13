@@ -16,10 +16,16 @@ class MotorbikeRentalPayment(models.Model):
     
     # ==> name cần tự động tính dựa trên loại giao dịch và ngày thanh toán (VD: DP-20230901-001, RP-20230901-001, RF-20230901-001, AP-20230901-001)
     
-    partner_id = fields.Many2one(
+    customer_id = fields.Many2one(
         "res.partner",
         string = "Khách hàng",
         required = True,
+    )
+    
+    contract_id= fields.Many2one(
+        "rental.contract",
+        string="Hợp đồng thuê",
+        ondelete="set null"
     )
     
     transaction_type = fields.Selection(

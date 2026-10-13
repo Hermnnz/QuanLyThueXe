@@ -12,6 +12,8 @@
     "depends": [
         "base",
         "account",
+        "motorbike_rental_core",        # Thêm module Hợp đồng của Nhân
+        "motorbike_rental_operation",   # Thêm module Vận hành của Giang
     ],
 
     "data": [
@@ -20,6 +22,7 @@
         "views/price_catalog_views.xml",
         "views/rental_payment_views.xml",
         "views/rental_charge_views.xml",
+        "views/rental_contract_views.xml",   
         "views/finance_actions.xml",
         "views/finance_menu.xml",
         "data/finance_demo.xml",
