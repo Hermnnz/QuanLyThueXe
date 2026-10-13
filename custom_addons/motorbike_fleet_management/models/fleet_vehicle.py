@@ -8,6 +8,11 @@ class FleetVehicle(models.Model):
     _inherit = 'fleet.vehicle'
 
     is_electric_motorbike = fields.Boolean('Xe máy điện', tracking=True)
+    odometer = fields.Float(
+        string='Số ODO hiện tại (km)',
+        default=0.0,
+        help='Tổng số km xe đã chạy, tự động cập nhật sau mỗi chuyến thuê.',
+    )
     vehicle_code = fields.Char('Mã xe', copy=False, index=True)
     _vehicle_code_unique = models.Constraint(
         'UNIQUE(vehicle_code)', 'Mã xe đã tồn tại. Vui lòng sử dụng mã xe khác.')

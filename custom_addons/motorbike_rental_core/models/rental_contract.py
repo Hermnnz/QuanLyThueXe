@@ -1,3 +1,4 @@
+import math
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
@@ -11,13 +12,13 @@ class RentalContract(models.Model):
     customer_id = fields.Many2one(
         'res.partner', string='Khách hàng', required=True, ondelete='restrict', index=True
     )
-    start_date = fields.Date(
-        string='Ngày bắt đầu', required=True, default=fields.Date.context_today
+    start_date = fields.Datetime(
+        string='Ngày giờ bắt đầu', required=True, default=fields.Datetime.now
     )
-    end_date = fields.Date(
-        string='Ngày kết thúc',
+    end_date = fields.Datetime(
+        string='Ngày giờ kết thúc',
         required=True,
-        default=lambda self: fields.Date.add(fields.Date.context_today(self), days=1),
+        default=lambda self: fields.Datetime.add(fields.Datetime.now(), days=1),
     )
     rental_days = fields.Integer(string='Số ngày thuê', compute='_compute_amounts', store=True)
     currency_id = fields.Many2one(
@@ -62,7 +63,9 @@ class RentalContract(models.Model):
         for contract in self:
             days = 0
             if contract.start_date and contract.end_date:
-                days = (contract.end_date - contract.start_date).days
+                seconds = (contract.end_date - contract.start_date).total_seconds()
+                if seconds > 0:
+                    days = max(1, math.ceil(seconds / 86400))
             contract.rental_days = max(days, 0)
             contract.total_amount = contract.rental_days * sum(
                 contract.line_ids.mapped('daily_rate')
@@ -119,9 +122,9 @@ class RentalContract(models.Model):
                 raise ValidationError(
                     _('Số ngày thuê tối đa phải lớn hơn hoặc bằng số ngày tối thiểu.')
                 )
-            days = (contract.end_date - contract.start_date).days
-            if days < 1:
+            if contract.end_date <= contract.start_date:
                 raise ValidationError(_('Ngày kết thúc phải sau ngày bắt đầu.'))
+            days = contract.rental_days
             if days < contract.min_rental_days:
                 raise ValidationError(
                     _('Thời hạn thuê phải ít nhất %s ngày.') % contract.min_rental_days
@@ -137,7 +140,7 @@ class RentalContract(models.Model):
 
     def _check_vehicle_availability(self):
         self.ensure_one()
-        vehicle_ids = self.line_ids.mapped('vehicle_id')
+        vehicle_ids = self.line_ids.mapped('vehicle_id').ids
         if not vehicle_ids:
             return
         conflict = self.search(
@@ -158,9 +161,10 @@ class RentalContract(models.Model):
                 ],
                 limit=1,
             )
+            vehicle_name = conflict_line.vehicle_id.display_name or str(conflict_line.vehicle_id.id)
             raise ValidationError(
-                _('ID xe %s đã được giữ trong hợp đồng %s ở thời gian này.')
-                % (conflict_line.vehicle_id, conflict.name)
+                _('Xe %s đã được giữ trong hợp đồng %s ở thời gian này.')
+                % (vehicle_name, conflict.name)
             )
 
     def action_confirm(self):
@@ -195,12 +199,16 @@ class RentalContractLine(models.Model):
     contract_id = fields.Many2one(
         'rental.contract', string='Hợp đồng', required=True, ondelete='cascade', index=True
     )
-    vehicle_id = fields.Integer(
-        string='ID xe từ module Quản lý xe',
+    vehicle_id = fields.Many2one(
+        'fleet.vehicle',
+        string='Xe thuê',
         required=True,
+        ondelete='restrict',
         index=True,
-        help='Nhập ID xe từ addon Quản lý xe. Sẽ chuyển thành Many2one khi có technical model chính thức.',
     )
+    _sql_constraints = [
+        ('unique_contract_vehicle', 'UNIQUE(contract_id, vehicle_id)', 'Mỗi xe chỉ được xuất hiện một lần trong một hợp đồng!')
+    ]
     vehicle_type_id = fields.Many2one(
         'rental.vehicle.type',
         string='Dòng xe / bảng giá',
@@ -239,8 +247,6 @@ class RentalContractLine(models.Model):
     @api.constrains('vehicle_id', 'vehicle_type_id', 'contract_id', 'daily_rate')
     def _check_vehicle_line(self):
         for line in self:
-            if line.vehicle_id <= 0:
-                raise ValidationError(_('ID xe phải là số nguyên dương.'))
             if line.daily_rate < 0:
                 raise ValidationError(_('Giá thuê mỗi ngày không được âm.'))
             if not line.vehicle_type_id or not line.contract_id:
@@ -253,7 +259,7 @@ class RentalContractLine(models.Model):
                 [
                     ('id', '!=', line.id),
                     ('contract_id', '=', line.contract_id.id),
-                    ('vehicle_id', '=', line.vehicle_id),
+                    ('vehicle_id', '=', line.vehicle_id.id),
                 ],
                 limit=1,
             )

@@ -51,7 +51,7 @@
                     <group string="Xe thuê">
                         <field name="line_ids">
                             <list editable="bottom">
-                                <field name="vehicle_id" string="ID xe bên Quản lý xe"/>
+                                <field name="vehicle_id" string="Xe thuê"/>
                                 <field name="vehicle_type_id" domain="[('active', '=', True), ('currency_id', '=', parent.currency_id)]"/>
                                 <field name="daily_rate" readonly="1"/>
                                 <field name="subtotal" readonly="1"/>

@@ -8,8 +8,12 @@ class RentalVehicleType(models.Model):
     _order = 'name'
 
     name = fields.Char(string='Tên dòng xe', required=True)
-    brand = fields.Char(string='Hãng xe')
-    model = fields.Char(string='Mẫu xe')
+    model_id = fields.Many2one(
+        'fleet.vehicle.model',
+        string='Dòng xe',
+        required=True,
+        ondelete='restrict',
+    )
     currency_id = fields.Many2one(
         'res.currency',
         string='Tiền tệ',

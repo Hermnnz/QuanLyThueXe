@@ -11,6 +11,7 @@
           <group invisible="not is_electric_motorbike">
             <group string="Tình trạng xe">
               <field name="vehicle_code"/>
+              <field name="odometer"/>
               <field name="operational_status" readonly="1"/>
               <field name="technical_ready" readonly="1"/>
               <button name="action_confirm_technical_ready" type="object" string="Xác nhận đạt kỹ thuật"
@@ -34,6 +35,7 @@
         <field name="vehicle_code"/>
         <field name="license_plate"/>
         <field name="model_id"/>
+        <field name="odometer"/>
         <field name="operational_status"/>
         <field name="technical_ready"/>
         <field name="rental_blocked"/>
@@ -114,11 +116,13 @@
         <field name="operational_status"/>
         <field name="technical_ready"/>
         <field name="rental_blocked"/>
+        <field name="odometer"/>
         <templates>
           <t t-name="card">
             <field name="vehicle_code" class="fw-bold fs-5"/>
             <field name="license_plate"/>
             <field name="model_id"/>
+            <div class="small text-muted">ODO: <field name="odometer"/> km</div>
             <span t-if="record.technical_ready.raw_value" class="badge text-bg-success">Đạt kỹ thuật</span>
             <span t-else="" class="badge text-bg-warning">Chờ xác nhận kỹ thuật</span>
             <span t-if="record.rental_blocked.raw_value" class="badge text-bg-danger">Khóa thuê</span>

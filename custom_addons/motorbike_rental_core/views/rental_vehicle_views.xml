@@ -6,8 +6,7 @@
         <field name="arch" type="xml">
             <list string="Bảng giá thuê theo dòng xe" decoration-muted="not active">
                 <field name="name"/>
-                <field name="brand"/>
-                <field name="model"/>
+                <field name="model_id"/>
                 <field name="daily_rate"/>
                 <field name="active" optional="hide"/>
             </list>
@@ -22,12 +21,11 @@
                 <sheet>
                     <div class="oe_title">
                         <label for="name"/>
-                        <h1><field name="name" placeholder="Ví dụ: Honda Vision"/></h1>
+                        <h1><field name="name" placeholder="Ví dụ: Giá thuê xe VinFast Feliz"/></h1>
                     </div>
                     <group>
                         <group>
-                            <field name="brand"/>
-                            <field name="model"/>
+                            <field name="model_id"/>
                         </group>
                         <group>
                             <field name="currency_id" invisible="1"/>
@@ -46,8 +44,7 @@
         <field name="arch" type="xml">
             <search string="Tìm bảng giá theo dòng xe">
                 <field name="name"/>
-                <field name="brand"/>
-                <field name="model"/>
+                <field name="model_id"/>
             </search>
         </field>
     </record>

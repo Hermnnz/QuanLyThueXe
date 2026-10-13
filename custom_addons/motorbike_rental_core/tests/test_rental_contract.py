@@ -10,26 +10,41 @@ class TestRentalContract(TransactionCase):
         super().setUpClass()
         cls.customer = cls.env['res.partner'].create({'name': 'Rental Test Customer'})
         cls.currency = cls.env.company.currency_id
+        brand = cls.env['fleet.vehicle.model.brand'].create({'name': 'Test Brand'})
+        model = cls.env['fleet.vehicle.model'].create({
+            'name': 'Test Model',
+            'brand_id': brand.id,
+            'vehicle_type': 'bike',
+        })
         cls.vehicle_type = cls.env['rental.vehicle.type'].create({
             'name': 'Rental Test Type',
+            'model_id': model.id,
             'currency_id': cls.currency.id,
             'daily_rate': 100,
+        })
+        cls.vehicle1 = cls.env['fleet.vehicle'].create({
+            'model_id': model.id,
+            'license_plate': '29-TEST1',
+        })
+        cls.vehicle2 = cls.env['fleet.vehicle'].create({
+            'model_id': model.id,
+            'license_plate': '29-TEST2',
         })
 
     def _create_contract(self, **overrides):
         values = {
             'customer_id': self.customer.id,
-            'start_date': '2026-10-01',
-            'end_date': '2026-10-04',
+            'start_date': '2026-10-01 08:00:00',
+            'end_date': '2026-10-04 08:00:00',
             'currency_id': self.currency.id,
         }
         values.update(overrides)
         return self.env['rental.contract'].create(values)
 
-    def _add_vehicle(self, contract, vehicle_id, daily_rate=None):
+    def _add_vehicle(self, contract, vehicle, daily_rate=None):
         values = {
             'contract_id': contract.id,
-            'vehicle_id': vehicle_id,
+            'vehicle_id': vehicle.id,
             'vehicle_type_id': self.vehicle_type.id,
         }
         if daily_rate is not None:
@@ -38,8 +53,8 @@ class TestRentalContract(TransactionCase):
 
     def test_compute_rental_days_and_amounts(self):
         contract = self._create_contract()
-        first_line = self._add_vehicle(contract, 101)
-        second_line = self._add_vehicle(contract, 102, daily_rate=50)
+        first_line = self._add_vehicle(contract, self.vehicle1)
+        second_line = self._add_vehicle(contract, self.vehicle2, daily_rate=50)
 
         self.assertEqual(contract.rental_days, 3)
         self.assertEqual(first_line.subtotal, 300)
@@ -48,7 +63,7 @@ class TestRentalContract(TransactionCase):
 
     def test_state_machine_actions(self):
         contract = self._create_contract()
-        self._add_vehicle(contract, 101)
+        self._add_vehicle(contract, self.vehicle1)
 
         with self.assertRaises(UserError):
             contract.write({'state': 'in_progress'})
@@ -81,21 +96,21 @@ class TestRentalContract(TransactionCase):
         self.assertEqual(draft_contract.state, 'cancelled')
 
         confirmed_contract = self._create_contract()
-        self._add_vehicle(confirmed_contract, 101)
+        self._add_vehicle(confirmed_contract, self.vehicle1)
         confirmed_contract.action_confirm()
         confirmed_contract.action_cancel()
         self.assertEqual(confirmed_contract.state, 'cancelled')
 
     def test_rejects_overlapping_vehicle_reservation(self):
         first_contract = self._create_contract()
-        self._add_vehicle(first_contract, 101)
+        self._add_vehicle(first_contract, self.vehicle1)
         first_contract.action_confirm()
 
         overlapping_contract = self._create_contract(
-            start_date='2026-10-03',
-            end_date='2026-10-06',
+            start_date='2026-10-03 08:00:00',
+            end_date='2026-10-06 08:00:00',
         )
-        self._add_vehicle(overlapping_contract, 101)
+        self._add_vehicle(overlapping_contract, self.vehicle1)
         with self.assertRaises(ValidationError), self.cr.savepoint():
             overlapping_contract.action_confirm()
 
