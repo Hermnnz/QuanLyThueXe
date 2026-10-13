@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Root Menu -->
+    <menuitem id="menu_rental_operation_root" name="Vận Hành Thuê Xe" sequence="10"/>
+
+    <!-- Sub Menus -->
+    <menuitem id="menu_rental_operation_ticket" name="Giao/Nhận Xe" parent="menu_rental_operation_root" sequence="10" action="action_rental_operation_ticket"/>
+    
+    <menuitem id="menu_rental_incident_log" name="Sự cố &amp; Hư hỏng" parent="menu_rental_operation_root" sequence="20" action="action_rental_incident_log"/>
+    
+    <menuitem id="menu_rental_vehicle_replacement" name="Yêu cầu Đổi xe" parent="menu_rental_operation_root" sequence="30" action="action_rental_vehicle_replacement"/>
+</odoo>
