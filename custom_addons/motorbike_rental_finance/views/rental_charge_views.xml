@@ -5,7 +5,8 @@
         <field name="arch" type="xml">
             <list string="Khoản phát sinh">
                 <field name="name"/>
-                <field name="partner_id"/>
+                <field name="customer_id"/>
+                <field name="contract_id"/>
                 <field name="price_catalog_id"/>
                 <field name="quantity"/>
                 <field name="unit_price"/>
@@ -31,7 +32,7 @@
                 <sheet>
                     <group string="Thông tin khoản phát sinh">
                         <field name="name"/>
-                        <field name="partner_id"/>
+                        <field name="customer_id"/>
                         
                     </group>
                     <group string="Thông tin tính phí">
@@ -41,6 +42,13 @@
                         <field name="amount"/>
                         <field name="currency_id"/>
                     </group>
+
+                    <group string="Liên kết hợp đồng">
+                        <field name="contract_id"/>
+                        <field name="ticket_id"/>
+                        <field name="incident_id"/>
+                    </group>
+
                     <group string="Thời gian">
                         <field name="charge_date"/>
                     </group>
@@ -66,7 +74,7 @@
         <search string="Tìm kiếm khoản phát sinh">
             <!--Tìm kiếm theo trường-->
             <field name="name"/>
-            <field name="partner_id"/>
+            <field name="customer_id"/>
             <field name="price_catalog_id"/>
             <field name="charge_date"/>
 
@@ -77,7 +85,8 @@
 
             <!--Gom nhóm -->
             <group expand="0" string="Nhóm theo">
-                    <filter string="Khách hàng" name="group_charge_partner" context="{'group_by': 'partner_id'}"/>
+                    <filter string="Khách hàng" name="group_charge_customer" context="{'group_by': 'customer_id'}"/>
+                    <filter string="Hợp đồng" name="group_charge_contract" context="{'group_by': 'contract_id'}"/>
                     <filter string="Bảng giá" name="group_charge_catalog" context="{'group_by': 'price_catalog_id'}"/>
                     <filter string="Trạng thái" name="group_charge_state" context="{'group_by': 'state'}"/>
                     <filter string="Ngày ghi nhận" name="group_charge_date" context="{'group_by': 'charge_date'}"/>

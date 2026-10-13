@@ -5,7 +5,8 @@
         <field name="arch" type="xml">
             <list string="Thanh toán">
                 <field name="name"/>
-                <field name="partner_id"/>
+                <field name="customer_id"/>
+                <field name="contract_id"/>
                 <field name="transaction_type"/>
                 <field name="amount"/>
                 <field name="currency_id"/>
@@ -34,7 +35,8 @@
                 <sheet>
                     <group string="Thông tin giao dịch">
                         <field name="name"/>
-                        <field name="partner_id"/>
+                        <field name="customer_id"/>
+                        <field name="contract_id"/>
                         <field name="transaction_type"/>
                         
                     </group>
@@ -68,9 +70,10 @@
             <search string="Tìm kiếm giao dịch">
                 <!--Tìm kiếm theo trường-->
                 <field name="name"/>
-                <field name="partner_id"/>
+                <field name="customer_id"/>
                 <field name="transaction_type"/>
                 <field name="payment_date"/>
+
                 <!--filter bộ lọc-->
                 <filter name="deposit" string="Cọc" domain="[('transaction_type','=','deposit')]"/>
                 <filter name="payment" string="Thanh toán" domain="[('transaction_type','=','rental_payment')]"/>
@@ -80,10 +83,12 @@
                 <filter name="draft"  string="Bản nháp" domain="[('state','=','draft')]"/>
                 <filter name="confirmed"  string="Đã xác nhận" domain="[('state','=','confirmed')]"/>
                 <filter name="cancelled" string="Đã hủy" domain="[('state','=','cancelled')]"/>
+
                 <!--Góm nhóm-->
                 <group expand="0" string="Nhóm theo">
-                    <filter string="Khách hàng" name="group_partner" context="{'group_by': 'partner_id'}"/>
+                    <filter string="Khách hàng" name="group_customer" context="{'group_by': 'customer_id'}"/>
                     <filter string="Loại giao dịch" name="group_type" context="{'group_by': 'transaction_type'}"/>
+                    <filter string="Hợp đồng" name="group_contract" context="{'group_by': 'contract_id'}"/>
                     <filter string="Phương thức thanh toán" name="group_method" context="{'group_by': 'payment_method'}"/>
                     <filter string="Trạng thái" name="group_state" context="{'group_by': 'state'}"/>
                     <filter string="Ngày thanh toán" name="group_date" context="{'group_by': 'payment_date'}"/>

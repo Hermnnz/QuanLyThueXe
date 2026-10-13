@@ -79,7 +79,7 @@
     <!-- Payments -->
     <record id="demo_payment_deposit_01" model="motorbike.rental.payment">
         <field name="name">DP-20260920-001</field>
-        <field name="partner_id" ref="demo_partner_nguyen_van_an"/>
+        <field name="customer_id" ref="demo_partner_nguyen_van_an"/>
         <field name="transaction_type">deposit</field>
         <field name="currency_id" ref="base.VND"/>
         <field name="amount">500000</field>
@@ -91,7 +91,7 @@
 
     <record id="demo_payment_rental_01" model="motorbike.rental.payment">
         <field name="name">RP-20260921-001</field>
-        <field name="partner_id" ref="demo_partner_nguyen_van_an"/>
+        <field name="customer_id" ref="demo_partner_nguyen_van_an"/>
         <field name="transaction_type">rental_payment</field>
         <field name="currency_id" ref="base.VND"/>
         <field name="amount">350000</field>
@@ -103,7 +103,7 @@
 
     <record id="demo_payment_additional_01" model="motorbike.rental.payment">
         <field name="name">AP-20260922-001</field>
-        <field name="partner_id" ref="demo_partner_tran_thi_binh"/>
+        <field name="customer_id" ref="demo_partner_tran_thi_binh"/>
         <field name="transaction_type">additional_payment</field>
         <field name="currency_id" ref="base.VND"/>
         <field name="amount">100000</field>
@@ -116,7 +116,7 @@
 
     <record id="demo_payment_refund_01" model="motorbike.rental.payment">
         <field name="name">RF-20260923-001</field>
-        <field name="partner_id" ref="demo_partner_tran_thi_binh"/>
+        <field name="customer_id" ref="demo_partner_tran_thi_binh"/>
         <field name="transaction_type">refund</field>
         <field name="currency_id" ref="base.VND"/>
         <field name="amount">200000</field>
@@ -129,7 +129,7 @@
     <!-- Rental charges -->
     <record id="demo_charge_delivery_01" model="motorbike.rental.charge">
         <field name="name">Phí giao xe tận nơi - Nguyễn Văn An</field>
-        <field name="partner_id" ref="demo_partner_nguyen_van_an"/>
+        <field name="customer_id" ref="demo_partner_nguyen_van_an"/>
         <field name="price_catalog_id" ref="demo_price_delivery_service"/>
         <field name="quantity">1</field>
         <field name="currency_id" ref="base.VND"/>
@@ -140,7 +140,7 @@
 
     <record id="demo_charge_late_fee_01" model="motorbike.rental.charge">
         <field name="name">Phí trả xe trễ 2 giờ - Nguyễn Văn An</field>
-        <field name="partner_id" ref="demo_partner_nguyen_van_an"/>
+        <field name="customer_id" ref="demo_partner_nguyen_van_an"/>
         <field name="price_catalog_id" ref="demo_price_late_fee"/>
         <field name="quantity">2</field>
         <field name="currency_id" ref="base.VND"/>
@@ -152,7 +152,7 @@
 
     <record id="demo_charge_cleaning_01" model="motorbike.rental.charge">
         <field name="name">Phí vệ sinh xe - Trần Thị Bình</field>
-        <field name="partner_id" ref="demo_partner_tran_thi_binh"/>
+        <field name="customer_id" ref="demo_partner_tran_thi_binh"/>
         <field name="price_catalog_id" ref="demo_price_cleaning_service"/>
         <field name="quantity">1</field>
         <field name="currency_id" ref="base.VND"/>
@@ -163,7 +163,7 @@
 
     <record id="demo_charge_lost_helmet_01" model="motorbike.rental.charge">
         <field name="name">Bồi thường mất mũ bảo hiểm - Trần Thị Bình</field>
-        <field name="partner_id" ref="demo_partner_tran_thi_binh"/>
+        <field name="customer_id" ref="demo_partner_tran_thi_binh"/>
         <field name="price_catalog_id" ref="demo_price_lost_helmet"/>
         <field name="quantity">1</field>
         <field name="currency_id" ref="base.VND"/>

@@ -14,10 +14,28 @@ class MotorbikeRentalCharge(models.Model):
         required=True,
     )
 
-    partner_id = fields.Many2one(
+    customer_id = fields.Many2one(
         "res.partner",
         string="Khách hàng",
         required=True,
+    )
+    
+    contract_id = fields.Many2one(
+        "rental.contract",
+        string="Hợp đồng thuê",
+        ondelete="set null",
+    )
+
+    ticket_id = fields.Many2one(
+        "rental.operation.ticket",
+        string="Phiếu vận hành",
+        ondelete="set null",
+    )
+    
+    incident_id = fields.Many2one(
+        "rental.operation.incident.log",
+        string="Phiếu sự cố",
+        ondelete="set null",
     )
      
     price_catalog_id = fields.Many2one(
