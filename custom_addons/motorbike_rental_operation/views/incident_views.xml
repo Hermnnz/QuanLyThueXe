@@ -3,14 +3,14 @@
     <record id="action_rental_incident_log" model="ir.actions.act_window">
         <field name="name">Sự cố &amp; Hư hỏng</field>
         <field name="res_model">rental.operation.incident.log</field>
-        <field name="view_mode">kanban,tree,form</field>
+        <field name="view_mode">kanban,list,form</field>
     </record>
 
     <record id="view_rental_incident_log_tree" model="ir.ui.view">
-        <field name="name">rental.operation.incident.log.tree</field>
+        <field name="name">rental.operation.incident.log.list</field>
         <field name="model">rental.operation.incident.log</field>
         <field name="arch" type="xml">
-            <tree string="Sự cố">
+            <list string="Sự cố">
                 <field name="name"/>
                 <field name="ticket_id"/>
                 <field name="vehicle_ref"/>
@@ -18,7 +18,7 @@
                 <field name="date_reported"/>
                 <field name="cost" widget="integer" string="Chi phí (000 VNĐ)"/>
                 <field name="status"/>
-            </tree>
+            </list>
         </field>
     </record>
 
@@ -63,20 +63,20 @@
     <record id="action_rental_vehicle_replacement" model="ir.actions.act_window">
         <field name="name">Yêu cầu Đổi xe</field>
         <field name="res_model">rental.operation.vehicle.replacement</field>
-        <field name="view_mode">kanban,tree,form</field>
+        <field name="view_mode">kanban,list,form</field>
     </record>
 
     <record id="view_rental_vehicle_replacement_tree" model="ir.ui.view">
-        <field name="name">rental.operation.vehicle.replacement.tree</field>
+        <field name="name">rental.operation.vehicle.replacement.list</field>
         <field name="model">rental.operation.vehicle.replacement</field>
         <field name="arch" type="xml">
-            <tree string="Đổi xe">
+            <list string="Đổi xe">
                 <field name="name"/>
                 <field name="incident_id"/>
                 <field name="old_vehicle_ref"/>
                 <field name="new_vehicle_ref"/>
                 <field name="state"/>
-            </tree>
+            </list>
         </field>
     </record>
 

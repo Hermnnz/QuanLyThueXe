@@ -1,6 +1,6 @@
 {
     'name': 'Motorbike Fleet & Maintenance',
-    'version': '19.0.5.1.0',
+    'version': '18.0.5.1.0',
     'category': 'Human Resources/Fleet',
     'summary': 'Fleet delivery/return interface, standard ODO and maintenance eligibility',
     'description': 'Minimal Fleet with shared renting/pending_inspection states and explicit return inspection results. Rental owns contract overlap; Operations owns trip records.',
