@@ -1,6 +1,8 @@
 import math
 
 from odoo import api, fields, models
+
+# pyrefly: ignore [missing-import]
 from odoo.exceptions import ValidationError, UserError
 
 
@@ -14,8 +16,10 @@ class FleetVehicle(models.Model):
         help='Tổng số km xe đã chạy, tự động cập nhật sau mỗi chuyến thuê.',
     )
     vehicle_code = fields.Char('Mã xe', copy=False, index=True)
-    _vehicle_code_unique = models.Constraint(
-        'UNIQUE(vehicle_code)', 'Mã xe đã tồn tại. Vui lòng sử dụng mã xe khác.')
+    _sql_constraints = [
+        ('vehicle_code_unique', 'UNIQUE(vehicle_code)',
+         'Mã xe đã tồn tại. Vui lòng sử dụng mã xe khác.'),
+    ]
     operational_status = fields.Selection([
         ('available', 'Sẵn sàng'), ('renting', 'Đang thuê'),
         ('pending_inspection', 'Chờ kiểm tra'), ('maintenance', 'Bảo dưỡng'),

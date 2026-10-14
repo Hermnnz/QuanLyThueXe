@@ -24,8 +24,15 @@ class RentalIncidentLog(models.Model):
 
     date_reported = fields.Datetime(string='Ngày giờ ghi nhận', default=fields.Datetime.now)
     
+    # Tiền tệ
+    currency_id = fields.Many2one(
+        'res.currency',
+        string='Tiền tệ',
+        default=lambda self: self.env.company.currency_id,
+    )
+
     damage_description = fields.Text(string='Mô tả lỗi / Hư hỏng')
-    cost = fields.Float(string='Chi phí đền bù (Tiền phạt)', default=False)
+    cost = fields.Monetary(string='Chi phí đền bù (Tiền phạt)', default=0.0, currency_field='currency_id')
     is_paid = fields.Boolean(string='Đã thanh toán tiền phạt', default=False)
 
     fault_party = fields.Selection([
@@ -44,28 +51,3 @@ class RentalIncidentLog(models.Model):
         ('processing', 'Đang xử lý'),
         ('resolved', 'Đã giải quyết')
     ], string='Trạng thái', default='new')
-
-
-class RentalVehicleReplacement(models.Model):
-    _name = 'rental.operation.vehicle.replacement'
-    _description = 'Phiếu Yêu cầu Đổi xe'
-
-    name = fields.Char(string='Mã Đổi Xe (Mã REP)', required=True, copy=False, readonly=True, default='Mới')
-    
-    @api.model_create_multi
-    def create(self, vals_list):
-        for vals in vals_list:
-            if not vals.get('name') or vals.get('name') == 'Mới':
-                vals['name'] = self.env['ir.sequence'].next_by_code('rental.operation.vehicle.replacement')
-        return super(RentalVehicleReplacement, self).create(vals_list)
-
-    incident_id = fields.Many2one('rental.operation.incident.log', string='Thuộc Sự cố', ondelete='cascade')
-    old_vehicle_ref = fields.Char(string='Xe cũ (Thu hồi)')
-    new_vehicle_ref = fields.Char(string='Xe mới (Giao đi)')
-    
-    date_replaced = fields.Datetime(string='Ngày đổi', default=fields.Datetime.now)
-    
-    state = fields.Selection([
-        ('draft', 'Nháp'),
-        ('done', 'Đã đổi xong')
-    ], string='Trạng thái', default='draft')

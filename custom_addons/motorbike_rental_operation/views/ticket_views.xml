@@ -11,11 +11,16 @@
         <field name="model">rental.operation.ticket</field>
         <field name="arch" type="xml">
             <list string="Phiếu Vận Hành">
+                <field name="currency_id" column_invisible="1"/>
                 <field name="name"/>
+                <field name="contract_id"/>
+                <field name="customer_id"/>
                 <field name="rental_order_ref"/>
+                <field name="expected_checkout"/>
+                <field name="expected_checkin"/>
                 <field name="state" widget="badge" decoration-info="state == 'waiting'" decoration-warning="state == 'renting'" decoration-success="state == 'done'"/>
-                <field name="total_rent_amount" widget="integer" string="Tổng tiền (000 VNĐ)"/>
-                <field name="remaining_cost" widget="integer" string="Còn nợ (000 VNĐ)"/>
+                <field name="total_rent_amount"/>
+                <field name="remaining_cost"/>
             </list>
         </field>
     </record>
@@ -26,54 +31,48 @@
         <field name="arch" type="xml">
             <form string="Phiếu Vận Hành">
                 <header>
+                    <button name="action_confirm_delivery" 
+                            type="object" 
+                            string="Xác nhận đã giao xe thành công" 
+                            class="oe_highlight" 
+                            invisible="state != 'waiting'"
+                            confirm="Bạn có chắc chắn muốn xác nhận đã bàn giao xe thành công cho khách hàng?"/>
+                    <button name="action_confirm_return" 
+                            type="object" 
+                            string="Xác nhận hoàn tất trả xe" 
+                            class="oe_highlight" 
+                            invisible="state != 'renting'"
+                            confirm="Bạn có chắc chắn muốn xác nhận hoàn tất thu hồi và nhận xe từ khách hàng?"/>
                     <field name="state" widget="statusbar" statusbar_visible="waiting,renting,done"/>
                 </header>
                 <sheet>
+                    <field name="currency_id" invisible="1"/>
                     <div class="oe_title">
                         <h1><field name="name" force_save="1"/></h1>
                     </div>
                     <group>
-                        <group>
-                            <field name="rental_order_ref"/>
-                            <field name="expected_checkout"/>
-                            <field name="rental_duration_days"/>
-                            <field name="expected_checkin"/>
+                        <group string="Thông tin Hợp đồng &amp; Khách">
+                            <field name="contract_id" options="{'no_create': True}" placeholder="Chọn hợp đồng để tự động điền..." readonly="state != 'waiting'"/>
+                            <field name="customer_id" readonly="1"/>
+                            <field name="rental_order_ref" readonly="1"/>
                         </group>
-                        <group>
-                            <label for="total_rent_amount"/>
-                            <div class="o_row">
-                                <field name="total_rent_amount" widget="integer" class="oe_inline"/>
-                                <span>000 VNĐ</span>
-                            </div>
-                            <label for="deposit_amount"/>
-                            <div class="o_row">
-                                <field name="deposit_amount" widget="integer" class="oe_inline"/>
-                                <span>000 VNĐ</span>
-                            </div>
-                            <label for="remaining_rent_amount"/>
-                            <div class="o_row">
-                                <field name="remaining_rent_amount" widget="integer" class="oe_inline"/>
-                                <span>000 VNĐ</span>
-                            </div>
-                            <field name="is_rent_paid"/>
-                            <field name="is_id_card_kept"/>
-                            
-                            <label for="total_incurred_cost" invisible="not is_rent_paid"/>
-                            <div class="o_row" invisible="not is_rent_paid">
-                                <field name="total_incurred_cost" widget="integer" class="oe_inline"/>
-                                <span>000 VNĐ</span>
-                            </div>
-                            <label for="paid_incurred_cost" invisible="not is_rent_paid"/>
-                            <div class="o_row" invisible="not is_rent_paid">
-                                <field name="paid_incurred_cost" widget="integer" class="oe_inline"/>
-                                <span>000 VNĐ</span>
-                            </div>
-                            <label for="remaining_cost" invisible="not is_rent_paid"/>
-                            <div class="o_row" invisible="not is_rent_paid">
-                                <field name="remaining_cost" widget="integer" class="oe_inline"/>
-                                <span>000 VNĐ</span>
-                            </div>
-                            <field name="is_incurred_cost_paid" invisible="not is_rent_paid"/>
+                        <group string="Thời gian thuê">
+                            <field name="expected_checkout" readonly="1"/>
+                            <field name="rental_duration_days" readonly="1"/>
+                            <field name="expected_checkin" readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Tiền thuê &amp; Cọc">
+                            <field name="total_rent_amount" readonly="1"/>
+                            <field name="deposit_amount" readonly="1"/>
+                            <field name="remaining_rent_amount" readonly="1"/>
+                        </group>
+                        <group string="Chi phí phát sinh" invisible="state == 'waiting'">
+                            <field name="total_incurred_cost"/>
+                            <field name="paid_incurred_cost"/>
+                            <field name="remaining_cost"/>
+                            <field name="is_incurred_cost_paid"/>
                         </group>
                     </group>
                     <notebook>
@@ -81,67 +80,49 @@
                             <group>
                                 <group string="Thiết lập Giao/Nhận">
                                     <field name="quick_delivery_location"/>
-                                    <label for="quick_delivery_fee"/>
-                                    <div class="o_row">
-                                        <field name="quick_delivery_fee" widget="integer" class="oe_inline"/>
-                                        <span>000 VNĐ</span>
-                                    </div>
+                                    <field name="quick_delivery_fee"/>
                                 </group>
                                 <group string=" ">
                                     <field name="quick_return_location"/>
-                                    <label for="quick_return_fee"/>
-                                    <div class="o_row">
-                                        <field name="quick_return_fee" widget="integer" class="oe_inline"/>
-                                        <span>000 VNĐ</span>
-                                    </div>
+                                    <field name="quick_return_fee"/>
                                 </group>
                             </group>
                             <field name="vehicle_detail_ids" context="{'default_date_checkout': expected_checkout, 'default_date_checkin': expected_checkin, 'default_delivery_location': quick_delivery_location, 'default_delivery_fee': quick_delivery_fee, 'default_return_location': quick_return_location, 'default_return_fee': quick_return_fee}">
-                                <list>
-                                    <field name="vehicle_id" class="text-start text-left"/>
-                                    <field name="vehicle_price" widget="integer" string="Giá xe (000 VNĐ)" class="text-start text-left" width="150px"/>
+                                <list create="0">
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="vehicle_id" readonly="1" force_save="1" class="text-start text-left"/>
+                                    <field name="vehicle_price" readonly="1" force_save="1" class="text-start text-left" width="150px"/>
                                     <field name="delivery_location" optional="show" class="text-start text-left"/>
-                                    <field name="delivery_fee" widget="integer" optional="show" class="text-start text-left"/>
+                                    <field name="delivery_fee" optional="show" class="text-start text-left"/>
                                     <field name="return_location" optional="hide" class="text-start text-left"/>
-                                    <field name="return_fee" widget="integer" optional="hide" class="text-start text-left"/>
-                                    <field name="date_checkout" class="text-start text-left" width="180px"/>
-                                    <field name="date_checkin" class="text-start text-left" width="180px"/>
+                                    <field name="return_fee" optional="hide" class="text-start text-left"/>
+                                    <field name="date_checkout" readonly="1" force_save="1" class="text-start text-left" width="180px"/>
+                                    <field name="date_checkin" readonly="1" force_save="1" class="text-start text-left" width="180px"/>
                                     <field name="status" class="text-start text-left" width="120px"/>
                                 </list>
                                 <form>
                                     <sheet>
+                                        <field name="currency_id" invisible="1"/>
                                         <group>
                                             <group string="Thông tin chung">
-                                                <field name="vehicle_id"/>
-                                                <label for="vehicle_price"/>
-                                                <div class="o_row">
-                                                    <field name="vehicle_price" widget="integer" class="oe_inline"/>
-                                                    <span>000 VNĐ</span>
-                                                </div>
+                                                <field name="vehicle_id" readonly="1" force_save="1"/>
+                                                <field name="vehicle_price" readonly="1" force_save="1"/>
                                                 <field name="status"/>
                                             </group>
                                             <group string="Lịch trình">
-                                                <field name="date_checkout"/>
-                                                <field name="date_checkin"/>
+                                                <field name="date_checkout" readonly="1" force_save="1"/>
+                                                <field name="date_checkin" readonly="1" force_save="1"/>
                                             </group>
                                         </group>
                                         <group>
                                             <group string="Thông tin Giao Xe">
                                                 <field name="delivery_location"/>
-                                                <label for="delivery_fee"/>
-                                                <div class="o_row">
-                                                    <field name="delivery_fee" widget="integer" class="oe_inline"/>
-                                                    <span>000 VNĐ</span>
-                                                </div>
+                                                <field name="delivery_fee"/>
                                                 <field name="is_delivery_fee_paid"/>
                                             </group>
                                             <group string="Thông tin Nhận Xe">
                                                 <field name="return_location"/>
-                                                <label for="return_fee"/>
-                                                <div class="o_row">
-                                                    <field name="return_fee" widget="integer" class="oe_inline"/>
-                                                    <span>000 VNĐ</span>
-                                                </div>
+                                                <field name="return_fee"/>
                                                 <field name="is_return_fee_paid"/>
                                             </group>
                                         </group>
@@ -152,10 +133,11 @@
                         <page string="Sự cố &amp; Hư hỏng" name="incidents">
                             <field name="incident_ids" readonly="1">
                                 <list>
+                                    <field name="currency_id" column_invisible="1"/>
                                     <field name="name"/>
                                     <field name="vehicle_ref"/>
                                     <field name="timing"/>
-                                    <field name="cost" widget="integer" string="Chi phí đền bù (000 VNĐ)"/>
+                                    <field name="cost"/>
                                     <field name="is_paid"/>
                                     <field name="status"/>
                                 </list>
@@ -192,6 +174,7 @@
                 <field name="name"/>
                 <field name="rental_order_ref"/>
                 <field name="state"/>
+                <field name="currency_id"/>
                 <field name="total_rent_amount"/>
                 <field name="remaining_cost"/>
                 <templates>
@@ -205,10 +188,10 @@
                                 Mã Đơn Thuê: <field name="rental_order_ref"/>
                             </div>
                             <div>
-                                Tổng tiền: <field name="total_rent_amount"/> 000 VNĐ
+                                Tổng tiền: <field name="total_rent_amount"/>
                             </div>
                             <div>
-                                Còn nợ: <field name="remaining_cost"/> 000 VNĐ
+                                Còn nợ: <field name="remaining_cost"/>
                             </div>
                         </div>
                     </div>

@@ -11,12 +11,13 @@
         <field name="model">rental.operation.incident.log</field>
         <field name="arch" type="xml">
             <list string="Sự cố">
+                <field name="currency_id" column_invisible="1"/>
                 <field name="name"/>
                 <field name="ticket_id"/>
                 <field name="vehicle_ref"/>
                 <field name="timing"/>
                 <field name="date_reported"/>
-                <field name="cost" widget="integer" string="Chi phí (000 VNĐ)"/>
+                <field name="cost"/>
                 <field name="status"/>
             </list>
         </field>
@@ -31,6 +32,7 @@
                     <field name="status" widget="statusbar" statusbar_visible="new,processing,resolved"/>
                 </header>
                 <sheet>
+                    <field name="currency_id" invisible="1"/>
                     <div class="oe_title">
                         <h1><field name="name" force_save="1"/></h1>
                     </div>
@@ -44,11 +46,7 @@
                         <group>
                             <field name="fault_party"/>
                             <field name="customer_decision"/>
-                            <label for="cost"/>
-                            <div class="o_row">
-                                <field name="cost" widget="integer" class="oe_inline"/>
-                                <span>000 VNĐ</span>
-                            </div>
+                            <field name="cost"/>
                             <field name="is_paid"/>
                         </group>
                     </group>
@@ -130,6 +128,7 @@
                 <field name="vehicle_ref"/>
                 <field name="ticket_id"/>
                 <field name="status"/>
+                <field name="currency_id"/>
                 <field name="cost"/>
                 <templates>
                     <t t-name="kanban-box">
@@ -145,7 +144,7 @@
                                 Phiếu: <field name="ticket_id"/>
                             </div>
                             <div>
-                                Chi phí: <field name="cost"/> 000 VNĐ
+                                Chi phí: <field name="cost"/>
                             </div>
                         </div>
                     </div>

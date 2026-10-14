@@ -5,11 +5,10 @@
     'summary': 'Quản lý Giao nhận, Hậu kiểm, Sự cố và Đổi xe',
     'author': 'Giang',
     'license': 'LGPL-3',
-    'depends': ['base'], # Thêm 'fleet', 'motorbike_rental_core' sau nếu cần
+    'depends': ['base', 'fleet', 'motorbike_rental_core'],
     'data': [
         'security/ir.model.access.csv',
         'data/sequence.xml',
-        'data/fleet.vehicle.csv',
         'views/ticket_views.xml',
         'views/incident_views.xml',
         'views/menu_views.xml',

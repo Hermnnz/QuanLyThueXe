@@ -1,6 +1,9 @@
 services:
   web:
-    image: odoo:18.0
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: quanlythuexe/odoo:18.0-fixed
     depends_on:
       - db
     ports:
