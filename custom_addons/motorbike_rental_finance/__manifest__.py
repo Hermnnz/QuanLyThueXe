@@ -11,8 +11,7 @@
 
     "depends": [
         "base",
-        "account",
-        "motorbike_rental_core",        # Thêm module Hợp đồng của Nhân
+        "account",        
         "motorbike_rental_operation",   # Thêm module Vận hành của Giang
     ],
 
