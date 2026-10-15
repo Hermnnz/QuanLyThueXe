@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="website_menu_rental_booking" model="website.menu">
+        <field name="name">Thuê xe</field>
+        <field name="url">/thue-xe</field>
+        <field name="parent_id" ref="website.main_menu"/>
+        <field name="sequence">35</field>
+    </record>
+
+    <template id="website_rental_booking" name="Đặt thuê xe máy">
+        <t t-call="website.layout">
+            <div id="wrap" class="oe_structure">
+                <section class="container py-5">
+                    <div class="row justify-content-center">
+                        <div class="col-lg-9">
+                            <div class="mb-4">
+                                <span class="badge rounded-pill text-bg-primary mb-2">THUÊ XE MÁY</span>
+                                <h1 class="display-5 fw-bold">Chọn xe cho chuyến đi của bạn</h1>
+                                <p class="lead text-muted mb-0">Chọn thời gian để xem xe còn trống. Nhân viên sẽ liên hệ xác nhận yêu cầu.</p>
+                            </div>
+
+                            <div t-if="success" class="alert alert-success" role="status">
+                                Đã gửi yêu cầu thuê xe. Nhân viên sẽ liên hệ với bạn.
+                            </div>
+                            <div t-if="errors" class="alert alert-danger" role="alert">
+                                <ul class="mb-0">
+                                    <li t-foreach="errors" t-as="error" t-esc="error"/>
+                                </ul>
+                            </div>
+
+                            <form action="/thue-xe" method="post" class="row g-3">
+                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                <input type="hidden" name="start_utc" t-att-value="form_values.get('start_utc')"/>
+                                <input type="hidden" name="end_utc" t-att-value="form_values.get('end_utc')"/>
+
+                                <div class="col-12">
+                                    <div class="card border-0 shadow-sm">
+                                        <div class="card-body p-4">
+                                            <h2 class="h5 fw-bold mb-3">1. Thời gian thuê</h2>
+                                            <div class="row g-3 align-items-end">
+                                                <div class="col-md-5">
+                                                    <label for="rental_start" class="form-label">Nhận xe</label>
+                                                    <input id="rental_start" name="start_local" type="datetime-local" class="form-control" required="required" t-att-value="form_values.get('start_local')" t-att-data-default="start_default"/>
+                                                </div>
+                                                <div class="col-md-5">
+                                                    <label for="rental_end" class="form-label">Trả xe dự kiến</label>
+                                                    <input id="rental_end" name="end_local" type="datetime-local" class="form-control" required="required" t-att-value="form_values.get('end_local')" t-att-data-default="end_default"/>
+                                                </div>
+                                                <div class="col-md-2 d-grid">
+                                                    <button type="submit" name="check_availability" value="1" formnovalidate="formnovalidate" class="btn btn-outline-primary">Tìm xe</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-12">
+                                    <div class="d-flex justify-content-between align-items-end mb-3">
+                                        <div>
+                                            <h2 class="h4 fw-bold mb-1">2. Chọn xe</h2>
+                                            <p class="text-muted mb-0">Chọn số lượng cho từng dòng xe; giá thuê tính theo ngày trên mỗi xe.</p>
+                                        </div>
+                                        <span class="badge rounded-pill text-bg-light">
+                                            <t t-esc="total_available"/> xe còn trống
+                                        </span>
+                                    </div>
+                                    <div t-if="not vehicles" class="alert alert-light border text-center py-4">
+                                        <h3 class="h6 fw-bold">Chưa có xe trống trong thời gian này</h3>
+                                        <p class="text-muted mb-0">Thử đổi thời gian nhận/trả xe rồi bấm “Tìm xe”.</p>
+                                    </div>
+                                    <div t-if="vehicles" class="row g-3">
+                                        <div t-foreach="vehicles" t-as="choice" class="col-md-6">
+                                            <div class="card vehicle-card h-100 overflow-hidden border-light shadow-sm">
+                                                <img class="card-img-top vehicle-card-image"
+                                                     t-att-src="choice['image_url']"
+                                                     t-att-alt="choice['vehicle_type'].model_id.display_name"
+                                                     loading="lazy"/>
+                                                <div class="card-body d-flex flex-column p-4">
+                                                    <div class="d-flex justify-content-between gap-2">
+                                                        <div>
+                                                            <h3 class="h5 fw-bold mb-1">
+                                                                <t t-esc="choice['vehicle_type'].model_id.display_name"/>
+                                                            </h3>
+                                                            <p class="text-muted small mb-3">
+                                                                <t t-esc="choice['vehicle_type'].name"/>
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="mt-auto pt-3 border-top d-flex justify-content-between align-items-end gap-3">
+                                                        <div>
+                                                            <span class="text-muted small">Giá thuê / xe</span>
+                                                            <div class="h4 fw-bold text-primary mb-0">
+                                                            <t t-esc="choice['vehicle_type'].currency_id.symbol"/>
+                                                            <t t-esc="'{:,.0f}'.format(choice['vehicle_type'].daily_rate)"/>
+                                                            <span class="fs-6 fw-normal text-muted">/ ngày</span>
+                                                            </div>
+                                                            <div class="small text-muted mt-1">
+                                                                Còn trống theo thời gian đã chọn:
+                                                                <strong><t t-esc="choice['available_count']"/></strong>
+                                                            </div>
+                                                            <div class="small text-muted">
+                                                                Tổng xe tồn:
+                                                                <strong><t t-esc="choice['total_count']"/></strong>
+                                                            </div>
+                                                        </div>
+                                                        <div class="quantity-control">
+                                                            <label t-att-for="'quantity_%s' % choice['vehicle_type'].id" class="form-label small mb-1">Số lượng</label>
+                                                            <input class="form-control"
+                                                                   type="number"
+                                                                   min="0"
+                                                                   t-att-max="choice['available_count']"
+                                                                   step="1"
+                                                                   t-att-id="'quantity_%s' % choice['vehicle_type'].id"
+                                                                   t-att-name="'quantity_%s' % choice['vehicle_type'].id"
+                                                                   t-att-value="quantities.get(choice['vehicle_type'].id, '0')"
+                                                                   t-att-disabled="not choice['available_count']"
+                                                                   aria-label="Số lượng xe muốn thuê"/>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <p t-if="vehicles" class="form-text mt-2">
+                                        Xe sẽ được kiểm tra lại theo thời gian thuê khi bạn gửi yêu cầu.
+                                    </p>
+                                </div>
+
+                                <div class="col-12">
+                                    <div class="card border-0 shadow-sm">
+                                        <div class="card-body p-4">
+                                            <h2 class="h5 fw-bold mb-3">3. Thông tin liên hệ</h2>
+                                            <div class="row g-3">
+                                                <div class="col-md-6">
+                                                    <label for="rental_customer_name" class="form-label">Họ tên</label>
+                                                    <input id="rental_customer_name" name="customer_name" type="text" class="form-control" required="required" maxlength="255" t-att-value="form_values.get('customer_name')"/>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label for="rental_phone" class="form-label">Số điện thoại</label>
+                                                    <input id="rental_phone" name="phone" type="tel" class="form-control" required="required" maxlength="32" t-att-value="form_values.get('phone')"/>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label for="rental_email" class="form-label">Email (không bắt buộc)</label>
+                                                    <input id="rental_email" name="email" type="email" class="form-control" maxlength="254" t-att-value="form_values.get('email')"/>
+                                                </div>
+                                                <div class="col-12">
+                                                    <label for="rental_notes" class="form-label">Ghi chú</label>
+                                                    <textarea id="rental_notes" name="notes" class="form-control" rows="3" maxlength="2000"><t t-esc="form_values.get('notes')"/></textarea>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12 d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3">
+                                    <span class="small text-muted">Yêu cầu sẽ ở trạng thái chờ xác nhận, chưa phát sinh thanh toán.</span>
+                                    <button type="submit" class="btn btn-primary btn-lg px-4" t-att-disabled="not vehicles">
+                                        Gửi yêu cầu thuê <span aria-hidden="true">→</span>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </section>
+            </div>
+            <style>
+                .vehicle-card {
+                    transition: transform .15s ease, box-shadow .15s ease;
+                }
+                .vehicle-card:hover {
+                    transform: translateY(-3px);
+                    box-shadow: 0 .75rem 1.5rem rgba(0, 0, 0, .12) !important;
+                }
+                .vehicle-card:focus-within {
+                    outline: 3px solid rgba(13, 110, 253, .35);
+                    outline-offset: 2px;
+                }
+                .vehicle-card-image {
+                    width: 100%;
+                    height: 300px;
+                    padding: 12px 24px;
+                    object-fit: contain;
+                    object-position: center;
+                    background: #f7f8fa;
+                }
+                .quantity-control {
+                    width: 120px;
+                    flex: 0 0 120px;
+                }
+            </style>
+            <script type="text/javascript">
+                (function () {
+                    var form = document.querySelector('form[action="/thue-xe"]');
+                    var start = document.getElementById('rental_start');
+                    var end = document.getElementById('rental_end');
+
+                    function toLocalValue(value) {
+                        var date = new Date(value.replace(' ', 'T') + 'Z');
+                        return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+                            .toISOString().slice(0, 16);
+                    }
+
+                    function toUtcValue(value) {
+                        if (!value) {
+                            return '';
+                        }
+                        var date = new Date(value);
+                        if (Number.isNaN(date.getTime())) {
+                            return '';
+                        }
+                        return date.toISOString().slice(0, 19).replace('T', ' ');
+                    }
+
+                    if (!start.value) {
+                        start.value = toLocalValue(start.dataset.default);
+                    }
+                    if (!end.value) {
+                        end.value = toLocalValue(end.dataset.default);
+                    }
+                    form.addEventListener('submit', function () {
+                        document.querySelector('input[name="start_utc"]').value =
+                            toUtcValue(start.value);
+                        document.querySelector('input[name="end_utc"]').value =
+                            toUtcValue(end.value);
+                    });
+                }());
+            </script>
+        </t>
+    </template>
+</odoo>

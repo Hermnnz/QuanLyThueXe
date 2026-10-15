@@ -8,6 +8,7 @@
                 <field name="name"/>
                 <field name="phone"/>
                 <field name="email" optional="show"/>
+                <field name="activity_ids" string="Thông báo" widget="list_activity" optional="show"/>
                 <field name="rental_id_number" optional="show"/>
                 <field name="rental_driver_license" optional="hide"/>
             </list>
