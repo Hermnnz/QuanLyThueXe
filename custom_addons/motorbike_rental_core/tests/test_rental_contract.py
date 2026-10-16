@@ -24,11 +24,11 @@ class TestRentalContract(TransactionCase):
         })
         cls.vehicle1 = cls.env['fleet.vehicle'].create({
             'model_id': model.id,
-            'license_plate': '29-TEST1',
+            'is_electric_motorbike': True, 'technical_ready': True, 'operational_status': 'available', 'license_plate': '29-TEST1',
         })
         cls.vehicle2 = cls.env['fleet.vehicle'].create({
             'model_id': model.id,
-            'license_plate': '29-TEST2',
+            'is_electric_motorbike': True, 'technical_ready': True, 'operational_status': 'available', 'license_plate': '29-TEST2',
         })
 
     def _create_contract(self, **overrides):

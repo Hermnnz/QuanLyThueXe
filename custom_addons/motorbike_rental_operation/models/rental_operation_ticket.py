@@ -13,6 +13,12 @@ class RentalOperationTicket(models.Model):
         for vals in vals_list:
             if not vals.get('name') or vals.get('name') == 'Mới':
                 vals['name'] = self.env['ir.sequence'].next_by_code('rental.operation.ticket')
+            if vals.get('contract_id') and not vals.get('vehicle_detail_ids'):
+                contract = self.env['rental.contract'].browse(vals['contract_id'])
+                vals['vehicle_detail_ids'] = [(0, 0, {
+                    'vehicle_id': line.vehicle_id.id, 'vehicle_price': line.daily_rate,
+                    'odo_start': line.vehicle_id.odometer, 'odo_end': line.vehicle_id.odometer,
+                }) for line in contract.line_ids]
         return super(RentalOperationTicket, self).create(vals_list)
 
     # Hợp đồng thuê xe liên kết
@@ -35,6 +41,8 @@ class RentalOperationTicket(models.Model):
                 vehicle_vals = {
                     'vehicle_id': line.vehicle_id.id,
                     'vehicle_price': line.daily_rate,
+                    'odo_start': line.vehicle_id.odometer,
+                    'odo_end': line.vehicle_id.odometer,
                     'delivery_location': self.quick_delivery_location or 'Tại cửa hàng',
                     'return_location': self.quick_return_location or 'Tại cửa hàng',
                     'date_checkout': self.contract_id.start_date,
@@ -79,6 +87,10 @@ class RentalOperationTicket(models.Model):
                 line.return_location = self.quick_return_location or 'Tại cửa hàng'
 
     def write(self, vals):
+        if 'contract_id' in vals:
+            for rec in self:
+                if vals['contract_id'] != rec.contract_id.id and rec.state != 'waiting':
+                    raise UserError('Không đổi hợp đồng khi phiếu đã bắt đầu giao xe.')
         if 'quick_delivery_location' in vals:
             for rec in self:
                 if rec.state == 'done':
@@ -346,4 +358,6 @@ class RentalOperationTicket(models.Model):
             rec.vehicle_detail_ids.action_reset_waiting()
 
     def unlink(self):
+        if any(line.status != 'waiting' for line in self.vehicle_detail_ids):
+            raise UserError('Không xóa phiếu đã bắt đầu giao hoặc có lịch sử thu hồi xe.')
         return super(RentalOperationTicket, self.with_context(delete_ticket=True)).unlink()

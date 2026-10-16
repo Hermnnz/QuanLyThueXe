@@ -22,7 +22,7 @@ class TestWeek7Fleet(TransactionCase):
 
     def user(self, login, group):
         return self.env['res.users'].create({'name': login, 'login': login,
-            'group_ids': [Command.set([self.env.ref(group).id])]})
+            ('group_ids' if 'group_ids' in self.env['res.users']._fields else 'groups_id'): [Command.set([self.env.ref(group).id])]})
 
     def test_vehicle_form_crud(self):
         with Form(self.env['fleet.vehicle'].with_context(default_is_electric_motorbike=True)) as form:
@@ -142,7 +142,8 @@ class TestWeek7Fleet(TransactionCase):
             service.action_start()
         with self.assertRaises(UserError), self.cr.savepoint():
             self.vehicle.action_confirm_technical_ready()
-        self.vehicle.write({'operational_status': 'pending_inspection', 'active': False})
+        self.vehicle.action_return_vehicle('pending')
+        self.vehicle.active = False
         with self.assertRaises(UserError), self.cr.savepoint():
             self.vehicle.action_confirm_technical_ready()
         with self.assertRaises(UserError), self.cr.savepoint():
@@ -151,14 +152,15 @@ class TestWeek7Fleet(TransactionCase):
     def test_history_does_not_rewrite_current_state(self):
         self.vehicle.action_confirm_technical_ready()
         self.vehicle.next_service_date = '2027-01-01'
-        service = self.service(state='done', date='2025-10-09', next_service_date='2025-12-01',
+        service = self.service(state='done', result='Lịch sử sửa chữa', date='2025-10-09', next_service_date='2025-12-01',
                                actual_start='2025-10-09 02:00:00', actual_end='2025-10-09 06:00:00')
-        service.result = 'Bổ sung ghi chú lịch sử'
+        service.notes = 'Bổ sung ghi chú lịch sử'
         self.assertEqual(self.vehicle.operational_status, 'available')
         self.assertEqual(str(self.vehicle.next_service_date), '2027-01-01')
 
     def test_old_completion_does_not_overwrite_newer_milestone(self):
-        self.service(state='done', date='2026-10-09', next_service_date='2027-02-01')
+        self.service(state='done', result='Lịch sử', actual_start='2026-10-09 01:00:00',
+                     actual_end='2026-10-09 02:00:00', date='2026-10-09', next_service_date='2027-02-01')
         self.vehicle.next_service_date = '2027-02-01'
         older = self.service(date='2026-10-08', next_service_date='2026-12-01', result='Xong')
         older.action_start()
@@ -231,14 +233,22 @@ class TestWeek7Fleet(TransactionCase):
     def test_week7_views_and_scope(self):
         prefix = 'motorbike_fleet_management.'
         action = self.env.ref(prefix + 'action_electric_motorbikes')
-        self.assertEqual(action.view_mode, 'list,kanban,form')
+        self.assertEqual(action.view_mode, 'kanban,list,form')
         self.assertEqual(action.search_view_id, self.env.ref(prefix + 'vehicle_search_electric'))
         self.assertIn((self.env.ref(prefix + 'vehicle_kanban_electric').id, 'kanban'), action.views)
+        self.assertEqual(action.views[0], (self.env.ref(prefix + 'vehicle_kanban_electric').id, 'kanban'))
+        root = self.env.ref('fleet.menu_root')
+        self.assertEqual(root.action, action)
+        for xmlid in ['menu_electric_motorbikes', 'menu_motorbike_services']:
+            self.assertEqual(self.env.ref(prefix + xmlid).parent_id, root)
         services = self.env.ref(prefix + 'action_motorbike_services')
         self.assertEqual(services.view_mode, 'list,form')
         self.assertEqual(services.search_view_id, self.env.ref(prefix + 'service_search_motorbike'))
-        groups = self.env['fleet.vehicle'].with_context(read_group_expand=True).formatted_read_group([('id', '=', self.vehicle.id)],
-                                                               ['operational_status'], ['__count'])
+        vehicles = self.env['fleet.vehicle'].with_context(read_group_expand=True)
+        if hasattr(vehicles, 'formatted_read_group'):
+            groups = vehicles.formatted_read_group([('id', '=', self.vehicle.id)], ['operational_status'], ['__count'])
+        else:
+            groups = vehicles.read_group([('id', '=', self.vehicle.id)], ['operational_status'], ['operational_status'])
         self.assertEqual({g['operational_status'] for g in groups},
                          {'available', 'renting', 'pending_inspection', 'maintenance'})
         for model in ['motorbike.battery', 'motorbike.battery.assignment', 'motorbike.maintenance.plan']:

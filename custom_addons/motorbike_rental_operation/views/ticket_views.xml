@@ -122,6 +122,8 @@
                                     <field name="is_selected" string="Chọn" width="40px" class="o_ticket_select_checkbox"/>
                                     <field name="vehicle_id" readonly="1" force_save="1" class="text-start text-left"/>
                                     <field name="vehicle_price" readonly="1" force_save="1" class="text-start text-left" width="140px"/>
+                                    <field name="odo_start" readonly="status != 'waiting'" optional="show"/>
+                                    <field name="odo_end" readonly="status == 'returned'" optional="show"/>
                                     <field name="delivery_location" optional="show" class="text-start text-left" readonly="status in ('renting', 'returned')"/>
                                     <field name="return_location" optional="show" class="text-start text-left" readonly="status == 'returned'"/>
                                     <field name="date_checkout" readonly="1" force_save="1" class="text-start text-left" width="160px"/>
@@ -141,6 +143,8 @@
                                                 <field name="is_selected"/>
                                                 <field name="vehicle_id" readonly="1" force_save="1"/>
                                                 <field name="vehicle_price" readonly="1" force_save="1"/>
+                                                <field name="odo_start" readonly="status != 'waiting'"/>
+                                                <field name="odo_end" readonly="status == 'returned'"/>
                                                 <field name="status" readonly="1"/>
                                             </group>
                                             <group string="Lịch trình">

@@ -143,6 +143,12 @@ class RentalContract(models.Model):
         vehicle_ids = self.line_ids.mapped('vehicle_id').ids
         if not vehicle_ids:
             return
+        for eligibility in self.line_ids.mapped('vehicle_id').check_fleet_availability(
+                self.start_date, self.end_date):
+            if not eligibility['fleet_ok']:
+                vehicle = self.env['fleet.vehicle'].browse(eligibility['vehicle_id'])
+                raise ValidationError(_('Xe %s chưa đủ điều kiện khai thác: %s') % (
+                    vehicle.display_name, ', '.join(eligibility['reasons'])))
         conflict = self.search(
             [
                 ('id', '!=', self.id),
@@ -251,6 +257,8 @@ class RentalContractLine(models.Model):
                 raise ValidationError(_('Giá thuê mỗi ngày không được âm.'))
             if not line.vehicle_type_id or not line.contract_id:
                 continue
+            if line.vehicle_id.model_id != line.vehicle_type_id.model_id:
+                raise ValidationError(_('Dòng giá phải đúng với dòng xe được chọn.'))
             if line.vehicle_type_id.currency_id != line.contract_id.currency_id:
                 raise ValidationError(
                     _('Tiền tệ của dòng giá phải trùng với tiền tệ trên hợp đồng.')

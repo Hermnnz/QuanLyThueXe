@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Vận Hành Thuê Xe Máy',
-    'version': '1.0',
+    'version': '18.0.1.1.0',
     'summary': 'Quản lý Giao nhận, Hậu kiểm và Sự cố',
     'author': 'Giang',
     'license': 'LGPL-3',

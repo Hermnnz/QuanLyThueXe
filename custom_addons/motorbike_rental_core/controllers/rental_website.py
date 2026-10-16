@@ -218,6 +218,11 @@ class RentalWebsite(http.Controller):
             available_vehicles = all_vehicles.filtered(
                 lambda vehicle: vehicle.id not in busy_vehicle_ids
             )
+            eligible_ids = {
+                item['vehicle_id'] for item in available_vehicles.check_fleet_availability(
+                    start_date, end_date) if item['fleet_ok']
+            }
+            available_vehicles = available_vehicles.filtered(lambda vehicle: vehicle.id in eligible_ids)
 
         options = []
         for rental_type in rental_types:

@@ -1,0 +1,48 @@
+{
+  "fleet_vehicle": {
+    "rows": 42,
+    "only_approved_changes": true,
+    "differences": {
+      "276": {
+        "vehicle_code": [
+          null,
+          "XE00001"
+        ]
+      },
+      "278": {
+        "name": [
+          "Demo E-Motion/Tour Plus — demo/DEMO-EV-103",
+          "Demo E-Motion/Tour Plus — demo/No Plate"
+        ],
+        "vehicle_code": [
+          null,
+          "XE00002"
+        ],
+        "license_plate": [
+          "DEMO-EV-103",
+          null
+        ]
+      },
+      "49": {
+        "name": [
+          "Demo E-Motion/Urban Flex — demo/DEMO-EV-101",
+          "Demo E-Motion/Urban Flex — demo/No Plate"
+        ],
+        "license_plate": [
+          "DEMO-EV-101",
+          null
+        ]
+      }
+    }
+  },
+  "fleet_vehicle_log_services": {
+    "rows": 300,
+    "only_approved_changes": true,
+    "differences": {}
+  },
+  "fleet_vehicle_odometer": {
+    "rows": 0,
+    "only_approved_changes": true,
+    "differences": {}
+  }
+}
