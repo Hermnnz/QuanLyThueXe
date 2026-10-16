@@ -12,6 +12,7 @@
     "depends": [
         "base",
         "account",        
+        "spreadsheet_dashboard",  # Thêm module Dashboard của Odoo
         "motorbike_rental_operation",   # Thêm module Vận hành của Giang
     ],
 
