@@ -9,18 +9,18 @@
             <xpath expr="//field[@name='partner_id']" position="after">
                 <field name="contract_id" 
                        options="{'no_create': True}" 
-                       placeholder="Chọn hợp đồng"/>
+                       placeholder="Chọn hợp đồng để tự nạp tiền thuê và phụ phí"/>
             </xpath>
 
-            <!-- Ẩn cột Sản phẩm (bàn ghế tủ demo Odoo) khỏi giao diện Hóa đơn thuê xe -->
+            <!-- Ẩn cột Sản phẩm (bàn ghế tủ demo Odoo) -->
             <xpath expr="//field[@name='invoice_line_ids']//list//field[@name='product_id']" position="attributes">
                 <attribute name="column_invisible">1</attribute>
             </xpath>
 
-            <!-- Thêm cột Khoản phát sinh và Mục bảng giá vào bảng chi tiết dòng hóa đơn -->
+            <!-- Giữ khóa ngoại charge_id và price_catalog_id nhưng ẨN hoàn toàn, không hiện lên giao diện -->
             <xpath expr="//field[@name='invoice_line_ids']//list//field[@name='name']" position="before">
-                <field name="charge_id" optional="show" options="{'no_create': True}"/>
-                <field name="price_catalog_id" optional="show" options="{'no_create': True}"/>
+                <field name="charge_id" column_invisible="1"/>
+                <field name="price_catalog_id" column_invisible="1"/>
             </xpath>
         </field>
     </record>
