@@ -1,3 +1,9 @@
+# Kiểm chứng tích hợp dev Odoo 18: Fleet 18.0.5.7.0
+
+Ngày 16/10/2026: cài đủ bốn module, 71/71 kiểm thử Fleet/Core/Operations đạt, gồm HTTP website và tài khoản nhân viên. Nâng cấp từ dev cũ có dữ liệu mẫu đạt; xem [báo cáo tích hợp](INTEGRATION_DEV_18_20261016.md) và [bảo toàn dữ liệu](DEV18_UPGRADE_VERIFICATION.json). Các báo cáo Odoo 19 dưới đây là lịch sử.
+
+---
+
 # Kiểm chứng mới nhất: 19.0.5.6.0
 
 Ngày 16/10/2026: nâng cấp demo đạt 56/56, 0 failed, 0 errors; báo cáo FLEET_RELEASE_1956_DATA_PRESERVATION.json xác nhận dữ liệu giữ nguyên. Phạm vi và giới hạn: RELEASE_19.0.5.6.0.md. Các phần bên dưới là lịch sử của các phiên bản trước.

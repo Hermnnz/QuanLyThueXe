@@ -1,10 +1,13 @@
 # Môi trường ảo Python và cache
 __pycache__/
 *.py[cod]
+*.pyc
+*.pyo
 *$py.class
 .venv/
 env/
 venv/
+.env
 
 # Cấu hình IDE / Editor
 .vscode/
@@ -15,7 +18,6 @@ venv/
 .DS_Store
 
 # (Tùy chọn) Bỏ qua mật khẩu master cục bộ nếu có
-# config/odoo.conf
 # Local demo database/filestore backup
 /archive/
 /archive/year-demo-20261002/

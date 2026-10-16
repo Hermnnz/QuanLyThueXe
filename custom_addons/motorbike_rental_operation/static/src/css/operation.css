@@ -1,0 +1,50 @@
+/* CSS Tùy chỉnh Vận Hành Thuê Xe */
+
+/* Chỉ làm nổi bật ô tick chọn ở danh sách xe bàn giao */
+.o_ticket_select_checkbox input[type="checkbox"],
+td[name="is_selected"] input[type="checkbox"] {
+    width: 20px !important;
+    height: 20px !important;
+    border: 2px solid #0d6efd !important; /* Viền xanh đậm nổi bật rõ ràng khi chưa chọn */
+    background-color: #ffffff !important;
+    cursor: pointer !important;
+    border-radius: 4px !important;
+    vertical-align: middle !important;
+    box-shadow: 0 1px 3px rgba(13, 110, 253, 0.2) !important;
+    transition: all 0.2s ease-in-out !important;
+}
+
+/* Hiệu ứng khi rê chuột vào ô chọn xe */
+.o_ticket_select_checkbox input[type="checkbox"]:hover,
+td[name="is_selected"] input[type="checkbox"]:hover {
+    border-color: #0b5ed7 !important;
+    box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.25) !important;
+    background-color: #e7f1ff !important;
+}
+
+/* Khi ô tick chọn xe đã được chọn */
+.o_ticket_select_checkbox input[type="checkbox"]:checked,
+td[name="is_selected"] input[type="checkbox"]:checked {
+    background-color: #0d6efd !important;
+    border-color: #0d6efd !important;
+    box-shadow: 0 2px 4px rgba(13, 110, 253, 0.4) !important;
+}
+
+/* Xóa biến mất hoàn toàn cột checkbox chọn dòng ở bảng Phụ phí & Bồi thường */
+.o_price_catalog_no_selector .o_list_record_selector,
+.o_price_catalog_no_selector th.o_list_record_selector,
+.o_price_catalog_no_selector td.o_list_record_selector,
+.o_price_catalog_no_selector th:first-child:has(input[type="checkbox"]),
+.o_price_catalog_no_selector td:first-child:has(input[type="checkbox"]) {
+    display: none !important;
+    width: 0 !important;
+    max-width: 0 !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+

@@ -4,6 +4,7 @@
     <field name="name">vehicle_form_electric</field>
     <field name="model">fleet.vehicle</field>
     <field name="inherit_id" ref="fleet.fleet_vehicle_view_form"/>
+    <field name="priority">90</field>
     <field name="arch" type="xml">
       <xpath expr="//header/field[@name='state_id']" position="attributes">
         <attribute name="invisible">1</attribute>
@@ -33,12 +34,13 @@
       <xpath expr="//sheet/field[@name='vehicle_properties']" position="attributes">
         <attribute name="invisible">1</attribute>
       </xpath>
-      <xpath expr="//div[@name='button_box']" position="replace">
-          <div class="oe_button_box" name="button_box">
+      <xpath expr="//div[@name='button_box']/button" position="attributes">
+        <attribute name="invisible">1</attribute>
+      </xpath>
+      <xpath expr="//div[@name='button_box']" position="inside">
             <button name="action_open_rental_services" type="object" class="oe_stat_button" icon="fa-wrench" invisible="not is_electric_motorbike">
               <field name="service_count" widget="statinfo" string="Bảo dưỡng &amp; Sửa chữa"/>
             </button>
-          </div>
       </xpath>
       <xpath expr="//sheet" position="inside">
         <div name="rental_vehicle_sheet">

@@ -1,0 +1,127 @@
+<odoo>
+    <record id="view_motorbike_rental_payment_list" model="ir.ui.view">
+        <field name="name">motorbike.rental.payment.list</field>
+        <field name="model">motorbike.rental.payment</field>
+        <field name="arch" type="xml">
+            <list string="Thanh toán">
+                <field name="name"/>
+                <field name="customer_id"/>
+                <field name="contract_id"/>
+                <field name="transaction_type"/>
+                <field name="amount"/>
+                <field name="currency_id"/>
+                <field name="payment_method"/>
+                <field name="payment_date"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_motorbike_rental_payment_form" model="ir.ui.view">
+
+        <field name="name">motorbike.rental.payment.form</field>
+
+        <field name="model">motorbike.rental.payment</field>
+
+        <field name="arch" type="xml">
+
+            <form string="Thanh toán">
+                <header>
+                    <button name="action_confirm" string="Xác nhận" type="object" class="oe_highlight" invisible="state != 'draft'"/>
+                    <button name="action_cancel" string="Hủy bỏ" type="object" invisible="state not in ('draft', 'confirmed')"/>
+                    <button name="action_draft" string="Về bản nháp" type="object" invisible="state != 'cancelled'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,confirmed"/>
+                </header>
+                <sheet>
+                    <group string="Thông tin giao dịch">
+                        <field name="name"/>
+                        <field name="customer_id"/>
+                        <field name="contract_id"/>
+                        <field name="transaction_type"/>
+                        
+                    </group>
+                    <group string="Thông tin thanh toán">
+                        <field name="amount"/>
+                        <field name="currency_id"/>
+                        <field name="payment_method"/>
+                        <field name="payment_date"/>
+                    </group>
+                    <group string="Tham chiếu">
+                        <field name="reference"/>
+                        <field name="invoice_id"/>
+                    </group>
+                    
+                    <group string="Ghi chú">
+                        <field name="note"/>
+                    </group>
+                </sheet>
+            </form>
+
+        </field>
+
+    </record>
+
+    <record id="view_motorbike_rental_payment_search" model="ir.ui.view">
+        <field name="name">motorbike.rental.payment.search</field>
+
+        <field name="model">motorbike.rental.payment</field>
+
+        <field name="arch" type="xml">
+            <search string="Tìm kiếm giao dịch">
+                <!--Tìm kiếm theo trường-->
+                <field name="name"/>
+                <field name="customer_id"/>
+                <field name="transaction_type"/>
+                <field name="payment_date"/>
+
+                <!--filter bộ lọc-->
+                <filter name="deposit" string="Cọc" domain="[('transaction_type','=','deposit')]"/>
+                <filter name="payment" string="Thanh toán" domain="[('transaction_type','=','rental_payment')]"/>
+                <filter name="additional_payment" string="Thu thêm" domain="[('transaction_type','=','additional_payment')]"/>
+                <filter name="refund" string="Hoàn tiền" domain="[('transaction_type','=','refund')]"/>
+                <separator/>
+                <filter name="draft"  string="Bản nháp" domain="[('state','=','draft')]"/>
+                <filter name="confirmed"  string="Đã xác nhận" domain="[('state','=','confirmed')]"/>
+                <filter name="cancelled" string="Đã hủy" domain="[('state','=','cancelled')]"/>
+
+                <!--Góm nhóm-->
+                <group expand="0" string="Nhóm theo">
+                    <filter string="Khách hàng" name="group_customer" context="{'group_by': 'customer_id'}"/>
+                    <filter string="Loại giao dịch" name="group_type" context="{'group_by': 'transaction_type'}"/>
+                    <filter string="Hợp đồng" name="group_contract" context="{'group_by': 'contract_id'}"/>
+                    <filter string="Phương thức thanh toán" name="group_method" context="{'group_by': 'payment_method'}"/>
+                    <filter string="Trạng thái" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Ngày thanh toán" name="group_date" context="{'group_by': 'payment_date'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Pivot View biểu đồ-->
+    <record id="view_motorbike_rental_payment_pivot" model="ir.ui.view">
+        <field name="name">motorbike.rental.payment.pivot</field>
+        <field name="model">motorbike.rental.payment</field>
+        <field name="arch" type="xml">
+            <pivot string="Phân tích dòng tiền" sample="1"> <!-- sample="1" để hiển thị dữ liệu mẫu khi chưa có dữ liệu thực tế -->
+                <field name="payment_date" interval="month" type="row"/>
+                <field name="transaction_type" type="row"/>
+                <field name="payment_method" type="col"/>
+                <field name="amount" type="measure"/>        <!-- Chỉ định cột số liệu được dùng để Cộng tổng (ở đây là trường amount). -->
+            </pivot>
+        </field>
+    </record>
+
+
+    <!--Graph View biểu đồ-->
+    <record id="view_motorbike_rental_payment_graph" model="ir.ui.view">
+        <field name="name">motorbike.rental.payment.graph</field>
+        <field name="model">motorbike.rental.payment</field>
+        <field name="arch" type="xml">
+            <graph string="Biểu đồ dòng tiền" type="bar" sample="1">
+                <field name="payment_date" interval="month"/>
+                <field name="transaction_type"/>
+                <field name="amount" type="measure"/>        <!-- Chỉ định cột số liệu được dùng để Cộng tổng (ở đây là trường amount). -->
+            </graph>
+        </field>
+    </record>
+</odoo>

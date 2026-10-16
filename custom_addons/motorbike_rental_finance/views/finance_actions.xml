@@ -1,0 +1,50 @@
+<odoo>
+    <!--Action cho bảng giá-->
+    <record id="action_motorbike_rental_price_catalog" model="ir.actions.act_window">
+
+        <field name="name">Bảng giá</field>
+
+        <field name="res_model">motorbike.rental.price.catalog</field>
+
+        <field name="view_mode">list,form</field>
+
+    </record>
+
+    <!--Action cho thanh toán-->
+    <record id="action_motorbike_rental_payment" model="ir.actions.act_window">
+
+        <field name="name">Thanh toán</field>
+
+        <field name="res_model">motorbike.rental.payment</field>
+
+        <field name="view_mode">list,form,pivot,graph</field>
+    </record>
+
+    <!--Action cho khoản phát sinh-->
+    <record id="action_motorbike_rental_charge" model="ir.actions.act_window">
+
+        <field name="name">Khoản phát sinh</field>
+
+        <field name="res_model">motorbike.rental.charge</field>
+
+        <field name="view_mode">list,form,pivot,graph</field>
+    </record>
+
+
+        <!-- Action Báo cáo dòng tiền -->
+    <record id="action_motorbike_rental_payment_report" model="ir.actions.act_window">
+        <field name="name">Báo cáo dòng tiền thanh toán</field>
+        <field name="res_model">motorbike.rental.payment</field>
+        <field name="view_mode">graph,pivot</field>
+    </record>
+
+
+
+    <!-- Action Báo cáo phụ phí:-->
+    <record id="action_motorbike_rental_charge_report" model="ir.actions.act_window">
+        <field name="name">Báo cáo phụ phí</field>
+        <field name="res_model">motorbike.rental.charge</field>
+        <field name="view_mode">graph,pivot</field>
+    </record>
+    
+</odoo>

@@ -22,7 +22,7 @@ class TestWeek7Fleet(TransactionCase):
 
     def user(self, login, group):
         return self.env['res.users'].create({'name': login, 'login': login,
-            'group_ids': [Command.set([self.env.ref(group).id])]})
+            ('group_ids' if 'group_ids' in self.env['res.users']._fields else 'groups_id'): [Command.set([self.env.ref(group).id])]})
 
     def test_vehicle_form_crud(self):
         with Form(self.env['fleet.vehicle'].with_context(default_is_electric_motorbike=True)) as form:
@@ -244,8 +244,11 @@ class TestWeek7Fleet(TransactionCase):
         services = self.env.ref(prefix + 'action_motorbike_services')
         self.assertEqual(services.view_mode, 'list,form')
         self.assertEqual(services.search_view_id, self.env.ref(prefix + 'service_search_motorbike'))
-        groups = self.env['fleet.vehicle'].with_context(read_group_expand=True).formatted_read_group([('id', '=', self.vehicle.id)],
-                                                               ['operational_status'], ['__count'])
+        vehicles = self.env['fleet.vehicle'].with_context(read_group_expand=True)
+        if hasattr(vehicles, 'formatted_read_group'):
+            groups = vehicles.formatted_read_group([('id', '=', self.vehicle.id)], ['operational_status'], ['__count'])
+        else:
+            groups = vehicles.read_group([('id', '=', self.vehicle.id)], ['operational_status'], ['operational_status'])
         self.assertEqual({g['operational_status'] for g in groups},
                          {'available', 'renting', 'pending_inspection', 'maintenance'})
         for model in ['motorbike.battery', 'motorbike.battery.assignment', 'motorbike.maintenance.plan']:

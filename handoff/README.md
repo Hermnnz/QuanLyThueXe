@@ -1,3 +1,5 @@
+> Bản bàn giao mới cho dev dùng Odoo 18. Xem [hướng dẫn tích hợp](../docs/INTEGRATION_DEV_18_20261016.md). Nội dung dưới đây giữ để tra cứu bản demo Odoo 19 trước đó.
+
 # Bàn giao Fleet–Maintenance hiện hành
 
 Module `motorbike_fleet_management` `19.0.5.6.0`, thêm phần Fleet cho tích hợp tuần 8: trạng thái thống nhất, giao/trả có kết quả kiểm tra, ODO chuẩn và điều kiện Fleet theo lịch bảo dưỡng.

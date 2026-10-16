@@ -93,7 +93,7 @@ class TestFleetBusinessHardening(TransactionCase):
         with self.assertRaises(ValidationError), self.cr.savepoint():
             services.create({'vehicle_id': vehicle.id, 'state': 'done'})
         tech = self.env['res.users'].create({'name': 'Tech history', 'login': 'hardening_tech',
-            'group_ids': [Command.set([self.env.ref('motorbike_fleet_management.group_motorbike_technician').id])]})
+            ('group_ids' if 'group_ids' in self.env['res.users']._fields else 'groups_id'): [Command.set([self.env.ref('motorbike_fleet_management.group_motorbike_technician').id])]})
         with self.assertRaises(UserError), self.cr.savepoint():
             services.with_user(tech).create({'vehicle_id': vehicle.id, 'state': 'done', 'result': 'Đã sửa',
                 'actual_start': '2026-01-01 00:00:00', 'actual_end': '2026-01-01 01:00:00'})

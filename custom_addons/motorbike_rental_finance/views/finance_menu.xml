@@ -1,0 +1,77 @@
+<odoo>
+
+    <!-- ROOT MENU -->
+    <menuitem
+        id="menu_motorbike_rental_finance_root"
+        name="Tài chính thuê xe"
+        sequence="30"
+        groups="motorbike_rental_finance.group_motorbike_finance_user"
+    />
+
+
+    <!-- NHÓM GIAO DỊCH -->
+    <menuitem
+        id="menu_motorbike_rental_finance_transaction"
+        name="Giao dịch"
+        parent="menu_motorbike_rental_finance_root"
+        sequence="10"
+    />
+
+    <menuitem
+        id="menu_motorbike_rental_payment"
+        name="Thanh toán"
+        parent="menu_motorbike_rental_finance_transaction"
+        action="action_motorbike_rental_payment"
+        sequence="10"
+    />
+
+    <menuitem
+        id="menu_motorbike_rental_charge"
+        name="Khoản phát sinh"
+        parent="menu_motorbike_rental_finance_transaction"
+        action="action_motorbike_rental_charge"
+        sequence="20"
+    />
+
+
+    <!-- NHÓM CẤU HÌNH -->
+    <menuitem
+        id="menu_motorbike_rental_finance_configuration"
+        name="Cấu hình"
+        parent="menu_motorbike_rental_finance_root"
+        sequence="30"
+    />
+
+    <menuitem
+        id="menu_motorbike_rental_price_catalog"
+        name="Bảng giá"
+        parent="menu_motorbike_rental_finance_configuration"
+        action="action_motorbike_rental_price_catalog"
+        sequence="10"
+    />
+
+        <!-- NHÓM BÁO CÁO -->
+    <menuitem
+        id="menu_motorbike_rental_finance_reporting"
+        name="Báo cáo"
+        parent="menu_motorbike_rental_finance_root"
+        sequence="20"
+    />
+
+    <menuitem
+        id="menu_report_payment"
+        name="Báo cáo dòng tiền"
+        parent="menu_motorbike_rental_finance_reporting"
+        action="action_motorbike_rental_payment_report"
+        sequence="10"
+    />
+
+    <menuitem
+        id="menu_report_charge"
+        name="Báo cáo phụ phí"
+        parent="menu_motorbike_rental_finance_reporting"
+        action="action_motorbike_rental_charge_report"
+        sequence="20"
+    />
+
+</odoo>

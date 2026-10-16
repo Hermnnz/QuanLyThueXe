@@ -144,14 +144,14 @@ class TestFleetIntegration(TransactionCase):
 
     def test_integration_access(self):
         outsider = self.env['res.users'].create({'name': 'No Fleet', 'login': 'w8_no_fleet',
-            'group_ids': [Command.set([self.env.ref('base.group_user').id])]})
+            ('group_ids' if 'group_ids' in self.env['res.users']._fields else 'groups_id'): [Command.set([self.env.ref('base.group_user').id])]})
         for method, args in [('check_fleet_availability', (self.start, self.end)),
                              ('action_deliver_vehicle', (self.start, self.end)),
                              ('action_return_vehicle', ('passed',))]:
             with self.assertRaises(AccessError), self.cr.savepoint():
                 getattr(self.vehicle.with_user(outsider), method)(*args)
         officer = self.env['res.users'].create({'name': 'Fleet', 'login': 'w8_fleet',
-            'group_ids': [Command.set([self.env.ref('fleet.fleet_group_user').id])]})
+            ('group_ids' if 'group_ids' in self.env['res.users']._fields else 'groups_id'): [Command.set([self.env.ref('fleet.fleet_group_user').id])]})
         vehicle = self.vehicle.with_user(officer)
         vehicle.action_deliver_vehicle(self.start, self.end, odometer_start=10, checkout_at=self.start)
         vehicle.action_return_vehicle('passed', odometer_end=20, checkin_at=self.end)

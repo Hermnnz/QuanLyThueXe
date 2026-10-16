@@ -14,12 +14,18 @@ class FleetVehicle(models.Model):
         string='Số ODO hiện tại (km)', compute=None, inverse=None, store=True, default=0.0,
         help='Tổng số km xe đã chạy, tự động cập nhật sau mỗi chuyến thuê.')
     vehicle_code = fields.Char('Mã xe', copy=False, index=True)
-    _vehicle_code_unique = models.Constraint(
-        'UNIQUE(vehicle_code)', 'Mã xe đã tồn tại. Vui lòng sử dụng mã xe khác.')
     license_plate_key = fields.Char(compute='_compute_identity_keys', store=True, copy=False, index=True)
     vehicle_code_key = fields.Char(compute='_compute_identity_keys', store=True, copy=False, index=True)
-    _license_plate_unique = models.Constraint('UNIQUE(license_plate_key)', 'Biển số đã được sử dụng cho xe khác.')
-    _normalized_code_unique = models.Constraint('UNIQUE(vehicle_code_key)', 'Mã xe đã tồn tại (không phân biệt hoa thường/khoảng trắng).')
+    if hasattr(models, 'Constraint'):
+        _vehicle_code_unique = models.Constraint('UNIQUE(vehicle_code)', 'Mã xe đã tồn tại.')
+        _license_plate_unique = models.Constraint('UNIQUE(license_plate_key)', 'Biển số đã được sử dụng cho xe khác.')
+        _normalized_code_unique = models.Constraint('UNIQUE(vehicle_code_key)', 'Mã xe đã tồn tại (không phân biệt hoa thường/khoảng trắng).')
+    else:
+        _sql_constraints = [
+            ('vehicle_code_unique', 'UNIQUE(vehicle_code)', 'Mã xe đã tồn tại.'),
+            ('license_plate_unique', 'UNIQUE(license_plate_key)', 'Biển số đã được sử dụng cho xe khác.'),
+            ('normalized_code_unique', 'UNIQUE(vehicle_code_key)', 'Mã xe đã tồn tại (không phân biệt hoa thường/khoảng trắng).'),
+        ]
     operational_status = fields.Selection([
         ('available', 'Sẵn sàng'), ('renting', 'Đang thuê'),
         ('pending_inspection', 'Chờ kiểm tra'), ('maintenance', 'Bảo dưỡng'),

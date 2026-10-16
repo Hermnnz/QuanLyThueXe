@@ -1,3 +1,5 @@
+> Bản tích hợp hiện hành dùng Odoo 18 theo dev: Fleet `18.0.5.7.0`. Xem [hướng dẫn tích hợp](../../docs/INTEGRATION_DEV_18_20261016.md). Các ghi chú Odoo 19 bên dưới mô tả bản demo cũ, không phải môi trường triển khai chung.
+
 # Fleet & Maintenance — tích hợp giao/trả tuần 8
 
 Odoo 19, module `motorbike_fleet_management`, phiên bản `19.0.5.6.0`.
