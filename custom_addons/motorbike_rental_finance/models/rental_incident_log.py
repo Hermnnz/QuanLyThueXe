@@ -50,3 +50,13 @@ class RentalIncidentLog(models.Model):
                     incident.charge_id = charge.id
 
         return records
+    def write(self, vals):
+        res = super().write(vals)
+        # Lắng nghe: Khi Giang xác nhận hoàn tất sự cố -> Tự động Xác nhận luôn khoản phụ phí bên Finance
+        if 'status' in vals:
+            for incident in self:
+                if incident.status == 'resolved' and incident.charge_id and incident.charge_id.state == 'draft':
+                    incident.charge_id.state = 'confirmed'
+                elif incident.status != 'resolved' and incident.charge_id and incident.charge_id.state == 'confirmed':
+                    incident.charge_id.state = 'draft'
+        return res

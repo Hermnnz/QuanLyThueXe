@@ -46,11 +46,11 @@ class AccountMove(models.Model):
                 "quantity": 1.0,
                 "price_unit": contract.total_amount,
             }))
-        # 2.2. Lấy CÁC KHOẢN PHỤ PHÍ của hợp đồng này (chưa bị hủy và chưa xuất hóa đơn)
-        contract_charges = contract.charge_ids.filtered(
-            lambda c: c.state != "cancelled" and (not c.invoice_id or c.invoice_id.state == "cancel")
+        # 2.2. Lấy CÁC KHOẢN PHỤ PHÍ ĐÃ XÁC NHẬN của hợp đồng này (chưa xuất hóa đơn)
+        confirmed_charges = contract.charge_ids.filtered(
+            lambda c: c.state == "confirmed" and (not c.invoice_id or c.invoice_id.state == "cancel")
         )
-        for charge in contract_charges:
+        for charge in confirmed_charges:
             lines.append(Command.create({
                 "name": f"Phụ phí: {charge.name}",
                 "quantity": charge.quantity,
