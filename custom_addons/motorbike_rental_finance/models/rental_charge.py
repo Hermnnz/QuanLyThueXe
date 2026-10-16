@@ -41,7 +41,6 @@ class MotorbikeRentalCharge(models.Model):
     price_catalog_id = fields.Many2one(
         "motorbike.rental.price.catalog",
         string="Bảng giá áp dụng",
-        required=True,
     )
     
     quantity=fields.Float(

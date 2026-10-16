@@ -18,7 +18,6 @@
     "data": [
         "security/security_groups.xml",
         "security/ir.model.access.csv",
-        "views/price_catalog_views.xml",
         "views/rental_payment_views.xml",
         "views/rental_charge_views.xml",
         "views/rental_contract_views.xml",   

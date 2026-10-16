@@ -20,22 +20,28 @@ class RentalIncidentLog(models.Model):
 
         # 2. Finance tự động lắng nghe và bốc dữ liệu sang bảng của mình
         for incident in records:
+            # Lấy số tiền phạt: Giang đã đổi 'cost' thành 'penalty_amount'
+            penalty = incident.penalty_amount or (incident.price_catalog_id.unit_price if incident.price_catalog_id else 0.0)
+
             # Điều kiện: Có tiền phạt và lỗi do khách hàng
-            if incident.fault_party == 'customer' and incident.cost > 0:
+            if incident.fault_party == 'customer' and penalty > 0:
                 ticket = incident.ticket_id
                 contract = ticket.contract_id if ticket else False
                 customer = contract.customer_id if contract else False
 
                 if customer:
-                    # Bắn sang bảng motorbike.rental.charge của bạn
+                    charge_name = f"{incident.price_catalog_id.name}: {incident.name}" if incident.price_catalog_id else f"Phạt sự cố: {incident.name}"
+                    
+                    # Bắn sang bảng motorbike.rental.charge
                     charge = self.env['motorbike.rental.charge'].create({
-                        'name': f"{incident.price_catalog_id.name}: {incident.name}",
+                        'name': charge_name,
                         'customer_id': customer.id,
                         'contract_id': contract.id if contract else False,
                         'ticket_id': ticket.id if ticket else False,
                         'incident_id': incident.id,
+                        'price_catalog_id': incident.price_catalog_id.id if incident.price_catalog_id else False,
                         'quantity': 1.0,
-                        'unit_price': incident.cost,
+                        'unit_price': penalty,
                         'charge_date': fields.Date.context_today(self),
                         'state': 'draft', # Để ở bản Nháp cho Kế toán duyệt
                         'note': f"Mô tả sự cố: {incident.damage_description or 'Không có mô tả'}",
