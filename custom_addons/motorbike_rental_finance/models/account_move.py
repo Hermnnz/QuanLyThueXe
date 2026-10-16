@@ -59,6 +59,17 @@ class AccountMove(models.Model):
                 "price_catalog_id": charge.price_catalog_id.id if charge.price_catalog_id else False,
             }))
         self.invoice_line_ids = lines
+        
+        
+    @api.depends('amount_residual', 'move_type', 'state', 'company_id')
+    def _compute_payment_state(self):
+        super()._compute_payment_state()
+        for move in self:
+            # Khi hóa đơn có hợp đồng và được ghi nhận thanh toán thành công
+            if move.payment_state in ('paid', 'in_payment') and move.contract_id:
+                if move.contract_id.state == 'in_progress':
+                    move.contract_id.settlement_status = 'settled'
+                    move.contract_id.action_done()  # Tự động đóng sang "Hoàn tất"
 
     # 6. Các hàm Action / Nghiệp vụ (nút bấm button)
     
