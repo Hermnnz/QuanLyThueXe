@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- 1. Danh mục Bồi thường sự cố & hư hỏng (Compensation) -->
+    <record id="price_catalog_lost_helmet" model="motorbike.rental.price.catalog">
+        <field name="name">Bồi thường mất mũ bảo hiểm</field>
+        <field name="code">BT-MU-BH</field>
+        <field name="category">compensation</field>
+        <field name="currency_id" ref="base.VND"/>
+        <field name="unit_price">250000</field>
+        <field name="unit">item</field>
+        <field name="effective_from">2026-01-01</field>
+        <field name="note">Khách làm mất mũ bảo hiểm trang bị theo xe.</field>
+    </record>
+
+    <record id="price_catalog_lost_charger" model="motorbike.rental.price.catalog">
+        <field name="name">Bồi thường mất bộ sạc</field>
+        <field name="code">BT-BO-SAC</field>
+        <field name="category">compensation</field>
+        <field name="currency_id" ref="base.VND"/>
+        <field name="unit_price">500000</field>
+        <field name="unit">set</field>
+        <field name="effective_from">2026-01-01</field>
+        <field name="note">Khách làm mất bộ sạc điện hoặc phụ kiện sạc kèm theo xe.</field>
+    </record>
+
+    <record id="price_catalog_broken_mirror" model="motorbike.rental.price.catalog">
+        <field name="name">Bồi thường bể / gãy gương chiếu hậu</field>
+        <field name="code">BT-GUONG</field>
+        <field name="category">compensation</field>
+        <field name="currency_id" ref="base.VND"/>
+        <field name="unit_price">150000</field>
+        <field name="unit">item</field>
+        <field name="effective_from">2026-01-01</field>
+        <field name="note">Gương chiếu hậu bị gãy, nứt hoặc vỡ do va chạm.</field>
+    </record>
+
+    <record id="price_catalog_scratch_body" model="motorbike.rental.price.catalog">
+        <field name="name">Bồi thường trầy xước nặng / vỡ yếm xe</field>
+        <field name="code">BT-TRAY-XUOC</field>
+        <field name="category">compensation</field>
+        <field name="currency_id" ref="base.VND"/>
+        <field name="unit_price">300000</field>
+        <field name="unit">time</field>
+        <field name="effective_from">2026-01-01</field>
+        <field name="note">Xe bị trầy xước sâu hoặc vỡ dàn áo yếm cần sơn lại / thay mới.</field>
+    </record>
+
+    <record id="price_catalog_flat_tire" model="motorbike.rental.price.catalog">
+        <field name="name">Bồi thường thủng / rách lốp xe</field>
+        <field name="code">BT-LOP-XE</field>
+        <field name="category">compensation</field>
+        <field name="currency_id" ref="base.VND"/>
+        <field name="unit_price">120000</field>
+        <field name="unit">item</field>
+        <field name="effective_from">2026-01-01</field>
+        <field name="note">Lốp xe bị rách hoặc biến dạng cần vá chín hoặc thay mới.</field>
+    </record>
+
+    <!-- 2. Danh mục Phụ phí (Surcharge) -->
+    <record id="price_catalog_late_fee" model="motorbike.rental.price.catalog">
+        <field name="name">Phí trả xe trễ</field>
+        <field name="code">PT-TRE-50K</field>
+        <field name="category">surcharge</field>
+        <field name="currency_id" ref="base.VND"/>
+        <field name="unit_price">50000</field>
+        <field name="unit">hour</field>
+        <field name="effective_from">2026-01-01</field>
+        <field name="note">Tính 50.000 VND cho mỗi giờ trả xe trễ so với giờ hẹn.</field>
+    </record>
+
+    <record id="price_catalog_processing_fee" model="motorbike.rental.price.catalog">
+        <field name="name">Phí xử lý phát sinh khác</field>
+        <field name="code">PT-XU-LY</field>
+        <field name="category">surcharge</field>
+        <field name="currency_id" ref="base.VND"/>
+        <field name="unit_price">30000</field>
+        <field name="unit">time</field>
+        <field name="effective_from">2026-01-01</field>
+        <field name="note">Khoản phụ phí xử lý phát sinh ngoài các trường hợp thông thường.</field>
+    </record>
+
+    <!-- 3. Danh mục Dịch vụ (Service) -->
+    <record id="price_catalog_delivery_service" model="motorbike.rental.price.catalog">
+        <field name="name">Giao xe tận nơi</field>
+        <field name="code">DV-GIAO-XE</field>
+        <field name="category">service</field>
+        <field name="currency_id" ref="base.VND"/>
+        <field name="unit_price">100000</field>
+        <field name="unit">time</field>
+        <field name="effective_from">2026-01-01</field>
+        <field name="note">Phí giao xe trong khu vực nội thành.</field>
+    </record>
+
+    <record id="price_catalog_cleaning_service" model="motorbike.rental.price.catalog">
+        <field name="name">Vệ sinh xe</field>
+        <field name="code">DV-VE-SINH</field>
+        <field name="category">service</field>
+        <field name="currency_id" ref="base.VND"/>
+        <field name="unit_price">80000</field>
+        <field name="unit">time</field>
+        <field name="effective_from">2026-01-01</field>
+        <field name="note">Áp dụng khi xe cần vệ sinh đặc biệt sau khi hoàn trả.</field>
+    </record>
+</odoo>

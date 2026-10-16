@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-from datetime import timedelta
 from odoo import models, fields, api
+from odoo.exceptions import UserError
 
 class RentalOperationTicket(models.Model):
     _name = 'rental.operation.ticket'
@@ -28,16 +28,21 @@ class RentalOperationTicket(models.Model):
         if not self.contract_id:
             return
 
-        # Tự động đổ danh sách xe từ hợp đồng sang danh sách xe bàn giao
+        # Tự động đổ danh sách xe từ hợp đồng sang danh sách xe bàn giao, lấy địa điểm chung mặc định
         vehicle_lines = []
         for line in self.contract_id.line_ids:
             if line.vehicle_id:
                 vehicle_vals = {
                     'vehicle_id': line.vehicle_id.id,
                     'vehicle_price': line.daily_rate,
+                    'delivery_location': self.quick_delivery_location or 'Tại cửa hàng',
+                    'return_location': self.quick_return_location or 'Tại cửa hàng',
                     'date_checkout': self.contract_id.start_date,
                     'date_checkin': self.contract_id.end_date,
-                    'status': 'renting',
+                    'status': 'waiting',
+                    'is_selected': False,
+                    'is_custom_delivery_location': False,
+                    'is_custom_return_location': False,
                 }
                 vehicle_lines.append((0, 0, vehicle_vals))
 
@@ -56,89 +61,289 @@ class RentalOperationTicket(models.Model):
         store=True,
         readonly=True,
     )
-    deposit_amount = fields.Monetary(string='Đã cọc', related='contract_id.deposit_amount', store=True, readonly=True, currency_field='currency_id')
 
-    # Trường ảo (Không lưu DB) dùng để điền nhanh thông tin giao/nhận cho tất cả các xe
-    quick_delivery_location = fields.Char(string='Địa điểm Giao', store=False)
-    quick_delivery_fee = fields.Monetary(string='Phí Giao', store=False, currency_field='currency_id')
-    quick_return_location = fields.Char(string='Địa điểm Nhận', store=False)
-    quick_return_fee = fields.Monetary(string='Phí Nhận', store=False, currency_field='currency_id')
+    # Thiết lập giao/nhận chung của hợp đồng cho toàn bộ xe trong phiếu
+    quick_delivery_location = fields.Char(string='Địa điểm Giao chung (Hợp đồng)', default='Tại cửa hàng')
+    quick_return_location = fields.Char(string='Địa điểm Nhận chung (Hợp đồng)', default='Tại cửa hàng')
 
-    @api.onchange('quick_delivery_location', 'quick_delivery_fee', 'quick_return_location', 'quick_return_fee')
-    def _onchange_quick_delivery_info(self):
+    @api.onchange('quick_delivery_location')
+    def _onchange_quick_delivery_location(self):
         for line in self.vehicle_detail_ids:
-            if self.quick_delivery_location:
-                line.delivery_location = self.quick_delivery_location
-            if self.quick_delivery_fee is not False:
-                line.delivery_fee = self.quick_delivery_fee
-            if self.quick_return_location:
-                line.return_location = self.quick_return_location
-            if self.quick_return_fee is not False:
-                line.return_fee = self.quick_return_fee
-    
-    # Tiền thuê gốc và giấy tờ
-    total_rent_amount = fields.Monetary(string='Tổng tiền', compute='_compute_total_rent', store=True, currency_field='currency_id')
-    deposit_amount = fields.Monetary(string='Đã cọc', default=0.0, currency_field='currency_id')
-    remaining_rent_amount = fields.Monetary(string='Số tiền còn lại', compute='_compute_remaining_rent', store=True, currency_field='currency_id')
+            if not line.is_custom_delivery_location and line.status in ('waiting', 'delivering'):
+                line.delivery_location = self.quick_delivery_location or 'Tại cửa hàng'
 
-    @api.depends('vehicle_detail_ids.vehicle_price', 'vehicle_detail_ids.delivery_fee', 'rental_duration_days')
-    def _compute_total_rent(self):
-        for rec in self:
-            base_price = sum(rec.vehicle_detail_ids.mapped('vehicle_price'))
-            total_delivery_fee = sum(rec.vehicle_detail_ids.mapped('delivery_fee'))
-            rec.total_rent_amount = base_price * (rec.rental_duration_days or 1) + total_delivery_fee
+    @api.onchange('quick_return_location')
+    def _onchange_quick_return_location(self):
+        for line in self.vehicle_detail_ids:
+            if not line.is_custom_return_location and line.status != 'returned':
+                line.return_location = self.quick_return_location or 'Tại cửa hàng'
 
-    @api.depends('total_rent_amount', 'deposit_amount')
-    def _compute_remaining_rent(self):
-        for rec in self:
-            rec.remaining_rent_amount = rec.total_rent_amount - rec.deposit_amount
+    def write(self, vals):
+        if 'quick_delivery_location' in vals:
+            for rec in self:
+                if rec.state == 'done':
+                    raise UserError('Phiếu vận hành đã hoàn tất, không được phép chỉnh sửa Địa điểm giao chung!')
+        if 'quick_return_location' in vals:
+            for rec in self:
+                if rec.state == 'done':
+                    raise UserError('Phiếu vận hành đã hoàn tất, không được phép chỉnh sửa Địa điểm nhận chung!')
 
-    def action_confirm_delivery(self):
-        for rec in self:
-            rec.state = 'renting'
-            rec.vehicle_detail_ids.write({'status': 'renting'})
+        res = super(RentalOperationTicket, self).write(vals)
+        if 'quick_delivery_location' in vals or 'quick_return_location' in vals:
+            for rec in self:
+                for line in rec.vehicle_detail_ids:
+                    line_vals = {}
+                    if 'quick_delivery_location' in vals and not line.is_custom_delivery_location and line.status in ('waiting', 'delivering'):
+                        line_vals['delivery_location'] = rec.quick_delivery_location or 'Tại cửa hàng'
+                    if 'quick_return_location' in vals and not line.is_custom_return_location and line.status != 'returned':
+                        line_vals['return_location'] = rec.quick_return_location or 'Tại cửa hàng'
+                    if line_vals:
+                        line.write(line_vals)
+        return res
 
-    def action_confirm_return(self):
-        for rec in self:
-            rec.state = 'done'
-            rec.actual_return_date = fields.Datetime.now()
-            rec.vehicle_detail_ids.write({'status': 'returned'})
-
-    def action_reset_waiting(self):
-        for rec in self:
-            rec.state = 'waiting'
-
-    # Tài chính phát sinh (Ship + Đền bù)
-    total_incurred_cost = fields.Monetary(string='Tổng chi phí phát sinh', compute='_compute_costs', store=True, currency_field='currency_id')
-    paid_incurred_cost = fields.Monetary(string='Chi phí phát sinh đã thanh toán', compute='_compute_costs', store=True, currency_field='currency_id')
-    remaining_cost = fields.Monetary(string='Chi phí phát sinh còn lại', compute='_compute_costs', store=True, currency_field='currency_id')
-    is_incurred_cost_paid = fields.Boolean(string='Đã thanh toán chi phí phát sinh')
-    
-    # Liên kết bảng con
+    # Liên kết bảng con chi tiết xe và sự cố
     vehicle_detail_ids = fields.One2many('rental.operation.ticket.vehicle', 'ticket_id', string='Chi tiết Xe')
     incident_ids = fields.One2many('rental.operation.incident.log', 'ticket_id', string='Sự cố & Hư hỏng')
-    
+
+    # Trạng thái phiếu tự động cập nhật theo các xe con
     state = fields.Selection([
         ('waiting', 'Chưa thực hiện'),
-        ('renting', 'Đang cho thuê'),
+        ('in_progress', 'Đang thực hiện'),
         ('done', 'Hoàn tất')
-    ], string='Trạng thái HĐ', default='waiting')
+    ], string='Trạng thái Vận Hành', compute='_compute_state', store=True, default='waiting')
 
-    @api.depends('incident_ids.cost', 'incident_ids.is_paid', 
-                 'vehicle_detail_ids.delivery_fee', 'vehicle_detail_ids.is_delivery_fee_paid',
-                 'vehicle_detail_ids.return_fee', 'vehicle_detail_ids.is_return_fee_paid')
-    def _compute_costs(self):
+    @api.depends('vehicle_detail_ids.status')
+    def _compute_state(self):
+        """Tự động tính trạng thái của phiếu tổng dựa trên các xe con"""
         for rec in self:
-            total_damage = sum(rec.incident_ids.mapped('cost'))
-            total_delivery = sum(rec.vehicle_detail_ids.mapped('delivery_fee'))
-            total_return = sum(rec.vehicle_detail_ids.mapped('return_fee'))
-            total = total_damage + total_delivery + total_return
-            
-            paid_damage = sum(incident.cost for incident in rec.incident_ids if incident.is_paid)
-            paid_delivery = sum(v.delivery_fee for v in rec.vehicle_detail_ids if v.is_delivery_fee_paid)
-            paid_return = sum(v.return_fee for v in rec.vehicle_detail_ids if v.is_return_fee_paid)
-            paid = paid_damage + paid_delivery + paid_return
-            
-            rec.total_incurred_cost = total
-            rec.paid_incurred_cost = paid
-            rec.remaining_cost = total - paid
+            if not rec.vehicle_detail_ids:
+                rec.state = 'waiting'
+                continue
+            statuses = rec.vehicle_detail_ids.mapped('status')
+            if all(s == 'returned' for s in statuses):
+                rec.state = 'done'
+                if not rec.actual_return_date:
+                    rec.actual_return_date = fields.Datetime.now()
+            elif all(s == 'waiting' for s in statuses):
+                rec.state = 'waiting'
+            else:
+                rec.state = 'in_progress'
+
+    # Các trường tách bảng riêng theo trạng thái để dễ quan sát
+    waiting_vehicle_ids = fields.Many2many(
+        'rental.operation.ticket.vehicle',
+        compute='_compute_split_vehicles',
+        string='Xe Chưa Giao'
+    )
+    delivering_vehicle_ids = fields.Many2many(
+        'rental.operation.ticket.vehicle',
+        compute='_compute_split_vehicles',
+        string='Xe Đang Giao'
+    )
+    renting_vehicle_ids = fields.Many2many(
+        'rental.operation.ticket.vehicle',
+        compute='_compute_split_vehicles',
+        string='Xe Đang Thuê'
+    )
+    returned_vehicle_ids = fields.Many2many(
+        'rental.operation.ticket.vehicle',
+        compute='_compute_split_vehicles',
+        string='Xe Đã Thu Hồi'
+    )
+
+    waiting_count = fields.Integer(string='Chờ giao', compute='_compute_split_vehicles')
+    delivering_count = fields.Integer(string='Đang giao', compute='_compute_split_vehicles')
+    renting_count = fields.Integer(string='Đang thuê', compute='_compute_split_vehicles')
+    returned_count = fields.Integer(string='Đã thu hồi', compute='_compute_split_vehicles')
+    total_vehicle_count = fields.Integer(string='Tổng xe', compute='_compute_split_vehicles')
+
+    @api.depends('vehicle_detail_ids', 'vehicle_detail_ids.status')
+    def _compute_split_vehicles(self):
+        for rec in self:
+            rec.waiting_vehicle_ids = rec.vehicle_detail_ids.filtered(lambda l: l.status == 'waiting')
+            rec.delivering_vehicle_ids = rec.vehicle_detail_ids.filtered(lambda l: l.status == 'delivering')
+            rec.renting_vehicle_ids = rec.vehicle_detail_ids.filtered(lambda l: l.status == 'renting')
+            rec.returned_vehicle_ids = rec.vehicle_detail_ids.filtered(lambda l: l.status == 'returned')
+            rec.waiting_count = len(rec.waiting_vehicle_ids)
+            rec.delivering_count = len(rec.delivering_vehicle_ids)
+            rec.renting_count = len(rec.renting_vehicle_ids)
+            rec.returned_count = len(rec.returned_vehicle_ids)
+            rec.total_vehicle_count = len(rec.vehicle_detail_ids)
+
+    # Thao tác tick chọn hàng loạt
+    def action_select_all_vehicles(self):
+        """Chọn tất cả xe trong phiếu"""
+        for rec in self:
+            rec.vehicle_detail_ids.write({'is_selected': True})
+
+    def action_deselect_all_vehicles(self):
+        """Bỏ chọn tất cả xe trong phiếu"""
+        for rec in self:
+            rec.vehicle_detail_ids.write({'is_selected': False})
+
+    # Thao tác tick chọn hàng loạt cho Sự cố
+    def action_select_all_incidents(self):
+        """Chọn tất cả sự cố trong phiếu"""
+        for rec in self:
+            rec.incident_ids.write({'is_selected': True})
+
+    def action_deselect_all_incidents(self):
+        """Bỏ chọn tất cả sự cố trong phiếu"""
+        for rec in self:
+            rec.incident_ids.write({'is_selected': False})
+
+    def action_bulk_start_processing_incidents(self):
+        """Xác nhận xử lý các sự cố đã chọn"""
+        self.ensure_one()
+        selected_lines = self.incident_ids.filtered(lambda l: l.is_selected)
+        if not selected_lines:
+            selected_lines = self.incident_ids.filtered(lambda l: l.status == 'new')
+            if not selected_lines:
+                raise UserError('Vui lòng tick chọn ít nhất một sự cố ở trạng thái "Mới"!')
+
+        already_resolved = selected_lines.filtered(lambda l: l.status == 'resolved')
+        if already_resolved:
+            names = ', '.join(already_resolved.mapped(lambda l: l._get_incident_label()))
+            raise UserError(f'Sự cố {names} đã được giải quyết hoàn tất!')
+
+        already_processing = selected_lines.filtered(lambda l: l.status == 'processing')
+        if already_processing:
+            names = ', '.join(already_processing.mapped(lambda l: l._get_incident_label()))
+            raise UserError(f'Sự cố {names} đang trong quá trình xử lý!')
+
+        selected_lines.action_start_processing()
+
+    def action_bulk_resolve_incidents(self):
+        """Xác nhận hoàn tất các sự cố đã chọn"""
+        self.ensure_one()
+        selected_lines = self.incident_ids.filtered(lambda l: l.is_selected)
+        if not selected_lines:
+            selected_lines = self.incident_ids.filtered(lambda l: l.status == 'processing')
+            if not selected_lines:
+                raise UserError('Vui lòng tick chọn ít nhất một sự cố để xác nhận hoàn tất!')
+
+        not_processing = selected_lines.filtered(lambda l: l.status == 'new')
+        if not_processing:
+            names = ', '.join(not_processing.mapped(lambda l: l._get_incident_label()))
+            raise UserError(f'Sự cố {names} chưa được bắt đầu xử lý!')
+
+        already_resolved = selected_lines.filtered(lambda l: l.status == 'resolved')
+        if already_resolved:
+            names = ', '.join(already_resolved.mapped(lambda l: l._get_incident_label()))
+            raise UserError(f'Sự cố {names} đã được hoàn tất trước đó!')
+
+        selected_lines.action_resolve()
+
+    def action_bulk_start_delivery(self):
+        """Mở popup xác nhận bắt đầu giao các xe được chọn"""
+        self.ensure_one()
+        selected_lines = self.vehicle_detail_ids.filtered(lambda l: l.is_selected)
+        if not selected_lines:
+            selected_lines = self.vehicle_detail_ids.filtered(lambda l: l.status == 'waiting')
+            if not selected_lines:
+                raise UserError('Vui lòng tick chọn ít nhất một xe ở trạng thái "Chưa giao"!')
+
+        already_returned = selected_lines.filtered(lambda l: l.status == 'returned')
+        if already_returned:
+            names = ', '.join(already_returned.mapped(lambda l: l._get_vehicle_label()))
+            raise UserError(f'Xe {names} đã được thu hồi!')
+
+        already_renting = selected_lines.filtered(lambda l: l.status == 'renting')
+        if already_renting:
+            names = ', '.join(already_renting.mapped(lambda l: l._get_vehicle_label()))
+            raise UserError(f'Xe {names} đã được giao!')
+
+        names = ', '.join(selected_lines.mapped(lambda l: l._get_vehicle_label()))
+        return {
+            'name': 'Xác nhận Bắt đầu Giao xe',
+            'type': 'ir.actions.act_window',
+            'res_model': 'rental.operation.confirm.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_ticket_id': self.id,
+                'default_action_type': 'start_delivery',
+                'default_vehicle_ids': [(6, 0, selected_lines.ids)],
+                'default_message': f'Bạn có chắc chắn xe {names} đã bắt đầu được đi giao chưa?',
+            }
+        }
+
+    def action_bulk_confirm_delivery(self):
+        """Mở popup xác nhận đã giao các xe được chọn (cho phép từ Chưa thực hiện hoặc Đang giao)"""
+        self.ensure_one()
+        selected_lines = self.vehicle_detail_ids.filtered(lambda l: l.is_selected)
+        if not selected_lines:
+            selected_lines = self.vehicle_detail_ids.filtered(lambda l: l.status in ('waiting', 'delivering'))
+            if not selected_lines:
+                raise UserError('Vui lòng tick chọn ít nhất một xe để xác nhận đã giao!')
+
+        already_returned = selected_lines.filtered(lambda l: l.status == 'returned')
+        if already_returned:
+            names = ', '.join(already_returned.mapped(lambda l: l._get_vehicle_label()))
+            raise UserError(f'Xe {names} đã được thu hồi!')
+
+        already_renting = selected_lines.filtered(lambda l: l.status == 'renting')
+        if already_renting:
+            names = ', '.join(already_renting.mapped(lambda l: l._get_vehicle_label()))
+            raise UserError(f'Xe {names} đã được giao!')
+
+        names = ', '.join(selected_lines.mapped(lambda l: l._get_vehicle_label()))
+        return {
+            'name': 'Xác nhận Đã Giao xe',
+            'type': 'ir.actions.act_window',
+            'res_model': 'rental.operation.confirm.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_ticket_id': self.id,
+                'default_action_type': 'confirm_delivery',
+                'default_vehicle_ids': [(6, 0, selected_lines.ids)],
+                'default_message': f'Bạn có chắc chắn xe {names} đã được bàn giao cho khách hàng chưa?',
+            }
+        }
+
+    def action_bulk_confirm_return(self):
+        """Mở popup xác nhận thu hồi các xe được chọn (bắt buộc phải ở trạng thái Đã giao xe)"""
+        self.ensure_one()
+        selected_lines = self.vehicle_detail_ids.filtered(lambda l: l.is_selected)
+        if not selected_lines:
+            selected_lines = self.vehicle_detail_ids.filtered(lambda l: l.status == 'renting')
+            if not selected_lines:
+                raise UserError('Vui lòng tick chọn ít nhất một xe để xác nhận thu hồi!')
+
+        not_delivered = selected_lines.filtered(lambda l: l.status in ('waiting', 'delivering'))
+        if not_delivered:
+            names = ', '.join(not_delivered.mapped(lambda l: l._get_vehicle_label()))
+            raise UserError(f'Xe {names} chưa được bàn giao!')
+
+        already_returned = selected_lines.filtered(lambda l: l.status == 'returned')
+        if already_returned:
+            names = ', '.join(already_returned.mapped(lambda l: l._get_vehicle_label()))
+            raise UserError(f'Xe {names} đã được thu hồi!')
+
+        names = ', '.join(selected_lines.mapped(lambda l: l._get_vehicle_label()))
+        return {
+            'name': 'Xác nhận Thu hồi xe',
+            'type': 'ir.actions.act_window',
+            'res_model': 'rental.operation.confirm.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_ticket_id': self.id,
+                'default_action_type': 'confirm_return',
+                'default_vehicle_ids': [(6, 0, selected_lines.ids)],
+                'default_message': f'Bạn chắc chắn xe {names} đã thu hồi hoàn tất chưa?',
+            }
+        }
+
+    def action_view_vehicles(self):
+        """Hàm hỗ trợ nút thống kê trên form"""
+        return True
+
+    def action_reset_waiting(self):
+        """Khôi phục toàn bộ xe về trạng thái chờ giao"""
+        for rec in self:
+            rec.vehicle_detail_ids.action_reset_waiting()
+
+    def unlink(self):
+        return super(RentalOperationTicket, self.with_context(delete_ticket=True)).unlink()

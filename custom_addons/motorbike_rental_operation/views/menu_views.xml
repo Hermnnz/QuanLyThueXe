@@ -8,5 +8,5 @@
     
     <menuitem id="menu_rental_incident_log" name="Sự cố &amp; Hư hỏng" parent="menu_rental_operation_root" sequence="20" action="action_rental_incident_log"/>
     
-    <menuitem id="menu_rental_vehicle_replacement" name="Yêu cầu Đổi xe" parent="menu_rental_operation_root" sequence="30" action="action_rental_vehicle_replacement"/>
+    <menuitem id="menu_rental_price_catalog" name="Bảng giá Phụ phí &amp; Bồi thường" parent="menu_rental_operation_root" sequence="30" action="action_rental_operation_price_catalog"/>
 </odoo>

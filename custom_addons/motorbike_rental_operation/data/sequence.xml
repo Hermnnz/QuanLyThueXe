@@ -19,12 +19,12 @@
             <field name="company_id" eval="False"/>
         </record>
 
-        <!-- Sequence for Đổi xe -->
-        <record id="seq_rental_vehicle_replacement" model="ir.sequence">
-            <field name="name">Mã Yêu cầu Đổi xe</field>
-            <field name="code">rental.operation.vehicle.replacement</field>
-            <field name="prefix">REP-</field>
-            <field name="padding">5</field>
+        <!-- Sequence for Bảng giá Phụ phí &amp; Bồi thường -->
+        <record id="seq_motorbike_rental_price_catalog" model="ir.sequence">
+            <field name="name">Mã Bảng giá Phụ phí &amp; Bồi thường</field>
+            <field name="code">motorbike.rental.price.catalog</field>
+            <field name="prefix">PRC-</field>
+            <field name="padding">4</field>
             <field name="company_id" eval="False"/>
         </record>
     </data>

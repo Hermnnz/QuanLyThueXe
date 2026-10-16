@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_rental_operation_confirm_wizard_form" model="ir.ui.view">
+        <field name="name">rental.operation.confirm.wizard.form</field>
+        <field name="model">rental.operation.confirm.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Xác nhận Thao tác Vận Hành">
+                <sheet>
+                    <div class="alert alert-warning d-flex align-items-center mb-3" role="alert">
+                        <i class="fa fa-question-circle fa-2x me-3 text-warning"/>
+                        <div>
+                            <field name="message" readonly="1" class="fw-bold fs-5 text-dark"/>
+                        </div>
+                    </div>
+                </sheet>
+                <footer>
+                    <button name="action_apply" type="object" string="Xác nhận" class="btn-primary"/>
+                    <button string="Hủy bỏ" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

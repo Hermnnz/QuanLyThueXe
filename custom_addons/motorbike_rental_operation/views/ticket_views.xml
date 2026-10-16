@@ -18,9 +18,14 @@
                 <field name="rental_order_ref"/>
                 <field name="expected_checkout"/>
                 <field name="expected_checkin"/>
-                <field name="state" widget="badge" decoration-info="state == 'waiting'" decoration-warning="state == 'renting'" decoration-success="state == 'done'"/>
-                <field name="total_rent_amount"/>
-                <field name="remaining_cost"/>
+                <field name="waiting_count" string="Chờ giao" optional="show"/>
+                <field name="delivering_count" string="Đang giao" optional="show"/>
+                <field name="renting_count" string="Đang thuê" optional="show"/>
+                <field name="returned_count" string="Đã thu hồi" optional="show"/>
+                <field name="state" widget="badge" 
+                       decoration-info="state == 'waiting'" 
+                       decoration-warning="state == 'in_progress'" 
+                       decoration-success="state == 'done'"/>
             </list>
         </field>
     </record>
@@ -31,22 +36,55 @@
         <field name="arch" type="xml">
             <form string="Phiếu Vận Hành">
                 <header>
-                    <button name="action_confirm_delivery" 
+                    <button name="action_bulk_start_delivery" 
                             type="object" 
-                            string="Xác nhận đã giao xe thành công" 
+                            string="Bắt đầu giao xe" 
                             class="oe_highlight" 
-                            invisible="state != 'waiting'"
-                            confirm="Bạn có chắc chắn muốn xác nhận đã bàn giao xe thành công cho khách hàng?"/>
-                    <button name="action_confirm_return" 
+                            invisible="state == 'done'"/>
+                    <button name="action_bulk_confirm_delivery" 
                             type="object" 
-                            string="Xác nhận hoàn tất trả xe" 
+                            string="Xác nhận đã giao" 
                             class="oe_highlight" 
-                            invisible="state != 'renting'"
-                            confirm="Bạn có chắc chắn muốn xác nhận hoàn tất thu hồi và nhận xe từ khách hàng?"/>
-                    <field name="state" widget="statusbar" statusbar_visible="waiting,renting,done"/>
+                            invisible="state == 'done'"/>
+                    <button name="action_bulk_confirm_return" 
+                            type="object" 
+                            string="Xác nhận thu hồi" 
+                            class="btn-success" 
+                            invisible="state == 'waiting'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="waiting,in_progress,done"/>
                 </header>
                 <sheet>
                     <field name="currency_id" invisible="1"/>
+                    <field name="waiting_count" invisible="1"/>
+                    <field name="delivering_count" invisible="1"/>
+                    <field name="renting_count" invisible="1"/>
+                    <field name="returned_count" invisible="1"/>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" icon="fa-clock-o" type="object" name="action_view_vehicles">
+                            <div class="o_stat_info">
+                                <span class="o_stat_value"><field name="waiting_count"/></span>
+                                <span class="o_stat_text">Chờ giao</span>
+                            </div>
+                        </button>
+                        <button class="oe_stat_button" icon="fa-truck" type="object" name="action_view_vehicles">
+                            <div class="o_stat_info">
+                                <span class="o_stat_value"><field name="delivering_count"/></span>
+                                <span class="o_stat_text">Đang giao</span>
+                            </div>
+                        </button>
+                        <button class="oe_stat_button" icon="fa-motorcycle" type="object" name="action_view_vehicles">
+                            <div class="o_stat_info">
+                                <span class="o_stat_value"><field name="renting_count"/></span>
+                                <span class="o_stat_text">Đang thuê</span>
+                            </div>
+                        </button>
+                        <button class="oe_stat_button" icon="fa-check-circle" type="object" name="action_view_vehicles">
+                            <div class="o_stat_info">
+                                <span class="o_stat_value"><field name="returned_count"/></span>
+                                <span class="o_stat_text">Đã thu hồi</span>
+                            </div>
+                        </button>
+                    </div>
                     <div class="oe_title">
                         <h1><field name="name" force_save="1"/></h1>
                     </div>
@@ -60,87 +98,166 @@
                             <field name="expected_checkout" readonly="1"/>
                             <field name="rental_duration_days" readonly="1"/>
                             <field name="expected_checkin" readonly="1"/>
-                        </group>
-                    </group>
-                    <group>
-                        <group string="Tiền thuê &amp; Cọc">
-                            <field name="total_rent_amount" readonly="1"/>
-                            <field name="deposit_amount" readonly="1"/>
-                            <field name="remaining_rent_amount" readonly="1"/>
-                        </group>
-                        <group string="Chi phí phát sinh" invisible="state == 'waiting'">
-                            <field name="total_incurred_cost"/>
-                            <field name="paid_incurred_cost"/>
-                            <field name="remaining_cost"/>
-                            <field name="is_incurred_cost_paid"/>
+                            <field name="actual_return_date" readonly="1" invisible="not actual_return_date"/>
                         </group>
                     </group>
                     <notebook>
-                        <page string="Danh sách Xe Giao/Nhận" name="vehicles">
+                        <page string="Tất cả xe bàn giao" name="vehicles">
                             <group>
-                                <group string="Thiết lập Giao/Nhận">
-                                    <field name="quick_delivery_location"/>
-                                    <field name="quick_delivery_fee"/>
-                                </group>
-                                <group string=" ">
-                                    <field name="quick_return_location"/>
-                                    <field name="quick_return_fee"/>
+                                <group string="Địa điểm Giao/Nhận chung (Hợp đồng)">
+                                    <field name="quick_delivery_location" readonly="state == 'done'"/>
+                                    <field name="quick_return_location" readonly="state == 'done'"/>
                                 </group>
                             </group>
-                            <field name="vehicle_detail_ids" context="{'default_date_checkout': expected_checkout, 'default_date_checkin': expected_checkin, 'default_delivery_location': quick_delivery_location, 'default_delivery_fee': quick_delivery_fee, 'default_return_location': quick_return_location, 'default_return_fee': quick_return_fee}">
-                                <list create="0">
+                            <div class="mb-3 d-flex flex-wrap gap-2">
+                                <button name="action_select_all_vehicles" type="object" string="Chọn tất cả" class="btn btn-secondary btn-sm"/>
+                                <button name="action_deselect_all_vehicles" type="object" string="Bỏ chọn" class="btn btn-secondary btn-sm"/>
+                                <button name="action_bulk_start_delivery" type="object" string="Bắt đầu giao xe" class="btn btn-primary btn-sm"/>
+                                <button name="action_bulk_confirm_delivery" type="object" string="Xác nhận đã giao" class="btn btn-warning btn-sm"/>
+                                <button name="action_bulk_confirm_return" type="object" string="Xác nhận thu hồi" class="btn btn-success btn-sm"/>
+                            </div>
+                            <field name="vehicle_detail_ids" context="{'default_date_checkout': expected_checkout, 'default_date_checkin': expected_checkin, 'default_delivery_location': quick_delivery_location, 'default_return_location': quick_return_location}">
+                                <list create="0" delete="0" editable="bottom">
                                     <field name="currency_id" column_invisible="1"/>
+                                    <field name="is_selected" string="Chọn" width="40px" class="o_ticket_select_checkbox"/>
                                     <field name="vehicle_id" readonly="1" force_save="1" class="text-start text-left"/>
-                                    <field name="vehicle_price" readonly="1" force_save="1" class="text-start text-left" width="150px"/>
-                                    <field name="delivery_location" optional="show" class="text-start text-left"/>
-                                    <field name="delivery_fee" optional="show" class="text-start text-left"/>
-                                    <field name="return_location" optional="hide" class="text-start text-left"/>
-                                    <field name="return_fee" optional="hide" class="text-start text-left"/>
-                                    <field name="date_checkout" readonly="1" force_save="1" class="text-start text-left" width="180px"/>
-                                    <field name="date_checkin" readonly="1" force_save="1" class="text-start text-left" width="180px"/>
-                                    <field name="status" class="text-start text-left" width="120px"/>
+                                    <field name="vehicle_price" readonly="1" force_save="1" class="text-start text-left" width="140px"/>
+                                    <field name="delivery_location" optional="show" class="text-start text-left" readonly="status in ('renting', 'returned')"/>
+                                    <field name="return_location" optional="show" class="text-start text-left" readonly="status == 'returned'"/>
+                                    <field name="date_checkout" readonly="1" force_save="1" class="text-start text-left" width="160px"/>
+                                    <field name="date_checkin" readonly="1" force_save="1" class="text-start text-left" width="160px"/>
+                                    <field name="status" widget="badge" readonly="1" force_save="1"
+                                           decoration-info="status == 'waiting'" 
+                                           decoration-primary="status == 'delivering'" 
+                                           decoration-warning="status == 'renting'" 
+                                           decoration-success="status == 'returned'" 
+                                           class="text-start text-left" width="120px"/>
                                 </list>
-                                <form>
+                                <form delete="0">
                                     <sheet>
                                         <field name="currency_id" invisible="1"/>
                                         <group>
                                             <group string="Thông tin chung">
+                                                <field name="is_selected"/>
                                                 <field name="vehicle_id" readonly="1" force_save="1"/>
                                                 <field name="vehicle_price" readonly="1" force_save="1"/>
-                                                <field name="status"/>
+                                                <field name="status" readonly="1"/>
                                             </group>
                                             <group string="Lịch trình">
                                                 <field name="date_checkout" readonly="1" force_save="1"/>
                                                 <field name="date_checkin" readonly="1" force_save="1"/>
                                             </group>
                                         </group>
-                                        <group>
-                                            <group string="Thông tin Giao Xe">
-                                                <field name="delivery_location"/>
-                                                <field name="delivery_fee"/>
-                                                <field name="is_delivery_fee_paid"/>
-                                            </group>
-                                            <group string="Thông tin Nhận Xe">
-                                                <field name="return_location"/>
-                                                <field name="return_fee"/>
-                                                <field name="is_return_fee_paid"/>
-                                            </group>
+                                        <group string="Địa điểm Giao/Nhận">
+                                            <field name="delivery_location" readonly="status in ('renting', 'returned')"/>
+                                            <field name="return_location" readonly="status == 'returned'"/>
                                         </group>
                                     </sheet>
                                 </form>
                             </field>
                         </page>
+                        <page string="Phân loại theo trạng thái" name="status_split">
+                            <group string="1. Danh sách Xe chờ giao (Chưa vận chuyển)" invisible="waiting_count == 0">
+                                <field name="waiting_vehicle_ids" nolabel="1">
+                                    <list create="0" delete="0" edit="0">
+                                        <field name="vehicle_id"/>
+                                        <field name="delivery_location"/>
+                                        <field name="date_checkout"/>
+                                        <field name="status" widget="badge" decoration-info="status == 'waiting'"/>
+                                    </list>
+                                </field>
+                            </group>
+                            <group string="2. Danh sách Xe đang trên đường giao" invisible="delivering_count == 0">
+                                <field name="delivering_vehicle_ids" nolabel="1">
+                                    <list create="0" delete="0" edit="0">
+                                        <field name="vehicle_id"/>
+                                        <field name="delivery_location"/>
+                                        <field name="date_checkout"/>
+                                        <field name="status" widget="badge" decoration-primary="status == 'delivering'"/>
+                                    </list>
+                                </field>
+                            </group>
+                            <group string="3. Danh sách Xe đang cho thuê (Khách đang đi)" invisible="renting_count == 0">
+                                <field name="renting_vehicle_ids" nolabel="1">
+                                    <list create="0" delete="0" edit="0">
+                                        <field name="vehicle_id"/>
+                                        <field name="return_location"/>
+                                        <field name="date_checkin"/>
+                                        <field name="status" widget="badge" decoration-warning="status == 'renting'"/>
+                                    </list>
+                                </field>
+                            </group>
+                            <group string="4. Danh sách Xe đã thu hồi hoàn tất" invisible="returned_count == 0">
+                                <field name="returned_vehicle_ids" nolabel="1">
+                                    <list create="0" delete="0" edit="0">
+                                        <field name="vehicle_id"/>
+                                        <field name="return_location"/>
+                                        <field name="date_checkin"/>
+                                        <field name="status" widget="badge" decoration-success="status == 'returned'"/>
+                                    </list>
+                                </field>
+                            </group>
+                        </page>
                         <page string="Sự cố &amp; Hư hỏng" name="incidents">
-                            <field name="incident_ids" readonly="1">
-                                <list>
+                            <div class="mb-3 d-flex flex-wrap gap-2">
+                                <button name="action_select_all_incidents" type="object" string="Chọn tất cả" class="btn btn-secondary btn-sm"/>
+                                <button name="action_deselect_all_incidents" type="object" string="Bỏ chọn" class="btn btn-secondary btn-sm"/>
+                                <button name="action_bulk_start_processing_incidents" type="object" string="Xác nhận xử lý" class="btn btn-primary btn-sm" confirm="Bạn có chắc chắn muốn bắt đầu xử lý các sự cố đã chọn?"/>
+                                <button name="action_bulk_resolve_incidents" type="object" string="Xác nhận hoàn tất" class="btn btn-success btn-sm" confirm="Bạn có chắc chắn các sự cố đã chọn đã được xử lý/khắc phục hoàn tất?"/>
+                            </div>
+                            <field name="incident_ids" context="{'default_ticket_id': id}">
+                                <list editable="bottom">
                                     <field name="currency_id" column_invisible="1"/>
-                                    <field name="name"/>
-                                    <field name="vehicle_ref"/>
-                                    <field name="timing"/>
-                                    <field name="cost"/>
-                                    <field name="is_paid"/>
-                                    <field name="status"/>
+                                    <field name="is_selected" string="Chọn" width="40px" class="o_ticket_select_checkbox"/>
+                                    <field name="available_vehicle_ids" column_invisible="1"/>
+                                    <field name="name" readonly="1" force_save="1"/>
+                                    <field name="vehicle_id" options="{'no_create': True, 'no_open': True}"/>
+                                    <field name="price_catalog_id" options="{'no_create': True, 'no_open': True}"/>
+                                    <field name="fault_party"/>
+                                    <field name="damage_description"/>
+                                    <field name="date_reported" optional="show"/>
+                                    <field name="status" widget="badge" readonly="1" force_save="1"
+                                           decoration-info="status == 'new'" 
+                                           decoration-warning="status == 'processing'" 
+                                           decoration-success="status == 'resolved'"
+                                           class="text-start text-left" width="120px"/>
                                 </list>
+                                <form>
+                                    <header>
+                                        <button name="action_start_processing" 
+                                                type="object" 
+                                                string="Xác nhận xử lý" 
+                                                class="oe_highlight" 
+                                                invisible="status != 'new'"
+                                                confirm="Bạn có chắc chắn muốn bắt đầu xử lý sự cố này?"/>
+                                        <button name="action_resolve" 
+                                                type="object" 
+                                                string="Xác nhận hoàn tất" 
+                                                class="btn-success" 
+                                                invisible="status != 'processing'"
+                                                confirm="Bạn có chắc chắn sự cố này đã được xử lý/khắc phục hoàn tất?"/>
+                                        <field name="status" widget="statusbar" statusbar_visible="new,processing,resolved"/>
+                                    </header>
+                                    <sheet>
+                                        <field name="available_vehicle_ids" invisible="1"/>
+                                        <field name="currency_id" invisible="1"/>
+                                        <group>
+                                            <group>
+                                                <field name="name" readonly="1" force_save="1"/>
+                                                <field name="vehicle_id" options="{'no_create': True}"/>
+                                                <field name="date_reported"/>
+                                            </group>
+                                            <group>
+                                                <field name="fault_party"/>
+                                                <field name="price_catalog_id" options="{'no_create': True, 'no_open': True}"/>
+                                                <field name="status" readonly="1"/>
+                                            </group>
+                                        </group>
+                                        <group string="Mô tả lỗi / Hư hỏng">
+                                            <field name="damage_description" placeholder="Nhập chi tiết lỗi hoặc hư hỏng..."/>
+                                        </group>
+                                    </sheet>
+                                </form>
                             </field>
                         </page>
                     </notebook>
@@ -155,9 +272,9 @@
             <search string="Tìm kiếm Phiếu Vận Hành">
                 <field name="name"/>
                 <field name="rental_order_ref"/>
-                <filter string="Đang chờ Giao" name="waiting" domain="[('state','=','waiting')]"/>
-                <filter string="Đang thuê" name="renting" domain="[('state','=','renting')]"/>
-                <filter string="Đã hoàn thành" name="done" domain="[('state','=','done')]"/>
+                <filter string="Chưa thực hiện" name="waiting" domain="[('state','=','waiting')]"/>
+                <filter string="Đang thực hiện" name="in_progress" domain="[('state','=','in_progress')]"/>
+                <filter string="Hoàn tất" name="done" domain="[('state','=','done')]"/>
                 <group expand="0" string="Nhóm theo">
                     <filter string="Trạng thái" name="group_by_state" context="{'group_by':'state'}"/>
                 </group>
@@ -175,26 +292,28 @@
                 <field name="rental_order_ref"/>
                 <field name="state"/>
                 <field name="currency_id"/>
-                <field name="total_rent_amount"/>
-                <field name="remaining_cost"/>
+                <field name="waiting_count"/>
+                <field name="delivering_count"/>
+                <field name="renting_count"/>
+                <field name="returned_count"/>
                 <templates>
                     <t t-name="kanban-box">
                         <div class="oe_kanban_global_click">
-                        <div class="oe_kanban_details">
-                            <strong class="o_kanban_record_title">
-                                <field name="name"/>
-                            </strong>
-                            <div>
-                                Mã Đơn Thuê: <field name="rental_order_ref"/>
-                            </div>
-                            <div>
-                                Tổng tiền: <field name="total_rent_amount"/>
-                            </div>
-                            <div>
-                                Còn nợ: <field name="remaining_cost"/>
+                            <div class="oe_kanban_details">
+                                <strong class="o_kanban_record_title">
+                                    <field name="name"/>
+                                </strong>
+                                <div>
+                                    Mã Đơn Thuê: <field name="rental_order_ref"/>
+                                </div>
+                                <div class="mt-2 text-muted small">
+                                    <span>Chờ: <field name="waiting_count"/></span> | 
+                                    <span>Giao: <field name="delivering_count"/></span> | 
+                                    <span>Thuê: <field name="renting_count"/></span> | 
+                                    <span>Trả: <field name="returned_count"/></span>
+                                </div>
                             </div>
                         </div>
-                    </div>
                     </t>
                 </templates>
             </kanban>
