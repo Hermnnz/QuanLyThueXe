@@ -4,6 +4,7 @@ import argparse
 import os
 from pathlib import Path
 import sys
+from datetime import datetime
 sys.path.insert(0, 'C:/odoo/venv/Lib/site-packages')
 import psycopg2
 from psycopg2 import sql
@@ -18,7 +19,13 @@ o = cfg['options']
 conn = psycopg2.connect(dbname=o['db_name'], host=o['db_host'], port=o['db_port'],
                         user=o['db_user'], password=o['db_password'])
 tables = ['fleet_vehicle', 'fleet_vehicle_log_services']
-parts = ['-- Fleet integration 19.0.5.1.0, snapshot 2026-10-12.',
+with conn.cursor() as cr:
+    cr.execute("SELECT latest_version FROM ir_module_module "
+               "WHERE name='motorbike_fleet_management' AND state='installed'")
+    installed = cr.fetchone()
+    if not installed:
+        raise SystemExit('Install the Fleet module before exporting its schema')
+parts = [f'-- Fleet integration {installed[0]}, snapshot {datetime.now():%Y-%m-%d}.',
          '-- Schema-only, includes Odoo core fields; NOT an Odoo installer or migration.',
          '-- Use only an isolated schema with shared Odoo reference tables available.',
          '-- Fleet methods and workflow live in ORM, not in this schema export.',
@@ -66,6 +73,6 @@ with conn.cursor() as cr:
         assert original == cr.fetchall(), table
 conn.rollback()
 conn.close()
-output = Path('handoff/fleet_minimal/Fleet_Minimal_Current.sql')
+output = Path(__file__).resolve().parents[1] / 'handoff/fleet_minimal/Fleet_Minimal_Current.sql'
 output.write_text(document, encoding='utf-8')
 print('Exported and transactionally verified both Fleet tables:', output)

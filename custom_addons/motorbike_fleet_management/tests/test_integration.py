@@ -44,7 +44,7 @@ class TestFleetIntegration(TransactionCase):
 
     def test_return_results_and_reinspection(self):
         for result in ['failed', 'pending', 'maintenance']:
-            self.vehicle.write({'technical_ready': True, 'operational_status': 'available'})
+            self.vehicle.action_confirm_technical_ready()
             self.deliver()
             self.vehicle.action_return_vehicle(result)
             self.assertFalse(self.vehicle.technical_ready)
@@ -177,10 +177,12 @@ class TestFleetIntegration(TransactionCase):
     def test_optional_vehicle_code_and_copy(self):
         values = {'model_id': self.vehicle.model_id.id, 'is_electric_motorbike': True}
         blank = self.env['fleet.vehicle'].create([values, values])
-        self.assertFalse(any(blank.mapped('vehicle_code')))
+        self.assertEqual(len(set(blank.mapped('vehicle_code'))), 2)
+        self.assertTrue(all(blank.mapped('vehicle_code')))
         self.vehicle.vehicle_code = 'COPY-W8'
         copied = self.vehicle.copy()
-        self.assertFalse(copied.vehicle_code)
+        self.assertTrue(copied.vehicle_code)
+        self.assertNotEqual(copied.vehicle_code, self.vehicle.vehicle_code)
 
     def test_vehicle_form_state_is_readonly_but_workflow_works(self):
         with Form(self.vehicle) as form:

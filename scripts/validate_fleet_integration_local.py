@@ -22,6 +22,7 @@ parser.add_argument('--upgrade', action='store_true')
 parser.add_argument('--config', default='C:/odoo/odoo.conf')
 parser.add_argument('--database', help='Fresh test DB only')
 parser.add_argument('--report', default='FLEET_INTEGRATION_DATA_PRESERVATION.json', help='Preservation report filename in docs')
+parser.add_argument('--clear-plate-id', type=int, action='append', default=[], help='Explicitly approved duplicate-plate record IDs to clear after backup')
 args = parser.parse_args()
 workspace = Path(__file__).resolve().parents[1]
 folder = Path(os.environ['TEMP']) / 'codex-fleet-integration-20261012'
@@ -43,6 +44,8 @@ with config_path.open('w', encoding='utf-8') as stream:
 
 credentials = dict(host=options['db_host'], port=options['db_port'],
                    user=options['db_user'], password=options['db_password'])
+missing_code_ids = set()
+approved_plate_changes = {}
 
 def snapshot():
     with psycopg2.connect(dbname=demo, **credentials) as connection:
@@ -53,6 +56,16 @@ def snapshot():
                 rows = [json.loads(r[0]) for r in cursor.fetchall()]
                 if table == 'fleet_vehicle':
                     for row in rows:
+                        # 19.0.5.4 adds the stored current ODO column. Check its
+                        # initialization separately; preserve every existing column.
+                        row.pop('odometer', None)
+                        row.pop('license_plate_key', None)
+                        row.pop('vehicle_code_key', None)
+                        if row['id'] in missing_code_ids:
+                            row['vehicle_code'] = None
+                        if row['id'] in args.clear_plate_id:
+                            row['license_plate'] = None
+                            row['name'] = None  # Derived display name follows the approved plate change.
                         row['operational_status'] = {'rented': 'renting', 'inspection': 'pending_inspection'}.get(
                             row['operational_status'], row['operational_status'])
                 encoded = json.dumps(rows, sort_keys=True, ensure_ascii=False)
@@ -65,9 +78,33 @@ def state_counts():
             cursor.execute('SELECT operational_status, count(*) FROM fleet_vehicle GROUP BY operational_status')
             return dict(cursor.fetchall())
 
+def current_odometer_snapshot():
+    with psycopg2.connect(dbname=demo, **credentials) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT EXISTS (SELECT 1 FROM information_schema.columns "
+                           "WHERE table_name='fleet_vehicle' AND column_name='odometer')")
+            if cursor.fetchone()[0]:
+                cursor.execute('SELECT id, COALESCE(odometer, 0) FROM fleet_vehicle ORDER BY id')
+            else:
+                cursor.execute('SELECT v.id, COALESCE(MAX(o.value), 0) FROM fleet_vehicle v '
+                               'LEFT JOIN fleet_vehicle_odometer o ON o.vehicle_id=v.id '
+                               'GROUP BY v.id ORDER BY v.id')
+            return dict(cursor.fetchall())
+
+
 before = None
 if args.upgrade:
+    with psycopg2.connect(dbname=demo, **credentials) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT id FROM fleet_vehicle WHERE vehicle_code IS NULL OR BTRIM(vehicle_code)='' ")
+            missing_code_ids = {r[0] for r in cursor.fetchall()}
+            if args.clear_plate_id:
+                cursor.execute('SELECT id, license_plate FROM fleet_vehicle WHERE id=ANY(%s)', (args.clear_plate_id,))
+                approved_plate_changes = dict(cursor.fetchall())
+                if set(approved_plate_changes) != set(args.clear_plate_id):
+                    raise SystemExit('Approved plate ID not found; no changes applied')
     before = snapshot()
+    odometer_before = current_odometer_snapshot()
     states_before = state_counts()
     with psycopg2.connect(dbname=demo, **credentials) as connection:
         with connection.cursor() as cursor:
@@ -90,6 +127,11 @@ if args.upgrade:
     if available.exists() and not (folder / 'data/filestore' / demo).exists():
         shutil.copytree(available, folder / 'data/filestore' / demo)
     print('Pre-upgrade backup:', backup, flush=True)
+    if args.clear_plate_id:
+        with psycopg2.connect(dbname=demo, **credentials) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute('UPDATE fleet_vehicle SET license_plate=NULL WHERE id=ANY(%s)', (args.clear_plate_id,))
+        print('Cleared only explicitly approved duplicate plates:', sorted(args.clear_plate_id), flush=True)
 else:
     connection = psycopg2.connect(dbname='postgres', **credentials)
     connection.autocommit = True
@@ -101,11 +143,14 @@ else:
     connection.close()
 
 logfile = folder / ('upgrade.log' if args.upgrade else database + '.log')
-result = subprocess.run([sys.executable, str(workspace / 'scripts/run_odoo_local.py'),
+result = subprocess.run([sys.executable, '-X', 'utf8', str(workspace / 'scripts/run_odoo_local.py'),
                          '-c', str(config_path), '-d', database,
                          '-u' if args.upgrade else '-i', 'motorbike_fleet_management',
                          '--without-demo=all', '--test-enable', '--test-tags', '/motorbike_fleet_management',
-                         '--stop-after-init', '--no-http', '--logfile', str(logfile)])
+                         # Odoo test mode can start HTTP despite --no-http. A private
+                         # ephemeral port prevents open demo tabs attaching websocket
+                         # requests to this short-lived upgrade/test process.
+                         '--stop-after-init', '--no-http', '--http-port=0', '--logfile', str(logfile)])
 print('Database:', database, '\nExit:', result.returncode, '\nLog:', logfile, flush=True)
 if args.upgrade:
     after = snapshot()
@@ -114,9 +159,13 @@ if args.upgrade:
     for state, count in states_before.items():
         renamed = {'rented': 'renting', 'inspection': 'pending_inspection'}.get(state, state)
         expected_states[renamed] = expected_states.get(renamed, 0) + count
-    preserved = before == after and states_after == expected_states and not (
+    odometer_after = current_odometer_snapshot()
+    preserved = before == after and odometer_before == odometer_after and states_after == expected_states and not (
         {'rented', 'inspection'} & states_after.keys())
     report = {'database': demo, 'expected_state_renames': {'rented': 'renting', 'inspection': 'pending_inspection'},
+              'approved_plate_changes_before': approved_plate_changes,
+              'generated_missing_code_ids': sorted(missing_code_ids),
+              'current_odometer_before': odometer_before, 'current_odometer_after': odometer_after,
               'states_before': states_before, 'states_after': states_after,
               'before_normalized': before, 'after_normalized': after, 'only_expected_changes': preserved}
     (workspace / 'docs' / Path(args.report).name).write_text(
