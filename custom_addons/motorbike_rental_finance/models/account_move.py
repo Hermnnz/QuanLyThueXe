@@ -38,7 +38,7 @@ class AccountMove(models.Model):
             self.partner_id = contract.customer_id
         if contract.currency_id:
             self.currency_id = contract.currency_id
-        lines = []
+        lines = [Command.clear()]
         # 2.1. Lấy TIỀN THUÊ XE từ Hợp đồng
         if contract.total_amount and contract.total_amount > 0:
             lines.append(Command.create({
@@ -58,9 +58,7 @@ class AccountMove(models.Model):
                 "charge_id": charge.id,
                 "price_catalog_id": charge.price_catalog_id.id if charge.price_catalog_id else False,
             }))
-        # Tự động nạp vào bảng dòng chi tiết hóa đơn
-        if lines:
-            self.invoice_line_ids = lines
+        self.invoice_line_ids = lines
 
     # 6. Các hàm Action / Nghiệp vụ (nút bấm button)
     
