@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_move_form_inherit_rental_finance" model="ir.ui.view">
+        <field name="name">account.move.form.inherit.rental.finance</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <!-- Thêm trường Hợp đồng thuê xe ngay trên đầu form -->
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="contract_id" 
+                       options="{'no_create': True}" 
+                       placeholder="Chọn hợp đồng"/>
+            </xpath>
+
+            <!-- Thêm cột Khoản phát sinh và Mục bảng giá vào bảng chi tiết dòng hóa đơn -->
+            <xpath expr="//field[@name='invoice_line_ids']//list//field[@name='name']" position="before">
+                <field name="charge_id" optional="show" options="{'no_create': True}"/>
+                <field name="price_catalog_id" optional="show" options="{'no_create': True}"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

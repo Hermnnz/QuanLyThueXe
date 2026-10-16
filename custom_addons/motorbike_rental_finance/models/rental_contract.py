@@ -16,6 +16,12 @@ class RentalContract(models.Model):
         string="Lịch sử thanh toán",
     )
     
+    invoice_ids = fields.One2many(
+        "account.move",
+        "contract_id",
+        string="Hóa đơn",
+    )
+    
     settlement_status = fields.Selection([
         ('unsettled', 'Chưa quyết toán'),
         ('settled', 'Đã quyết toán'),

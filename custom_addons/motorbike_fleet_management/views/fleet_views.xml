@@ -344,7 +344,7 @@
     <field name="context">{'motorbike_only': True}</field>
   </record>
   <record id="fleet.menu_root" model="ir.ui.menu">
-    <field name="name">Quản lý đội xe</field>
+    <field name="name">Quản lý xe</field>
     <field name="action" ref="action_electric_motorbikes"/>
   </record>
   <record id="fleet.fleet_vehicles" model="ir.ui.menu">
