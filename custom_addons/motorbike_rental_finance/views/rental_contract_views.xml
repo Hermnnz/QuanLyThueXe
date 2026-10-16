@@ -15,7 +15,7 @@
                         type="object" 
                         string="Quyết toán thanh toán" 
                         class="oe_highlight" 
-                        invisible="state != 'in_progress'"/>
+                        invisible="state != 'in_progress' or settlement_status == 'settled'"/>
             </xpath>
 
             <!-- 2. Chèn 2 Tab hiển thị Phụ phí và Lịch sử thanh toán vào dưới Sheet -->

@@ -25,9 +25,15 @@
             <form string="Khoản phát sinh">
                 <header>
                     <button name="action_confirm" string="Xác nhận" type="object" class="oe_highlight" invisible="state != 'draft'"/>
+                    <!-- 👉 Nút mới: Chỉ hiện khi khoản phí ĐÃ XÁC NHẬN và CHƯA CÓ HÓA ĐƠN -->
+                    <button name="action_create_invoice" 
+                            string="Tạo hóa đơn" 
+                            type="object" 
+                            class="oe_highlight" 
+                            invisible="state != 'confirmed' or invoice_id"/>
                     <button name="action_cancel" string="Hủy bỏ" type="object" invisible="state not in ('draft', 'confirmed')"/>
                     <button name="action_draft" string="Về bản nháp" type="object" invisible="state != 'cancelled'"/>
-                    <field name="state" widget="statusbar" statusbar_visible="draft,confirmed"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,confirmed"/>   
                 </header>
                 <sheet>
                     <group string="Thông tin khoản phát sinh">

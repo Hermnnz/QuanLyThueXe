@@ -16,74 +16,72 @@ class RentalContract(models.Model):
         string="Lịch sử thanh toán",
     )
     
+    settlement_status = fields.Selection([
+        ('unsettled', 'Chưa quyết toán'),
+        ('settled', 'Đã quyết toán'),
+    ], string='Trạng thái quyết toán', default='unsettled', readonly=True, copy=False)
+    
    
 
     def action_settlement(self):
-        #Hàm tự động quyết toán khi trả xe: Tiền xe + Tiền phạt so với Tiền cọc
-        for contract in self:
-            # 1. Tiền thuê xe gốc
-            rent_fee = contract.total_amount or 0.0
-            
-            # 2. Tổng tiền phạt/phụ phí (chỉ tính những khoản đã xác nhận)
-            penalties = sum(contract.charge_ids.filtered(lambda c: c.state == 'confirmed').mapped('amount'))
-            
-            # 3. Tiền cọc ban đầu
-            deposit = contract.deposit_amount or 0.0
+        self.ensure_one()
 
-            # 4. Tính chênh lệch: (Tiền xe + Phạt) - Cọc
-            balance = (rent_fee + penalties) - deposit
+        # 1. Chống bấm trùng & kiểm tra phụ phí chưa duyệt
+        if self.settlement_status == 'settled':
+            raise UserError("Hợp đồng này đã được quyết toán rồi!")
 
-            # GỢI Ý ĐẾN ĐÂY:
-            
-            if balance < 0:
-                # Thối tiền thừa cho khách
-                payment = self.env['motorbike.rental.payment'].create({
-                    'name': f"RF-{fields.Date.today()}-{contract.id}",
-                    'customer_id': contract.customer_id.id,
-                    'contract_id': contract.id,
-                    'transaction_type': 'refund',
-                    'amount': abs(balance),
-                    'currency_id': contract.currency_id.id,
-                    'payment_method': 'cash',  # Hoặc phương thức khác tùy nhu cầu
-                    'payment_date': fields.Date.today(),
-                })
-                return {
-                    'name': 'Phiếu thanh toán quyết toán',
-                    'type': 'ir.actions.act_window',
-                    'res_model': 'motorbike.rental.payment',
-                    'res_id': payment.id,
-                    'view_mode': 'form',
-                    'target': 'current',
+        draft_charges = self.charge_ids.filtered(lambda c: c.state == 'draft')
+        if draft_charges:
+            raise UserError(
+                "Vẫn còn khoản phụ phí/phạt đang ở trạng thái Nháp. "
+                "Vui lòng xác nhận hoặc hủy các khoản phí này trước khi quyết toán!"
+            )
+
+        # 2. Tính toán số tiền: (Tiền xe + Phạt đã xác nhận) - Cọc
+        rent_fee = self.total_amount or 0.0  #tiền thuê xe gốc, nếu false hoặc none thì mặc định 0.0
+        
+        
+        # Lọc ra các khoản phụ phí đã được xác nhận và Gom toàn bộ số tiền của các khoản phí đã duyệt thành 1 danh sách
+        penalties = sum(self.charge_ids.filtered(lambda c: c.state == 'confirmed').mapped('amount'))
+        
+        deposit = self.deposit_amount or 0.0
+        
+        balance = (rent_fee + penalties) - deposit
+
+        # Đánh dấu hợp đồng đã quyết toán
+        self.settlement_status = 'settled'
+
+        # 3. Xử lý khi số dư bằng 0 (Dùng is_zero của tiền tệ để tránh sai số float)
+        if self.currency_id.is_zero(balance):
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Quyết toán hoàn tất',
+                    'message': 'Đã cấn trừ vừa đủ giữa tiền thuê và tiền cọc, không cần thu thêm hay hoàn tiền.',
+                    'type': 'success',
+                    'sticky': False,
+                    'next': {'type': 'ir.actions.client', 'tag': 'reload'},  # Tự động làm mới giao diện
                 }
-            elif balance > 0:
-                # Thu thêm phần thiếu
-                payment = self.env['motorbike.rental.payment'].create({
-                    'name': f"AP-{fields.Date.today()}-{contract.id}",
-                    'customer_id': contract.customer_id.id,
-                    'contract_id': contract.id,
-                    'transaction_type': 'additional_payment',
-                    'amount': balance,
-                    'currency_id': contract.currency_id.id,
-                    'payment_method': 'cash',  # Hoặc phương thức khác tùy nhu cầu
-                    'payment_date': fields.Date.today(),
-                })
-                return {
-                    'name': 'Phiếu thanh toán quyết toán',
-                    'type': 'ir.actions.act_window',
-                    'res_model': 'motorbike.rental.payment',
-                    'res_id': payment.id,
-                    'view_mode': 'form',
-                    'target': 'current',
-                }
-            else:
-                # Báo thông báo đã cấn trừ vừa đủ
-              return {
-                  'type': 'ir.actions.client',
-                  'tag': 'display_notification',
-                  'params': {
-                      'title': 'Quyết toán hoàn tất',
-                      'message': 'Đã đủ, không cần thanh toán thêm hay hoàn tiền.',
-                      'type': 'success',
-                      'sticky': False,
-                  }
-              }
+            }
+
+        # 4. Phân nhánh tạo phiếu Hoàn tiền (balance < 0) hoặc Thu thêm (balance > 0)
+        tx_type = 'refund' if balance < 0 else 'additional_payment'
+        payment = self.env['motorbike.rental.payment'].create({
+            'customer_id': self.customer_id.id,
+            'contract_id': self.id,
+            'transaction_type': tx_type,
+            'amount': abs(balance),
+            'currency_id': self.currency_id.id,
+            'payment_method': 'cash',
+            'payment_date': fields.Date.context_today(self),
+        })
+
+        return {
+            'name': 'Phiếu thanh toán quyết toán',
+            'type': 'ir.actions.act_window',
+            'res_model': 'motorbike.rental.payment',
+            'res_id': payment.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }

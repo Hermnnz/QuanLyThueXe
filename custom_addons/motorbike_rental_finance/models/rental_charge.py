@@ -1,6 +1,6 @@
 # 1. Đầu file: Các dòng import
-from odoo import api, fields, models
-from odoo.exceptions import ValidationError
+from odoo import Command, api, fields, models
+from odoo.exceptions import UserError, ValidationError
 
 
 # 2. Khai báo Class và các thuộc tính Model ( _name , _description ...)
@@ -126,3 +126,61 @@ class MotorbikeRentalCharge(models.Model):
     def action_draft(self):
         for record in self:
             record.state = 'draft'  
+    
+    def action_create_invoice(self):
+        """Hỗ trợ xuất hóa đơn cho 1 hoặc gộp nhiều khoản phí của cùng 1 khách hàng."""
+        if not self:
+            return
+
+        # 1. Nếu chỉ chọn 1 bản ghi và đã có hóa đơn chưa bị hủy -> mở hóa đơn đó lên
+        if len(self) == 1 and self.invoice_id and self.invoice_id.state != "cancel":
+            return {
+                "name": "Hóa đơn khách hàng",
+                "type": "ir.actions.act_window",
+                "res_model": "account.move",
+                "res_id": self.invoice_id.id,
+                "view_mode": "form",
+                "target": "current",
+            }
+
+        # 2. Kiểm tra điều kiện hợp lệ trước khi tạo hóa đơn
+        if any(rec.state != "confirmed" for rec in self):
+            raise UserError("Tất cả các khoản phí phải ở trạng thái 'Đã xác nhận' trước khi tạo hóa đơn!")
+        if any(rec.invoice_id and rec.invoice_id.state != "cancel" for rec in self):
+            raise UserError("Có khoản phí đã được xuất hóa đơn rồi, không thể tạo trùng!")
+        if len(self.mapped("customer_id")) > 1:
+            raise UserError("Chỉ có thể gộp hóa đơn cho các khoản phí của cùng một khách hàng!")
+        if len(self.mapped("currency_id")) > 1:
+            raise UserError("Các khoản phí phải cùng một loại tiền tệ mới có thể gộp chung hóa đơn!")
+
+        # 3. Chuẩn bị các dòng chi tiết hóa đơn (hỗ trợ gộp nhiều phí vào 1 hóa đơn)
+        invoice_lines = [
+            Command.create({
+                "name": rec.name,
+                "quantity": rec.quantity,
+                "price_unit": rec.unit_price,
+            })
+            for rec in self
+        ]
+
+        invoice_vals = {
+            "move_type": "out_invoice",
+            "partner_id": self[0].customer_id.id,
+            "currency_id": self[0].currency_id.id,
+            "invoice_date": fields.Date.context_today(self),
+            "invoice_line_ids": invoice_lines,
+        }
+
+        # 4. Tạo hóa đơn và liên kết ngược lại các phiếu phí
+        invoice = self.env["account.move"].create(invoice_vals)
+        self.write({"invoice_id": invoice.id})
+
+        return {
+            "name": "Hóa đơn khách hàng",
+            "type": "ir.actions.act_window",
+            "res_model": "account.move",
+            "res_id": invoice.id,
+            "view_mode": "form",
+            "target": "current",
+        }
+    
