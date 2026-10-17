@@ -1,0 +1,9 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_rental_contract_user,rental.contract user,model_rental_contract,motorbike_rental_core.group_rental_user,1,1,1,0
+access_rental_contract_manager,rental.contract manager,model_rental_contract,motorbike_rental_core.group_rental_manager,1,1,1,1
+access_rental_vehicle_type_user,rental.vehicle.type user,model_rental_vehicle_type,motorbike_rental_core.group_rental_user,1,0,0,0
+access_rental_vehicle_type_manager,rental.vehicle.type manager,model_rental_vehicle_type,motorbike_rental_core.group_rental_manager,1,1,1,1
+access_rental_contract_line_user,rental.contract.line user,model_rental_contract_line,motorbike_rental_core.group_rental_user,1,1,1,1
+access_rental_contract_line_manager,rental.contract.line manager,model_rental_contract_line,motorbike_rental_core.group_rental_manager,1,1,1,1
+access_rental_customer_document_user,rental.customer.document user,model_rental_customer_document,motorbike_rental_core.group_rental_user,1,1,1,0
+access_rental_customer_document_manager,rental.customer.document manager,model_rental_customer_document,motorbike_rental_core.group_rental_manager,1,1,1,1

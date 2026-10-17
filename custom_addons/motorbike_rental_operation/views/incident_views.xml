@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_rental_incident_log" model="ir.actions.act_window">
+        <field name="name">Sự cố &amp; Hư hỏng</field>
+        <field name="res_model">rental.operation.incident.log</field>
+        <field name="view_mode">kanban,list,form</field>
+    </record>
+
+    <record id="view_rental_incident_log_tree" model="ir.ui.view">
+        <field name="name">rental.operation.incident.log.list</field>
+        <field name="model">rental.operation.incident.log</field>
+        <field name="arch" type="xml">
+            <list string="Sự cố">
+                <field name="currency_id" column_invisible="1"/>
+                <field name="name"/>
+                <field name="ticket_id"/>
+                <field name="vehicle_id"/>
+                <field name="price_catalog_id"/>
+                <field name="fault_party"/>
+                <field name="damage_description"/>
+                <field name="date_reported"/>
+                <field name="status" widget="badge" 
+                       decoration-info="status == 'new'" 
+                       decoration-warning="status == 'processing'" 
+                       decoration-success="status == 'resolved'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_rental_incident_log_form" model="ir.ui.view">
+        <field name="name">rental.operation.incident.log.form</field>
+        <field name="model">rental.operation.incident.log</field>
+        <field name="arch" type="xml">
+            <form string="Sự cố">
+                <header>
+                    <button name="action_start_processing" 
+                            type="object" 
+                            string="Xác nhận xử lý" 
+                            class="oe_highlight" 
+                            invisible="status != 'new'"
+                            confirm="Bạn có chắc chắn muốn bắt đầu xử lý sự cố này?"/>
+                    <button name="action_resolve" 
+                            type="object" 
+                            string="Xác nhận hoàn tất" 
+                            class="btn-success" 
+                            invisible="status != 'processing'"
+                            confirm="Bạn có chắc chắn sự cố này đã được xử lý/khắc phục hoàn tất?"/>
+                    <button name="action_reset_new" 
+                            type="object" 
+                            string="Đặt lại Mới" 
+                            invisible="status == 'new'"/>
+                    <field name="status" widget="statusbar" statusbar_visible="new,processing,resolved"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" force_save="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="available_vehicle_ids" invisible="1"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="ticket_id"/>
+                            <field name="vehicle_id"/>
+                            <field name="date_reported"/>
+                        </group>
+                        <group>
+                            <field name="fault_party"/>
+                            <field name="price_catalog_id" options="{'no_create': True, 'no_open': True}"/>
+                        </group>
+                    </group>
+                    <group string="Mô tả lỗi / Hư hỏng">
+                        <field name="damage_description" nolabel="1" placeholder="Nhập mô tả chi tiết lỗi hoặc hư hỏng của xe..."/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_rental_incident_log_search" model="ir.ui.view">
+        <field name="name">rental.operation.incident.log.search</field>
+        <field name="model">rental.operation.incident.log</field>
+        <field name="arch" type="xml">
+            <search string="Tìm kiếm Sự cố">
+                <field name="name"/>
+                <field name="vehicle_id"/>
+                <field name="ticket_id"/>
+                <field name="fault_party"/>
+                <filter string="Mới" name="new" domain="[('status','=','new')]"/>
+                <filter string="Đang xử lý" name="processing" domain="[('status','=','processing')]"/>
+                <filter string="Đã giải quyết" name="resolved" domain="[('status','=','resolved')]"/>
+                <group expand="0" string="Nhóm theo">
+                    <filter string="Trạng thái" name="group_by_status" context="{'group_by':'status'}"/>
+                    <filter string="Lỗi thuộc về" name="group_by_fault_party" context="{'group_by':'fault_party'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_rental_incident_log_kanban" model="ir.ui.view">
+        <field name="name">rental.operation.incident.log.kanban</field>
+        <field name="model">rental.operation.incident.log</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="status" class="o_kanban_small_column">
+                <field name="id"/>
+                <field name="name"/>
+                <field name="vehicle_id"/>
+                <field name="ticket_id"/>
+                <field name="fault_party"/>
+                <field name="status"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_global_click">
+                            <div class="oe_kanban_details">
+                                <strong class="o_kanban_record_title">
+                                    <field name="name"/>
+                                </strong>
+                                <div>
+                                    Xe: <field name="vehicle_id"/>
+                                </div>
+                                <div>
+                                    Phiếu: <field name="ticket_id"/>
+                                </div>
+                                <div>
+                                    Lỗi thuộc về: <field name="fault_party"/>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+</odoo>

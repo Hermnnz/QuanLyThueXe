@@ -1,0 +1,138 @@
+{
+  "database": "motorbike_fleet_simple_20261002",
+  "expected_state_renames": {
+    "rented": "renting",
+    "inspection": "pending_inspection"
+  },
+  "approved_plate_changes_before": {},
+  "generated_missing_code_ids": [],
+  "current_odometer_before": {
+    "9": 0.0,
+    "10": 0.0,
+    "11": 0.0,
+    "48": 0.0,
+    "49": 0.0,
+    "50": 0.0,
+    "51": 0.0,
+    "52": 0.0,
+    "53": 0.0,
+    "54": 0.0,
+    "55": 0.0,
+    "56": 0.0,
+    "57": 0.0,
+    "58": 0.0,
+    "59": 0.0,
+    "60": 0.0,
+    "61": 0.0,
+    "62": 0.0,
+    "63": 0.0,
+    "64": 0.0,
+    "65": 0.0,
+    "66": 0.0,
+    "67": 0.0,
+    "68": 0.0,
+    "69": 0.0,
+    "70": 0.0,
+    "71": 0.0,
+    "72": 0.0,
+    "73": 0.0,
+    "74": 0.0,
+    "75": 0.0,
+    "76": 0.0,
+    "77": 0.0,
+    "78": 0.0,
+    "79": 0.0,
+    "80": 0.0,
+    "81": 0.0,
+    "82": 0.0,
+    "83": 0.0,
+    "276": 0.0,
+    "277": 0.0,
+    "278": 0.0
+  },
+  "current_odometer_after": {
+    "9": 0.0,
+    "10": 0.0,
+    "11": 0.0,
+    "48": 0.0,
+    "49": 0.0,
+    "50": 0.0,
+    "51": 0.0,
+    "52": 0.0,
+    "53": 0.0,
+    "54": 0.0,
+    "55": 0.0,
+    "56": 0.0,
+    "57": 0.0,
+    "58": 0.0,
+    "59": 0.0,
+    "60": 0.0,
+    "61": 0.0,
+    "62": 0.0,
+    "63": 0.0,
+    "64": 0.0,
+    "65": 0.0,
+    "66": 0.0,
+    "67": 0.0,
+    "68": 0.0,
+    "69": 0.0,
+    "70": 0.0,
+    "71": 0.0,
+    "72": 0.0,
+    "73": 0.0,
+    "74": 0.0,
+    "75": 0.0,
+    "76": 0.0,
+    "77": 0.0,
+    "78": 0.0,
+    "79": 0.0,
+    "80": 0.0,
+    "81": 0.0,
+    "82": 0.0,
+    "83": 0.0,
+    "276": 0.0,
+    "277": 0.0,
+    "278": 0.0
+  },
+  "states_before": {
+    "pending_inspection": 8,
+    "available": 21,
+    "renting": 8,
+    "maintenance": 5
+  },
+  "states_after": {
+    "pending_inspection": 8,
+    "available": 21,
+    "renting": 8,
+    "maintenance": 5
+  },
+  "before_normalized": {
+    "fleet_vehicle": {
+      "count": 42,
+      "normalized_sha256": "2d69439959961b77945b4aa53162e0d544f3fecf2aa6efecb846a35494161a11"
+    },
+    "fleet_vehicle_log_services": {
+      "count": 302,
+      "normalized_sha256": "a3c28465d50e96fd50cdcd0f811ad3777352a562efc999971da5b9f4bece2300"
+    },
+    "fleet_vehicle_odometer": {
+      "count": 0,
+      "normalized_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    }
+  },
+  "after_normalized": {
+    "fleet_vehicle": {
+      "count": 42,
+      "normalized_sha256": "2d69439959961b77945b4aa53162e0d544f3fecf2aa6efecb846a35494161a11"
+    },
+    "fleet_vehicle_log_services": {
+      "count": 302,
+      "normalized_sha256": "a3c28465d50e96fd50cdcd0f811ad3777352a562efc999971da5b9f4bece2300"
+    },
+    "fleet_vehicle_odometer": {
+      "count": 0,
+      "normalized_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    }
+  },
+  "only_expected_changes": true
+}

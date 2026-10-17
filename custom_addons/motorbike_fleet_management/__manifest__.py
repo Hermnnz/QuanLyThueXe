@@ -1,0 +1,18 @@
+{
+    'name': 'Motorbike Fleet & Maintenance',
+    'version': '18.0.5.7.0',
+    'category': 'Human Resources/Fleet',
+    'summary': 'Fleet delivery/return interface, standard ODO and maintenance eligibility',
+    'description': 'Minimal Fleet with shared renting/pending_inspection states and explicit return inspection results. Rental owns contract overlap; Operations owns trip records.',
+    'license': 'LGPL-3',
+    'depends': ['fleet'],
+    'data': [
+        'security/groups.xml',
+        'security/ir.model.access.csv',
+        'data/service_type.xml',
+        'data/vehicle_sequence.xml',
+        'views/fleet_views.xml',
+    ],
+    'installable': True,
+    'application': True,
+}

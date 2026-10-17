@@ -1,0 +1,6 @@
+<odoo noupdate="1">
+    <record id="service_type_electric_maintenance" model="fleet.service.type">
+        <field name="name">Bảo dưỡng xe điện</field>
+        <field name="category">service</field>
+    </record>
+</odoo>

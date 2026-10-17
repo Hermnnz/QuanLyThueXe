@@ -1,0 +1,32 @@
+{
+  "database": "motorbike_fleet_simple_20261002",
+  "before": {
+    "fleet_vehicle": {
+      "count": 39,
+      "sha256": "8c6e20aac6148bf67303553dc6e86748ce70c5fb1d39a3078296a699ca8e6ba7"
+    },
+    "fleet_vehicle_log_services": {
+      "count": 300,
+      "sha256": "8c3de093396f470feb570cfa3b8f328e9c32425db4e55c8eafe81c8982b4de1e"
+    },
+    "fleet_vehicle_odometer": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "after": {
+    "fleet_vehicle": {
+      "count": 39,
+      "sha256": "8c6e20aac6148bf67303553dc6e86748ce70c5fb1d39a3078296a699ca8e6ba7"
+    },
+    "fleet_vehicle_log_services": {
+      "count": 300,
+      "sha256": "8c3de093396f470feb570cfa3b8f328e9c32425db4e55c8eafe81c8982b4de1e"
+    },
+    "fleet_vehicle_odometer": {
+      "count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "unchanged": true
+}

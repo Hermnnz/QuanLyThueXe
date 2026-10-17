@@ -1,0 +1,11 @@
+id,name,vehicle_code,price
+vehicle_vision_1,Honda Vision 2022,VS-001,150000
+vehicle_vision_2,Honda Vision 2022,VS-002,150000
+vehicle_vision_3,Honda Vision 2023,VS-003,160000
+vehicle_airblade_1,Honda AirBlade 125,AB-001,200000
+vehicle_airblade_2,Honda AirBlade 150,AB-002,250000
+vehicle_sh_1,Honda SH 150i,SH-001,300000
+vehicle_sh_2,Honda SH 150i,SH-002,300000
+vehicle_wave_1,Honda Wave Alpha,WV-001,100000
+vehicle_wave_2,Honda Wave Alpha,WV-002,100000
+vehicle_exciter_1,Yamaha Exciter 155,EX-001,250000

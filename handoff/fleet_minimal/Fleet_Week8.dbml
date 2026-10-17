@@ -1,0 +1,85 @@
+// Fleet & Maintenance, integration Week 8, Odoo 19 / 19.0.5.6.0.
+// Core business tables: fleet_vehicle and fleet_vehicle_log_services.
+// Brand/model catalogs show relevant verified columns; other shared tables are ID-only placeholders.
+// When merging: retain the group definition of each shared table and remove duplicate placeholders.
+// Rental/Operations references belong to their modules; Fleet supplies eligibility and delivery/return methods. Stored current odometer follows the team supplementary Word. No battery asset model.
+// No SQL defaults, ENUM, UNIQUE or CHECK added beyond the implemented schema.
+// Business ERD: only selected relevant columns; use the Physical file for all stored columns.
+// Pending teacher review: company_id, vendor_id, service_type_id, technician_id and their shared tables are omitted from this business diagram only.
+
+Project Fleet_Week8 {
+  database_type: 'PostgreSQL'
+  Note: 'Hai model nghiệp vụ; tuần 8 có giao/trả, kiểm tra lịch và ODO lưu trực tiếp theo Word bổ sung. Không phải sơ đồ toàn bộ dự án.'
+}
+
+Table fleet_vehicle {
+  id integer [pk, increment, not null]
+  model_id integer [not null]
+  license_plate varchar
+  odometer double [note: 'ODO hiện tại, nhận cập nhật từ Operations theo Word bổ sung.']
+  acquisition_date date
+  active boolean [note: 'Trường lưu trữ chuẩn Odoo.']
+  vehicle_code varchar [unique, note: 'Mã xe duy nhất trên toàn bộ xe, kể cả xe lưu trữ. ORM tự cấp mã nếu chưa nhập; không tự thêm NOT NULL ở PostgreSQL.']
+  operational_status varchar [not null, note: 'available / renting / pending_inspection / maintenance. Luồng giao/trả và bảo dưỡng cập nhật; không phải PostgreSQL enum.']
+  next_service_date date [note: 'Hồ sơ hoàn thành gần nhất có mốc tiếp theo sẽ cập nhật mốc trên xe.']
+  block_reason text
+  is_electric_motorbike boolean
+  technical_ready boolean [note: 'Bắt đầu bảo dưỡng chặn thuê đặt false; xác nhận đạt kỹ thuật đặt true. Độc lập với khóa thuê chủ động.']
+  rental_blocked boolean [note: 'Khóa chủ động, cần lý do; kiểm tra điều kiện Fleet và giao xe từ chối khi bị khóa. Rental phải gọi API Fleet.']
+
+  indexes {
+    vehicle_code [name: 'fleet_vehicle__vehicle_code_index', type: btree]
+  }
+
+  Note: 'Hồ sơ xe: kế thừa fleet.vehicle. Trạng thái cập nhật qua giao/trả và bảo dưỡng; ODO hiện tại lưu trực tiếp trên xe theo Word bổ sung.'
+}
+
+Table fleet_vehicle_log_services {
+  id integer [pk, increment, not null]
+  vehicle_id integer [not null]
+  description varchar
+  state varchar [note: 'new / scheduled / running / done / cancelled. Tuần 7: chuyển qua nút và kiểm tra state flow ở server.']
+  date date
+  notes text
+  amount numeric [note: 'Chi phí chuẩn Odoo. cost là alias ORM, không có cột cost riêng.']
+  active boolean [note: 'Trường lưu trữ chuẩn Odoo.']
+  maintenance_type varchar [not null, note: 'preventive / corrective / emergency. Selection Odoo lưu varchar.']
+  next_service_date date [note: 'Hồ sơ hoàn thành gần nhất có mốc tiếp theo sẽ cập nhật mốc trên xe.']
+  result text
+  blocks_rental boolean [note: 'Lịch scheduled giao nhau hoặc running chưa kết thúc chặn điều kiện Fleet theo thời gian.']
+  scheduled_start "timestamp without time zone"
+  scheduled_end "timestamp without time zone"
+  actual_start "timestamp without time zone" [note: 'Tự điền khi bắt đầu nếu chưa nhập; timestamp UTC không timezone.']
+  actual_end "timestamp without time zone" [note: 'Tự điền khi kết thúc hồ sơ đang chạy nếu chưa nhập; timestamp UTC không timezone.']
+
+  indexes {
+    vehicle_id [name: 'fleet_vehicle_log_services__vehicle_id_index', type: btree]
+  }
+
+  Note: 'Hồ sơ bảo dưỡng kế thừa Fleet, quan hệ 1:N với xe. Luồng lên lịch/bắt đầu/hoàn tất/hủy; hoàn tất không tự xác nhận xe đạt kỹ thuật.'
+}
+
+// STANDARD ODOO CATALOGS AND SHARED REFERENCES — not newly created custom models.
+// Replace these with the shared tables owned by the group; do not create duplicate tables.
+
+Table fleet_vehicle_model {
+  id integer [pk, increment, not null]
+  brand_id integer [not null]
+  name varchar [not null]
+  vehicle_type varchar [not null]
+  active boolean
+  Note: 'Dòng/mẫu xe chuẩn Odoo, thuộc một hãng. Các cột cần thiết cho ERD; không phải schema đầy đủ.'
+}
+
+Table fleet_vehicle_model_brand {
+  id integer [pk, increment, not null]
+  name varchar [not null]
+  active boolean
+  Note: 'Hãng xe chuẩn Odoo. Các cột cần thiết cho ERD; không phải schema đầy đủ.'
+}
+
+// FOREIGN KEYS — preserved from the implemented schema.
+
+Ref fleet_vehicle_model_id_fkey: fleet_vehicle.model_id > fleet_vehicle_model.id [delete: restrict]
+Ref fleet_vehicle_log_services_vehicle_id_fkey: fleet_vehicle_log_services.vehicle_id > fleet_vehicle.id [delete: restrict]
+Ref fleet_vehicle_model_brand_id_fkey: fleet_vehicle_model.brand_id > fleet_vehicle_model_brand.id [delete: restrict]

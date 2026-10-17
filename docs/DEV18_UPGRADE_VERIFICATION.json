@@ -1,0 +1,17 @@
+{
+  "dev_baseline": "8d0365e",
+  "runtime": "18.0",
+  "unchanged_original_fields": {
+    "fleet_vehicle": {},
+    "fleet_vehicle_log_services": {},
+    "rental_contract": {},
+    "rental_contract_line": {},
+    "rental_operation_ticket": {},
+    "rental_operation_ticket_vehicle": {}
+  },
+  "odo_before_upgrade": 67.0,
+  "odo_preserved": true,
+  "missing_vehicle_code_assigned": true,
+  "existing_renting_operation_can_return": true,
+  "demo_database_modified": false
+}
