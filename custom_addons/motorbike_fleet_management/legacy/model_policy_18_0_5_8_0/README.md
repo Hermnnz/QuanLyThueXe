@@ -1,0 +1,1 @@
+Bản lưu chính sách theo dòng xe trước khi chuyển sang từng xe ngày 18/10/2026. Không import hay nạp XML từ thư mục này. Các cột chính sách cũ trên fleet.vehicle.model được giữ để tham khảo, không tham gia tính hạn. Muốn khôi phục cần migration sao chép dữ liệu và kiểm thử; không ghi đè code đang dùng trực tiếp.

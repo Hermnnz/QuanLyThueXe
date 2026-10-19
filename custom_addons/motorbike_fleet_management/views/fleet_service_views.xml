@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="service_form_motorbike" model="ir.ui.view">
+    <field name="name">service_form_motorbike</field>
+    <field name="model">fleet.vehicle.log.services</field>
+    <field name="inherit_id" ref="fleet.fleet_vehicle_log_services_view_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='purchaser_id']" position="attributes">
+        <attribute name="invisible">is_electric_motorbike</attribute>
+      </xpath>
+      <xpath expr="//field[@name='date']" position="after">
+        <field name="active" string="Đang sử dụng" readonly="state == 'running'"/>
+      </xpath>
+      <xpath expr="//label[@for='odometer']" position="attributes">
+        <attribute name="invisible">is_electric_motorbike</attribute>
+      </xpath>
+      <xpath expr="//field[@name='odometer']/parent::div" position="attributes">
+        <attribute name="invisible">is_electric_motorbike</attribute>
+      </xpath>
+      <xpath expr="//field[@name='description']" position="attributes">
+        <attribute name="string">Nội dung / vấn đề cần xử lý</attribute>
+        <attribute name="readonly">is_electric_motorbike and state in ['done', 'cancelled']</attribute>
+      </xpath>
+      <xpath expr="//field[@name='vehicle_id']" position="attributes">
+        <attribute name="string">Phương tiện</attribute>
+      </xpath>
+      <xpath expr="//field[@name='service_type_id']" position="attributes">
+        <attribute name="string">Loại dịch vụ</attribute>
+        <attribute name="invisible">is_electric_motorbike</attribute>
+      </xpath>
+      <xpath expr="//field[@name='date']" position="attributes">
+        <attribute name="string">Ngày ghi nhận</attribute>
+        <attribute name="readonly">is_electric_motorbike and state in ['done', 'cancelled']</attribute>
+      </xpath>
+      <xpath expr="//field[@name='amount']" position="attributes">
+        <attribute name="string">Chi phí</attribute>
+        <attribute name="readonly">is_electric_motorbike and state in ['done', 'cancelled']</attribute>
+      </xpath>
+      <xpath expr="//field[@name='vendor_id']" position="attributes">
+        <attribute name="string">Đơn vị thực hiện</attribute>
+        <attribute name="invisible">is_electric_motorbike</attribute>
+      </xpath>
+      <xpath expr="//sheet/separator" position="attributes">
+        <attribute name="string">Ghi chú</attribute>
+      </xpath>
+      <xpath expr="//header/field[@name='state']" position="replace">
+        <button name="action_schedule" type="object" string="Lên lịch" invisible="not is_electric_motorbike or state != 'new'"/>
+        <button name="action_start" type="object" string="Bắt đầu" class="btn-primary" invisible="not is_electric_motorbike or state not in ['new', 'scheduled']"/>
+        <button name="action_done" type="object" string="Hoàn tất" class="btn-primary" invisible="not is_electric_motorbike or state != 'running'"/>
+        <button name="action_cancel" type="object" string="Hủy" invisible="not is_electric_motorbike or state in ['done', 'cancelled']"/>
+        <field name="state" widget="statusbar" readonly="is_electric_motorbike"
+               statusbar_visible="new,scheduled,running,done"/>
+      </xpath>
+      <xpath expr="//sheet" position="inside">
+        <field name="is_electric_motorbike" invisible="1"/>
+        <group string="Hồ sơ bảo dưỡng xe điện" invisible="not is_electric_motorbike">
+          <group>
+            <field name="maintenance_type" readonly="state in ['done', 'cancelled']"/>
+            <field name="blocks_rental" readonly="state == 'running'"/>
+            <field name="next_service_date" readonly="state in ['done', 'cancelled']"/>
+          </group>
+          <group>
+            <field name="scheduled_start" readonly="state in ['done', 'cancelled']"/>
+            <field name="scheduled_end" readonly="state in ['done', 'cancelled']"/>
+            <field name="actual_start" readonly="state in ['done', 'cancelled']"/>
+            <field name="actual_end" readonly="state in ['done', 'cancelled']"/>
+            <field name="service_odometer_recorded" readonly="1" invisible="1"/>
+            <field name="service_odometer" readonly="1" invisible="not service_odometer_recorded"/>
+            <field name="result" readonly="state in ['done', 'cancelled']"/>
+          </group>
+        </group>
+      </xpath>
+      <xpath expr="//field[@name='vehicle_id']" position="attributes">
+        <attribute name="domain">[('is_electric_motorbike', '=', True)] if context.get('motorbike_only') else []</attribute>
+        <attribute name="readonly">is_electric_motorbike and state in ['running', 'done', 'cancelled']</attribute>
+      </xpath>
+    </field>
+  </record>
+  <record id="service_search_motorbike" model="ir.ui.view">
+    <field name="name">service_search_motorbike</field>
+    <field name="model">fleet.vehicle.log.services</field>
+    <field name="arch" type="xml">
+      <search>
+        <field name="vehicle_id"/>
+        <field name="description"/>
+        <field name="maintenance_type"/>
+        <field name="state"/>
+        <filter name="new" string="Mới" domain="[('state', '=', 'new')]"/>
+        <filter name="scheduled" string="Đã lên lịch" domain="[('state', '=', 'scheduled')]"/>
+        <filter name="running" string="Đang thực hiện" domain="[('state', '=', 'running')]"/>
+        <filter name="done" string="Hoàn tất" domain="[('state', '=', 'done')]"/>
+        <filter name="cancelled" string="Đã hủy" domain="[('state', '=', 'cancelled')]"/>
+        <separator/>
+        <filter name="blocks_rental" string="Chặn thuê" domain="[('blocks_rental', '=', True)]"/>
+        <separator/>
+        <filter name="planned_dates" string="Lịch dự kiến" date="scheduled_start"/>
+        <separator/>
+        <filter name="archived" string="Đã lưu trữ" domain="[('active', '=', False)]"/>
+        <group>
+          <filter name="group_vehicle" string="Xe" context="{'group_by': 'vehicle_id'}"/>
+          <filter name="group_state" string="Trạng thái" context="{'group_by': 'state'}"/>
+          <filter name="group_type" string="Loại bảo dưỡng" context="{'group_by': 'maintenance_type'}"/>
+        </group>
+      </search>
+    </field>
+  </record>
+  <record id="service_list_motorbike" model="ir.ui.view">
+    <field name="name">service_list_motorbike</field>
+    <field name="model">fleet.vehicle.log.services</field>
+    <field name="arch" type="xml">
+      <list default_order="id desc">
+        <field name="id" string="ID phiếu" readonly="1"/>
+        <field name="vehicle_id"/>
+        <field name="maintenance_type"/>
+        <field name="scheduled_start"/>
+        <field name="scheduled_end"/>
+        <field name="state"/>
+        <field name="blocks_rental"/>
+        <field name="amount"/>
+        <field name="currency_id" column_invisible="True"/>
+      </list>
+    </field>
+  </record>
+</odoo>

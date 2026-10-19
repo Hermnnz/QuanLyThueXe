@@ -1,3 +1,9 @@
+# Bảo dưỡng định kỳ 18.0.5.8.0 — ngày 18/10/2026
+
+Hồi quy trên bản sao đạt 82/82; nhóm định kỳ mở rộng 11/11; nâng cấp demo nhóm định kỳ/giao diện 15/15, sau chỉnh cụm nút chuẩn nhóm giao diện 5/5. Không cộng các lượt thành một tổng. Dữ liệu 8 bảng nghiệp vụ cũ giữ nguyên. Xem [báo cáo chức năng, giới hạn và backup](PERIODIC_MAINTENANCE_20261018.md).
+
+---
+
 # Kiểm chứng tích hợp dev Odoo 18: Fleet 18.0.5.7.0
 
 Ngày 16/10/2026: cài đủ bốn module, 71/71 kiểm thử Fleet/Core/Operations đạt, gồm HTTP website và tài khoản nhân viên. Nâng cấp từ dev cũ có dữ liệu mẫu đạt; xem [báo cáo tích hợp](INTEGRATION_DEV_18_20261016.md) và [bảo toàn dữ liệu](DEV18_UPGRADE_VERIFICATION.json). Các báo cáo Odoo 19 dưới đây là lịch sử.

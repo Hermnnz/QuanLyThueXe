@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="vehicle_form_electric" model="ir.ui.view">
+    <field name="name">vehicle_form_electric</field>
+    <field name="model">fleet.vehicle</field>
+    <field name="inherit_id" ref="fleet.fleet_vehicle_view_form" />
+    <field name="priority">90</field>
+    <field name="arch" type="xml">
+      <xpath expr="//header/field[@name='state_id']" position="attributes">
+        <attribute name="invisible">1</attribute>
+      </xpath>
+      <xpath expr="//header/button[@name='action_accept_driver_change']" position="attributes">
+        <attribute name="invisible">1</attribute>
+      </xpath>
+      <xpath expr="//header" position="inside">
+        <field name="is_electric_motorbike" invisible="1" />
+        <button name="action_confirm_technical_ready" type="object" string="Xác nhận đạt kỹ thuật" class="btn-primary" invisible="not is_electric_motorbike or not active or operational_status == 'renting'" />
+        <button name="action_preventive_service" type="object" string="Tạo phiếu bảo dưỡng định kỳ" groups="motorbike_fleet_management.group_motorbike_technician,fleet.fleet_group_manager" invisible="not is_electric_motorbike or not active or open_preventive_count != 0" />
+        <button name="action_preventive_service" type="object" string="Xem phiếu định kỳ đang xử lý" invisible="not is_electric_motorbike or open_preventive_count == 0" />
+        <field name="open_preventive_count" invisible="1" />
+        <field name="operational_status" widget="statusbar" readonly="1" statusbar_visible="available,renting,pending_inspection,maintenance" invisible="not is_electric_motorbike" />
+      </xpath>
+      <xpath expr="//sheet/group" position="attributes">
+        <attribute name="invisible">1</attribute>
+      </xpath>
+      <xpath expr="//sheet/notebook" position="attributes">
+        <attribute name="invisible">1</attribute>
+      </xpath>
+      <xpath expr="//sheet/div[@class='oe_title']" position="attributes">
+        <attribute name="invisible">1</attribute>
+      </xpath>
+      <xpath expr="//sheet/field[@name='image_128']" position="attributes">
+        <attribute name="invisible">1</attribute>
+      </xpath>
+      <xpath expr="//sheet/field[@name='vehicle_properties']" position="attributes">
+        <attribute name="invisible">1</attribute>
+      </xpath>
+      <xpath expr="//div[@name='button_box']" position="attributes">
+        <attribute name="invisible">1</attribute>
+      </xpath>
+      <xpath expr="//div[@name='button_box']" position="after">
+        <div class="oe_button_box" name="rental_button_box">
+          <button name="action_open_rental_services" type="object" class="oe_stat_button" icon="fa-wrench" invisible="not is_electric_motorbike">
+            <field name="service_count" widget="statinfo" string="Bảo dưỡng &amp; Sửa chữa" />
+          </button>
+        </div>
+      </xpath>
+      <xpath expr="//sheet" position="inside">
+        <div name="rental_vehicle_sheet">
+          <field name="service_schedule_state" invisible="1" />
+          <div class="alert alert-danger" role="alert" invisible="service_schedule_state not in ['due', 'overdue']">
+            <strong>Cần bảo dưỡng:</strong>
+            <field name="service_alert_message" nolabel="1" />
+          </div>
+          <div class="alert alert-warning" role="alert" invisible="service_schedule_state not in ['soon', 'missing_baseline']">
+            <field name="service_alert_message" nolabel="1" />
+          </div>
+          <field name="image_128" widget="image" class="oe_avatar" />
+          <div class="oe_title">
+            <label for="vehicle_code" string="Mã phương tiện" />
+            <h1>
+              <field name="vehicle_code" placeholder="Tự cấp mã khi lưu" />
+            </h1>
+          </div>
+          <group>
+            <group string="Thông tin phương tiện">
+              <field name="is_electric_motorbike" string="Xe máy điện" />
+              <field name="active" string="Đang sử dụng" />
+              <field name="license_plate" string="Biển số" />
+              <field name="model_id" string="Dòng xe" options="{'no_create': True}" />
+              <field name="brand_id" string="Hãng xe" readonly="1" />
+              <field name="acquisition_date" string="Ngày đưa vào sử dụng" />
+            </group>
+            <group string="Điều kiện khai thác">
+              <field name="technical_ready" readonly="1" />
+              <field name="rental_blocked" />
+              <field name="block_reason" required="rental_blocked" invisible="not rental_blocked and not block_reason" />
+              <field name="odometer" string="ODO hiện tại (km)" readonly="operational_status in ['renting', 'maintenance']" />
+              <field name="next_service_date" />
+            </group>
+          </group>
+          <notebook>
+            <page name="periodic_maintenance" string="Bảo dưỡng định kỳ">
+              <p class="text-muted">Chu kỳ chỉ áp dụng cho phương tiện này; mốc ngày hoặc km nào đến trước sẽ được cảnh báo. Không tự khóa thuê.</p>
+              <group>
+                <group string="Cấu hình riêng cho xe">
+                  <field name="service_interval_km" />
+                  <field name="service_interval_months" />
+                  <field name="service_warning_km" />
+                  <field name="service_warning_days" />
+                </group>
+                <group string="Mốc ban đầu đã xác minh">
+                  <field name="service_reference_date" />
+                  <field name="service_reference_odo" />
+                </group>
+                <group string="Lịch được tính tự động">
+                  <field name="service_schedule_state" widget="badge" />
+                  <field name="service_last_date" />
+                  <field name="service_last_odo" />
+                  <field name="service_next_date" invisible="not service_interval_months or not service_last_date" />
+                  <field name="service_next_odo" invisible="not service_interval_km or not service_last_date" />
+                </group>
+              </group>
+            </page>
+            <page name="rental_condition" string="Mô tả tình trạng">
+              <field name="description" nolabel="1" placeholder="Ghi tình trạng chung và ngoại quan hiện tại của xe..." />
+            </page>
+          </notebook>
+        </div>
+      </xpath>
+    </field>
+  </record>
+  <record id="vehicle_list_electric" model="ir.ui.view">
+    <field name="name">vehicle_list_electric</field>
+    <field name="model">fleet.vehicle</field>
+    <field name="arch" type="xml">
+      <list>
+        <field name="vehicle_code" />
+        <field name="license_plate" />
+        <field name="model_id" />
+        <field name="odometer" />
+        <field name="operational_status" />
+        <field name="technical_ready" />
+        <field name="rental_blocked" />
+        <field name="next_service_date" />
+        <field name="service_next_date" optional="show" />
+        <field name="service_next_odo" optional="show" />
+        <field name="service_schedule_state" widget="badge" decoration-warning="service_schedule_state == 'soon'" decoration-danger="service_schedule_state in ['due', 'overdue']" />
+      </list>
+    </field>
+  </record>
+  <record id="vehicle_search_electric" model="ir.ui.view">
+    <field name="name">vehicle_search_electric</field>
+    <field name="model">fleet.vehicle</field>
+    <field name="arch" type="xml">
+      <search>
+        <field name="vehicle_code" string="Xe" filter_domain="['|', ('vehicle_code', 'ilike', self), ('license_plate', 'ilike', self)]" />
+        <field name="model_id" />
+        <field name="operational_status" />
+        <filter name="available" string="Sẵn sàng" domain="[('operational_status', '=', 'available')]" />
+        <filter name="rented" string="Đang thuê" domain="[('operational_status', '=', 'renting')]" />
+        <filter name="inspection" string="Chờ kiểm tra" domain="[('operational_status', '=', 'pending_inspection')]" />
+        <filter name="maintenance" string="Bảo dưỡng" domain="[('operational_status', '=', 'maintenance')]" />
+        <separator />
+        <filter name="blocked" string="Khóa thuê" domain="[('rental_blocked', '=', True)]" />
+        <separator />
+        <filter name="not_ready" string="Chưa đạt kỹ thuật" domain="[('technical_ready', '=', False)]" />
+        <separator />
+        <filter name="service_soon" string="Sắp đến hạn" domain="[('service_schedule_state', '=', 'soon')]" />
+        <filter name="service_overdue" string="Quá hạn" domain="[('service_schedule_state', '=', 'overdue')]" />
+        <filter name="service_missing" string="Thiếu mốc ban đầu" domain="[('service_schedule_state', '=', 'missing_baseline')]" />
+        <filter name="service_due" string="Đến hạn bảo dưỡng" domain="[('service_schedule_state', 'in', ['due', 'overdue'])]" />
+        <separator />
+        <filter name="archived" string="Đã lưu trữ" domain="[('active', '=', False)]" />
+        <group>
+          <filter name="group_status" string="Trạng thái" context="{'group_by': 'operational_status'}" />
+          <filter name="group_model" string="Dòng xe" context="{'group_by': 'model_id'}" />
+        </group>
+      </search>
+    </field>
+  </record>
+  <record id="vehicle_kanban_electric" model="ir.ui.view">
+    <field name="name">vehicle_kanban_electric</field>
+    <field name="model">fleet.vehicle</field>
+    <field name="arch" type="xml">
+      <kanban default_group_by="operational_status" records_draggable="false" quick_create="false" group_create="false" group_delete="false" group_edit="false">
+        <field name="operational_status" />
+        <field name="technical_ready" />
+        <field name="rental_blocked" />
+        <field name="service_schedule_state" />
+        <templates>
+          <t t-name="card">
+            <field name="vehicle_code" class="fw-bold fs-5" />
+            <field name="license_plate" />
+            <field name="model_id" />
+            <div class="small text-muted">ODO: <field name="odometer" /> km</div>
+            <span t-if="record.technical_ready.raw_value" class="badge text-bg-success">Đạt kỹ thuật</span>
+            <span t-else="" class="badge text-bg-warning">Chờ xác nhận kỹ thuật</span>
+            <span t-if="record.rental_blocked.raw_value" class="badge text-bg-danger">Khóa thuê</span>
+            <div>
+              <span t-if="record.service_schedule_state.raw_value === 'soon'" class="badge text-bg-warning">Sắp đến hạn bảo dưỡng</span>
+              <span t-if="record.service_schedule_state.raw_value === 'due'" class="badge text-bg-danger">Đến hạn bảo dưỡng</span>
+              <span t-if="record.service_schedule_state.raw_value === 'overdue'" class="badge text-bg-danger">Quá hạn bảo dưỡng</span>
+              <span t-if="record.service_schedule_state.raw_value === 'missing_baseline'" class="badge text-bg-secondary">Thiếu mốc bảo dưỡng</span>
+            </div>
+            <div t-if="record.service_next_date.raw_value">Hạn định kỳ: <field name="service_next_date" />
+            </div>
+            <div t-if="record.service_next_odo.raw_value &gt; 0">Mốc ODO: <field name="service_next_odo" /> km</div>
+            <div class="mt-2">Ngày hẹn riêng: <field name="next_service_date" />
+            </div>
+          </t>
+        </templates>
+      </kanban>
+    </field>
+  </record>
+</odoo>

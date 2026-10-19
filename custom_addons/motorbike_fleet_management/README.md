@@ -1,6 +1,24 @@
+> Hiện tại: Fleet `18.0.5.9.0`, menu **Quản lý xe**, chu kỳ và ngưỡng cảnh báo cấu hình riêng trên từng xe. Không kế thừa từ dòng xe. Code cũ được giữ trong `legacy/model_policy_18_0_5_8_0`. Xem [hướng dẫn mới](../../docs/PER_VEHICLE_MAINTENANCE_20261018.md).
+
+> Mới ngày 18/10: Fleet `18.0.5.8.0` bổ sung chu kỳ bảo dưỡng ngày/ODO và cảnh báo. Xem [hướng dẫn sử dụng và khôi phục](../../docs/PERIODIC_MAINTENANCE_20261018.md).
+
 > Bản tích hợp hiện hành dùng Odoo 18 theo dev: Fleet `18.0.5.7.0`. Xem [hướng dẫn tích hợp](../../docs/INTEGRATION_DEV_18_20261016.md). Các ghi chú Odoo 19 bên dưới mô tả bản demo cũ, không phải môi trường triển khai chung.
 
 # Fleet & Maintenance — tích hợp giao/trả tuần 8
+
+## Tổ chức file giao diện
+
+Các khai báo XML được nạp theo thứ tự trong `__manifest__.py`:
+
+| File trong `views/` | Nội dung |
+| --- | --- |
+| `fleet_vehicle_views.xml` | Form, danh sách, tìm kiếm và Kanban phương tiện |
+| `fleet_catalog_views.xml` | Giao diện hãng và dòng xe |
+| `fleet_service_views.xml` | Form, danh sách và tìm kiếm bảo dưỡng |
+| `fleet_actions.xml` | Action mở màn hình và thứ tự các chế độ xem |
+| `fleet_menu.xml` | Menu nghiệp vụ và điều chỉnh menu Fleet chuẩn |
+
+Đợt tách file giữ nguyên XML ID và nội dung khai báo; không đổi nghiệp vụ, quyền hoặc phiên bản module. File gộp `fleet_views.xml` đã được thay bằng năm file trên. Các báo cáo cũ dẫn tới file gộp là bằng chứng lịch sử.
 
 Odoo 19, module `motorbike_fleet_management`, phiên bản `19.0.5.6.0`.
 Giữ chức năng tuần 7, bổ sung phần Fleet theo giải pháp tích hợp tuần 8 của nhóm trưởng. Hợp đồng và dòng giao/trả thuộc module của các thành viên khác.

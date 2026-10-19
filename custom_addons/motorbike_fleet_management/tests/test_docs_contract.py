@@ -6,11 +6,14 @@ from odoo.tools.safe_eval import safe_eval
 @tagged('post_install', '-at_install')
 class TestFleetDocsContract(TransactionCase):
     def _visible_fields(self, xmlid, values):
+        values = {'service_schedule_state': 'ok', 'service_odometer_recorded': False,
+                  'service_interval_km': 0, 'service_interval_months': 0,
+                  'service_last_date': False, **values}
         arch = self.env.ref(xmlid)._get_combined_arch()
         visible = set()
         for node in arch.xpath('.//field'):
             if not any(safe_eval(parent.get('invisible', 'False'), values)
-                       for parent in [node, *node.iterancestors()]
+                       for parent in [*reversed(list(node.iterancestors())), node]
                        if parent.get('invisible')):
                 visible.add(node.get('name'))
         return visible
@@ -49,8 +52,17 @@ class TestFleetDocsContract(TransactionCase):
 
     def test_scope_menus_and_stored_odometer(self):
         for xmlid in ['fleet.fleet_vehicle_model_category_menu', 'fleet.fleet_vehicles',
-                      'fleet.menu_fleet_reporting']:
+                      'fleet.menu_fleet_reporting', 'fleet.fleet_configuration',
+                      'fleet.fleet_models_configuration',
+                      'fleet.fleet_vehicle_model_brand_menu', 'fleet.fleet_vehicle_model_menu']:
             self.assertFalse(self.env.ref(xmlid).active)
         field = self.env['fleet.vehicle']._fields['odometer']
         self.assertTrue(field.store)
         self.assertFalse(field.compute)
+
+    def test_native_button_box_hidden_but_inheritance_anchors_remain(self):
+        arch = self.env.ref('fleet.fleet_vehicle_view_form')._get_combined_arch()
+        native = arch.xpath("//div[@name='button_box']")[0]
+        self.assertEqual(native.get('invisible'), '1')
+        self.assertTrue(native.xpath(".//button[@name='open_assignation_logs']"))
+        self.assertTrue(arch.xpath("//div[@name='rental_button_box']/button[@name='action_open_rental_services']"))
