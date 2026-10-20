@@ -24,11 +24,11 @@ class TestRentalContract(TransactionCase):
         })
         cls.vehicle1 = cls.env['fleet.vehicle'].create({
             'model_id': model.id,
-            'is_electric_motorbike': True, 'technical_ready': True, 'operational_status': 'available', 'license_plate': '29-TEST1',
+            'license_plate': '29-TEST1',
         })
         cls.vehicle2 = cls.env['fleet.vehicle'].create({
             'model_id': model.id,
-            'is_electric_motorbike': True, 'technical_ready': True, 'operational_status': 'available', 'license_plate': '29-TEST2',
+            'license_plate': '29-TEST2',
         })
 
     def _create_contract(self, **overrides):
@@ -51,13 +51,10 @@ class TestRentalContract(TransactionCase):
             values['daily_rate'] = daily_rate
         return self.env['rental.contract.line'].create(values)
 
-    def _record_upfront_payment(self, contract):
-        if 'motorbike.rental.payment' in self.env.registry:
-            self.env['motorbike.rental.payment'].create({
-                'contract_id': contract.id, 'customer_id': contract.customer_id.id,
-                'currency_id': contract.currency_id.id, 'transaction_type': 'rental_payment',
-                'amount': contract.total_amount, 'payment_method': 'cash', 'state': 'confirmed',
-            })
+    def test_contract_reference_uses_hyphens(self):
+        contract = self._create_contract()
+
+        self.assertRegex(contract.name, r'^RC-\d{4}-\d{5}$')
 
     def test_compute_rental_days_and_amounts(self):
         contract = self._create_contract()
@@ -69,6 +66,29 @@ class TestRentalContract(TransactionCase):
         self.assertEqual(second_line.subtotal, 150)
         self.assertEqual(contract.total_amount, 450)
 
+    def test_amounts_are_rounded_and_total_matches_line_subtotals(self):
+        contract = self._create_contract(
+            start_date='2026-10-01 08:00:00',
+            end_date='2026-10-02 08:00:00',
+        )
+        first_line = self._add_vehicle(contract, self.vehicle1, daily_rate=0.333)
+        second_line = self._add_vehicle(contract, self.vehicle2, daily_rate=0.333)
+
+        self.assertEqual(first_line.subtotal, self.currency.round(0.333))
+        self.assertEqual(second_line.subtotal, self.currency.round(0.333))
+        self.assertEqual(
+            contract.total_amount,
+            self.currency.round(first_line.subtotal + second_line.subtotal),
+        )
+
+    def test_rental_days_round_up_partial_day(self):
+        contract = self._create_contract(
+            start_date='2026-10-01 08:00:00',
+            end_date='2026-10-02 08:01:00',
+        )
+
+        self.assertEqual(contract.rental_days, 2)
+
     def test_state_machine_actions(self):
         contract = self._create_contract()
         self._add_vehicle(contract, self.vehicle1)
@@ -76,7 +96,6 @@ class TestRentalContract(TransactionCase):
         with self.assertRaises(UserError):
             contract.write({'state': 'in_progress'})
 
-        self._record_upfront_payment(contract)
         contract.action_confirm()
         self.assertEqual(contract.state, 'confirmed')
         contract.action_start()
@@ -106,7 +125,6 @@ class TestRentalContract(TransactionCase):
 
         confirmed_contract = self._create_contract()
         self._add_vehicle(confirmed_contract, self.vehicle1)
-        self._record_upfront_payment(confirmed_contract)
         confirmed_contract.action_confirm()
         confirmed_contract.action_cancel()
         self.assertEqual(confirmed_contract.state, 'cancelled')
@@ -114,7 +132,6 @@ class TestRentalContract(TransactionCase):
     def test_rejects_overlapping_vehicle_reservation(self):
         first_contract = self._create_contract()
         self._add_vehicle(first_contract, self.vehicle1)
-        self._record_upfront_payment(first_contract)
         first_contract.action_confirm()
 
         overlapping_contract = self._create_contract(
@@ -122,11 +139,49 @@ class TestRentalContract(TransactionCase):
             end_date='2026-10-06 08:00:00',
         )
         self._add_vehicle(overlapping_contract, self.vehicle1)
-        self._record_upfront_payment(overlapping_contract)
         with self.assertRaises(ValidationError), self.cr.savepoint():
             overlapping_contract.action_confirm()
 
         self.assertEqual(overlapping_contract.state, 'draft')
+
+    def test_rejects_rescheduling_confirmed_contract(self):
+        first_contract = self._create_contract()
+        self._add_vehicle(first_contract, self.vehicle1)
+        first_contract.action_confirm()
+
+        later_contract = self._create_contract(
+            start_date='2026-10-10 08:00:00',
+            end_date='2026-10-13 08:00:00',
+        )
+        self._add_vehicle(later_contract, self.vehicle1)
+        later_contract.action_confirm()
+
+        with self.assertRaises(UserError), self.cr.savepoint():
+            later_contract.write({
+                'start_date': '2026-10-03 08:00:00',
+                'end_date': '2026-10-06 08:00:00',
+            })
+
+    def test_confirmed_contract_and_vehicle_lines_are_immutable(self):
+        contract = self._create_contract()
+        line = self._add_vehicle(contract, self.vehicle1)
+        contract.action_confirm()
+
+        with self.assertRaises(UserError), self.cr.savepoint():
+            contract.write({'notes': 'Changed after confirmation'})
+        with self.assertRaises(UserError), self.cr.savepoint():
+            line.write({'daily_rate': 200})
+        with self.assertRaises(UserError), self.cr.savepoint():
+            line.unlink()
+        with self.assertRaises(UserError), self.cr.savepoint():
+            self._add_vehicle(contract, self.vehicle2)
+        with self.assertRaises(UserError), self.cr.savepoint():
+            contract.unlink()
+
+        contract.action_start()
+        self.assertEqual(contract.state, 'in_progress')
+        self.assertEqual(len(contract.line_ids), 1)
+        self.assertEqual(contract.line_ids.daily_rate, 100)
 
     def test_rejects_invalid_rental_period_and_negative_deposit(self):
         with self.assertRaises(ValidationError), self.cr.savepoint():
@@ -136,5 +191,53 @@ class TestRentalContract(TransactionCase):
 
         with self.assertRaises(ValidationError), self.cr.savepoint():
             self._create_contract(
+                max_rental_days=2,
+            )
+
+        with self.assertRaises(ValidationError), self.cr.savepoint():
+            self._create_contract(
                 deposit_amount=-1,
             )
+
+    def test_rejects_vehicle_from_different_model_than_price(self):
+        other_model = self.env['fleet.vehicle.model'].create({
+            'name': 'Other Rental Test Model',
+            'brand_id': self.vehicle_type.model_id.brand_id.id,
+            'vehicle_type': 'bike',
+        })
+        other_vehicle = self.env['fleet.vehicle'].create({
+            'model_id': other_model.id,
+            'license_plate': '29-OTHER1',
+        })
+        contract = self._create_contract()
+
+        with self.assertRaises(ValidationError), self.cr.savepoint():
+            self._add_vehicle(contract, other_vehicle)
+
+    def test_rejects_non_motorbike_rental_price(self):
+        car_model = self.env['fleet.vehicle.model'].create({
+            'name': 'Rental Test Car',
+            'brand_id': self.vehicle_type.model_id.brand_id.id,
+            'vehicle_type': 'car',
+        })
+        with self.assertRaises(ValidationError), self.cr.savepoint():
+            self.env['rental.vehicle.type'].create({
+                'name': 'Invalid Car Rental Type',
+                'model_id': car_model.id,
+                'currency_id': self.currency.id,
+                'daily_rate': 100,
+            })
+
+    def test_allows_adjacent_reservations_for_same_vehicle(self):
+        first_contract = self._create_contract()
+        self._add_vehicle(first_contract, self.vehicle1)
+        first_contract.action_confirm()
+
+        adjacent_contract = self._create_contract(
+            start_date='2026-10-04 08:00:00',
+            end_date='2026-10-07 08:00:00',
+        )
+        self._add_vehicle(adjacent_contract, self.vehicle1)
+        adjacent_contract.action_confirm()
+
+        self.assertEqual(adjacent_contract.state, 'confirmed')
