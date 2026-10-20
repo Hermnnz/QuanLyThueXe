@@ -12,6 +12,7 @@
     "depends": [
         "base",
         "account",        
+        "spreadsheet_dashboard",  # Thêm module Dashboard của Odoo
         "motorbike_rental_operation",   # Thêm module Vận hành của Giang
     ],
 
@@ -21,6 +22,7 @@
         "views/rental_payment_views.xml",
         "views/rental_charge_views.xml",
         "views/rental_contract_views.xml",   
+        "views/account_move_views.xml",
         "views/finance_actions.xml",
         "views/finance_menu.xml",
         "data/finance_demo.xml",
