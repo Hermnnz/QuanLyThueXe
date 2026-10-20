@@ -6,6 +6,9 @@
     <field name="inherit_id" ref="fleet.fleet_vehicle_view_form" />
     <field name="priority">90</field>
     <field name="arch" type="xml">
+      <xpath expr="//form" position="attributes">
+        <attribute name="delete">false</attribute>
+      </xpath>
       <xpath expr="//header/field[@name='state_id']" position="attributes">
         <attribute name="invisible">1</attribute>
       </xpath>
@@ -114,7 +117,7 @@
     <field name="name">vehicle_list_electric</field>
     <field name="model">fleet.vehicle</field>
     <field name="arch" type="xml">
-      <list>
+      <list delete="false">
         <field name="vehicle_code" />
         <field name="license_plate" />
         <field name="model_id" />
@@ -163,7 +166,7 @@
     <field name="name">vehicle_kanban_electric</field>
     <field name="model">fleet.vehicle</field>
     <field name="arch" type="xml">
-      <kanban default_group_by="operational_status" records_draggable="false" quick_create="false" group_create="false" group_delete="false" group_edit="false">
+      <kanban delete="false" default_group_by="operational_status" records_draggable="false" quick_create="false" group_create="false" group_delete="false" group_edit="false">
         <field name="operational_status" />
         <field name="technical_ready" />
         <field name="rental_blocked" />
@@ -191,6 +194,22 @@
           </t>
         </templates>
       </kanban>
+    </field>
+  </record>
+  <record id="vehicle_standard_list_no_delete" model="ir.ui.view">
+    <field name="name">fleet.vehicle.list.archive.only</field>
+    <field name="model">fleet.vehicle</field>
+    <field name="inherit_id" ref="fleet.fleet_vehicle_view_tree"/>
+    <field name="arch" type="xml">
+      <xpath expr="//list" position="attributes"><attribute name="delete">false</attribute></xpath>
+    </field>
+  </record>
+  <record id="vehicle_standard_kanban_no_delete" model="ir.ui.view">
+    <field name="name">fleet.vehicle.kanban.archive.only</field>
+    <field name="model">fleet.vehicle</field>
+    <field name="inherit_id" ref="fleet.fleet_vehicle_view_kanban"/>
+    <field name="arch" type="xml">
+      <xpath expr="//kanban" position="attributes"><attribute name="delete">false</attribute></xpath>
     </field>
   </record>
 </odoo>

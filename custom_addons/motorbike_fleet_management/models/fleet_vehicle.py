@@ -93,14 +93,8 @@ class FleetVehicle(models.Model):
         return super().write(values)
 
     def unlink(self):
-        self.check_access('unlink')
-        for vehicle in self:
-            if vehicle.operational_status in ('renting', 'maintenance'):
-                raise UserError('Không xóa xe đang thuê hoặc đang bảo dưỡng.')
-            if self.env['fleet.vehicle.log.services'].sudo().with_context(active_test=False).search_count([
-                    ('vehicle_id', '=', vehicle.id)]):
-                raise UserError('Xe đã có lịch sử bảo dưỡng; hãy ngừng sử dụng thay vì xóa.')
-        return super().unlink()
+        # Preserve vehicle identity and all business references, even for sudo.
+        raise UserError('Không được xóa phương tiện trong bất kỳ trường hợp nào. Hãy dùng Lưu trữ / Ngừng sử dụng.')
 
     @api.constrains('odometer', 'is_electric_motorbike')
     def _check_current_odometer(self):

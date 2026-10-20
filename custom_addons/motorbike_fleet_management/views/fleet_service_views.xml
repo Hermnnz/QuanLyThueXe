@@ -6,16 +6,16 @@
     <field name="inherit_id" ref="fleet.fleet_vehicle_log_services_view_form"/>
     <field name="arch" type="xml">
       <xpath expr="//field[@name='purchaser_id']" position="attributes">
-        <attribute name="invisible">is_electric_motorbike</attribute>
+        <attribute name="invisible">is_electric_motorbike or context.get('motorbike_only')</attribute>
       </xpath>
       <xpath expr="//field[@name='date']" position="after">
         <field name="active" string="Đang sử dụng" readonly="state == 'running'"/>
       </xpath>
       <xpath expr="//label[@for='odometer']" position="attributes">
-        <attribute name="invisible">is_electric_motorbike</attribute>
+        <attribute name="invisible">is_electric_motorbike or context.get('motorbike_only')</attribute>
       </xpath>
       <xpath expr="//field[@name='odometer']/parent::div" position="attributes">
-        <attribute name="invisible">is_electric_motorbike</attribute>
+        <attribute name="invisible">is_electric_motorbike or context.get('motorbike_only')</attribute>
       </xpath>
       <xpath expr="//field[@name='description']" position="attributes">
         <attribute name="string">Nội dung / vấn đề cần xử lý</attribute>
@@ -24,9 +24,18 @@
       <xpath expr="//field[@name='vehicle_id']" position="attributes">
         <attribute name="string">Phương tiện</attribute>
       </xpath>
+      <xpath expr="//field[@name='vehicle_id']" position="after">
+        <div class="o_form_label" invisible="not is_electric_motorbike and not context.get('motorbike_only')">Khách hàng</div>
+        <div name="rental_customer_placeholder" class="text-muted" invisible="not is_electric_motorbike and not context.get('motorbike_only')"
+             title="Chỉ hiển thị giao diện; chưa liên kết khách hàng từ sự cố hoặc hợp đồng.">Chưa liên kết</div>
+        <div class="o_form_label" invisible="not is_electric_motorbike and not context.get('motorbike_only')">Số điện thoại khách hàng</div>
+        <div name="rental_customer_phone_placeholder" class="text-muted"
+             invisible="not is_electric_motorbike and not context.get('motorbike_only')"
+             title="Chỉ hiển thị giao diện; chưa lấy số điện thoại khách hàng.">Chưa liên kết</div>
+      </xpath>
       <xpath expr="//field[@name='service_type_id']" position="attributes">
         <attribute name="string">Loại dịch vụ</attribute>
-        <attribute name="invisible">is_electric_motorbike</attribute>
+        <attribute name="invisible">is_electric_motorbike or context.get('motorbike_only')</attribute>
       </xpath>
       <xpath expr="//field[@name='date']" position="attributes">
         <attribute name="string">Ngày ghi nhận</attribute>
@@ -38,22 +47,22 @@
       </xpath>
       <xpath expr="//field[@name='vendor_id']" position="attributes">
         <attribute name="string">Đơn vị thực hiện</attribute>
-        <attribute name="invisible">is_electric_motorbike</attribute>
+        <attribute name="invisible">is_electric_motorbike or context.get('motorbike_only')</attribute>
       </xpath>
       <xpath expr="//sheet/separator" position="attributes">
         <attribute name="string">Ghi chú</attribute>
       </xpath>
       <xpath expr="//header/field[@name='state']" position="replace">
-        <button name="action_schedule" type="object" string="Lên lịch" invisible="not is_electric_motorbike or state != 'new'"/>
-        <button name="action_start" type="object" string="Bắt đầu" class="btn-primary" invisible="not is_electric_motorbike or state not in ['new', 'scheduled']"/>
-        <button name="action_done" type="object" string="Hoàn tất" class="btn-primary" invisible="not is_electric_motorbike or state != 'running'"/>
-        <button name="action_cancel" type="object" string="Hủy" invisible="not is_electric_motorbike or state in ['done', 'cancelled']"/>
+        <button name="action_schedule" type="object" string="Lên lịch" invisible="(not is_electric_motorbike and not context.get('motorbike_only')) or state != 'new'"/>
+        <button name="action_start" type="object" string="Bắt đầu" class="btn-primary" invisible="(not is_electric_motorbike and not context.get('motorbike_only')) or state not in ['new', 'scheduled']"/>
+        <button name="action_done" type="object" string="Hoàn tất" class="btn-primary" invisible="(not is_electric_motorbike and not context.get('motorbike_only')) or state != 'running'"/>
+        <button name="action_cancel" type="object" string="Hủy" invisible="(not is_electric_motorbike and not context.get('motorbike_only')) or state in ['done', 'cancelled']"/>
         <field name="state" widget="statusbar" readonly="is_electric_motorbike"
                statusbar_visible="new,scheduled,running,done"/>
       </xpath>
       <xpath expr="//sheet" position="inside">
         <field name="is_electric_motorbike" invisible="1"/>
-        <group string="Hồ sơ bảo dưỡng xe điện" invisible="not is_electric_motorbike">
+        <group string="Hồ sơ bảo dưỡng xe điện" invisible="not is_electric_motorbike and not context.get('motorbike_only')">
           <group>
             <field name="maintenance_type" readonly="state in ['done', 'cancelled']"/>
             <field name="blocks_rental" readonly="state == 'running'"/>

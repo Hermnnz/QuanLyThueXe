@@ -36,7 +36,10 @@ class TestWeek7Fleet(TransactionCase):
             form.block_reason = 'Kiểm kê'
         self.assertEqual(vehicle.operational_status, 'available')
         self.assertTrue(vehicle.technical_ready)
-        vehicle.unlink()
+        with self.assertRaises(UserError):
+            vehicle.unlink()
+        vehicle.active = False
+        self.assertFalse(vehicle.active)
 
     def test_service_form_crud(self):
         with Form(self.env['fleet.vehicle.log.services'].with_context(motorbike_only=True)) as form:

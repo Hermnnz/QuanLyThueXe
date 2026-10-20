@@ -6,7 +6,7 @@ from odoo.tools.safe_eval import safe_eval
 @tagged('post_install', '-at_install')
 class TestFleetDocsContract(TransactionCase):
     def _visible_fields(self, xmlid, values):
-        values = {'service_schedule_state': 'ok', 'service_odometer_recorded': False,
+        values = {'context': {}, 'service_schedule_state': 'ok', 'service_odometer_recorded': False,
                   'service_interval_km': 0, 'service_interval_months': 0,
                   'service_last_date': False, **values}
         arch = self.env.ref(xmlid)._get_combined_arch()

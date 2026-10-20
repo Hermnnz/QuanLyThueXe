@@ -161,3 +161,22 @@ class TestFleetBusinessHardening(TransactionCase):
             arch = self.env.ref(xmlid)._get_combined_arch()
             self.assertTrue(arch.xpath('.//field[@name="active" and not(@invisible)]'), xmlid)
         self.assertEqual(self.env.ref('fleet.fleet_vehicle_model_brand_action').context, '{}')
+
+    def test_vehicle_cannot_be_deleted_even_without_history_or_with_sudo(self):
+        vehicle = self.ready()
+        for record in [vehicle, vehicle.sudo()]:
+            with self.assertRaises(UserError), self.cr.savepoint():
+                record.unlink()
+        vehicle.active = False
+        self.assertTrue(vehicle.exists())
+        self.assertFalse(vehicle.active)
+        with self.assertRaises(UserError), self.cr.savepoint():
+            vehicle.sudo().unlink()
+        vehicle.active = True
+        self.assertTrue(vehicle.active)
+
+    def test_batch_vehicle_delete_does_not_remove_any_vehicle(self):
+        vehicles = self.ready() | self.ready()
+        with self.assertRaises(UserError), self.cr.savepoint():
+            vehicles.sudo().unlink()
+        self.assertEqual(len(vehicles.exists()), 2)
