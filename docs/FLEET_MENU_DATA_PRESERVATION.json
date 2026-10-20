@@ -1,0 +1,48 @@
+{
+  "database": "motorbike_fleet_simple_20261002",
+  "expected_state_renames": {
+    "rented": "renting",
+    "inspection": "pending_inspection"
+  },
+  "states_before": {
+    "pending_inspection": 6,
+    "available": 21,
+    "renting": 8,
+    "maintenance": 4
+  },
+  "states_after": {
+    "pending_inspection": 6,
+    "available": 21,
+    "renting": 8,
+    "maintenance": 4
+  },
+  "before_normalized": {
+    "fleet_vehicle": {
+      "count": 39,
+      "normalized_sha256": "0010ba450a8697cfdaaa1b17307e02eb88e4236d64428ce6ca06b0b2bbae90ab"
+    },
+    "fleet_vehicle_log_services": {
+      "count": 300,
+      "normalized_sha256": "cb271eb58696e8933ecbae1c8269c818a4e794eba5c1bdb44917186dac62d9f0"
+    },
+    "fleet_vehicle_odometer": {
+      "count": 0,
+      "normalized_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    }
+  },
+  "after_normalized": {
+    "fleet_vehicle": {
+      "count": 39,
+      "normalized_sha256": "0010ba450a8697cfdaaa1b17307e02eb88e4236d64428ce6ca06b0b2bbae90ab"
+    },
+    "fleet_vehicle_log_services": {
+      "count": 300,
+      "normalized_sha256": "cb271eb58696e8933ecbae1c8269c818a4e794eba5c1bdb44917186dac62d9f0"
+    },
+    "fleet_vehicle_odometer": {
+      "count": 0,
+      "normalized_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    }
+  },
+  "only_expected_changes": true
+}

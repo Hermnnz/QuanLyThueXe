@@ -1,0 +1,20 @@
+{
+  "fleet_version": "18.0.5.13.0",
+  "database": "fleet_team_test_dev_20261017",
+  "local_port": 8078,
+  "clone_integration_passed": 106,
+  "local_role_checks_passed": 10,
+  "live_login_checks": [
+    "fleet_manager",
+    "fleet_staff"
+  ],
+  "github_pushed": false,
+  "backup_pointer": "archive/latest-fleet-batch-backup.txt",
+  "features": [
+    "last_blocking_service_done_sets_available",
+    "inactive_kanban_column_preserves_active_false",
+    "corner_alert_badges",
+    "staff_read_create_and_controlled_start_complete",
+    "two_local_role_accounts"
+  ]
+}

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+  <record id="activity_service_created" model="mail.activity.type">
+    <field name="name">Phiếu bảo dưỡng mới</field>
+    <field name="summary">Xem phiếu bảo dưỡng mới</field>
+    <field name="res_model">fleet.vehicle.log.services</field>
+    <field name="icon">fa-wrench</field>
+  </record>
+</odoo>

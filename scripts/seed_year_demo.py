@@ -85,7 +85,7 @@ if not E.ref(MODULE + '.seed_complete', raise_if_not_found=False):
             'description': 'Dữ liệu giả lập 1 năm. Biển số/model/giá đều là số liệu minh họa. '
                            'Trạng thái đang thuê chỉ là tình huống Fleet; chưa có hợp đồng Rental.'}))
         vehicles.append(vehicle)
-        vehicle.write({'operational_status': 'available', 'technical_ready': True})
+        vehicle.action_confirm_technical_ready()
         # Growing fleet, staggered periodic work, random corrective/emergency work.
         events = []
         day = acquired + timedelta(days=35 + idx % 19)
@@ -147,7 +147,7 @@ if not E.ref(MODULE + '.seed_complete', raise_if_not_found=False):
                 service.write({'state': 'running', 'actual_start': actual_start})
                 service.result = result
                 service.write({'state': 'done', 'actual_end': actual_end})
-                vehicle.write({'operational_status': 'available', 'technical_ready': True})
+                vehicle.action_confirm_technical_ready()
                 if service.next_service_date:
                     vehicle.next_service_date = service.next_service_date
 
@@ -156,17 +156,17 @@ if not E.ref(MODULE + '.seed_complete', raise_if_not_found=False):
     # 3 running maintenance, 2 archived; all are synthetic current snapshots.
     for idx, vehicle in enumerate(vehicles):
         if idx < 20:
-            vehicle.write({'operational_status': 'available', 'technical_ready': True})
+            vehicle.action_confirm_technical_ready()
             if idx in (18, 19):
                 vehicle.write({'rental_blocked': True, 'block_reason':
                     'Giữ xe cho kiểm kê tài sản — tình huống demo' if idx == 18 else
                     'Tạm giữ xe phục vụ đào tạo nhân viên — tình huống demo'})
         elif idx < 28:
-            vehicle.write({'operational_status': 'available', 'technical_ready': True})
+            vehicle.action_confirm_technical_ready()
             vehicle.operational_status = 'renting'
             vehicle.location = 'Đang giao khách — trạng thái demo, chưa có đơn Rental'
         elif idx < 31:
-            vehicle.write({'operational_status': 'available', 'technical_ready': True})
+            vehicle.action_confirm_technical_ready()
             vehicle.operational_status = 'renting'
             vehicle.write({'operational_status': 'pending_inspection', 'technical_ready': False})
             vehicle.location = 'Khu vực chờ kiểm tra sau trả xe — demo'
@@ -186,7 +186,7 @@ if not E.ref(MODULE + '.seed_complete', raise_if_not_found=False):
             vehicle.write({'operational_status': 'maintenance', 'technical_ready': False})
             vehicle.location = 'Xưởng sửa chữa — demo'
         else:
-            vehicle.write({'operational_status': 'available', 'technical_ready': True})
+            vehicle.action_confirm_technical_ready()
             vehicle.operational_status = 'renting'
             vehicle.write({'operational_status': 'pending_inspection', 'technical_ready': False})
             vehicle.write({'active': False, 'rental_blocked': True,

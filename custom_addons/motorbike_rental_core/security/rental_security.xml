@@ -1,20 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
     <record id="module_category_motorbike_rental" model="ir.module.category">
-        <field name="name">Motorbike Rental</field>
+        <field name="name">Cho thuê xe máy</field>
         <field name="sequence">35</field>
     </record>
 
     <record id="group_rental_user" model="res.groups">
-        <field name="name">Rental User</field>
+        <field name="name">Nhân viên thuê xe</field>
         <field name="category_id" ref="module_category_motorbike_rental"/>
         <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
     </record>
 
     <record id="group_rental_manager" model="res.groups">
-        <field name="name">Rental Manager</field>
+        <field name="name">Quản lý thuê xe</field>
         <field name="category_id" ref="module_category_motorbike_rental"/>
         <field name="implied_ids" eval="[(4, ref('group_rental_user'))]"/>
-        <field name="users" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
     </record>
 </odoo>

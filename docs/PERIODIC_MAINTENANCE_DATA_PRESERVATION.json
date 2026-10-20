@@ -1,0 +1,42 @@
+{
+  "fleet_vehicle": {
+    "count_before": 6,
+    "count_after": 6,
+    "original_columns_unchanged": true
+  },
+  "fleet_vehicle_model": {
+    "count_before": 18,
+    "count_after": 18,
+    "original_columns_unchanged": true
+  },
+  "fleet_vehicle_log_services": {
+    "count_before": 3,
+    "count_after": 3,
+    "original_columns_unchanged": true
+  },
+  "fleet_vehicle_odometer": {
+    "count_before": 3,
+    "count_after": 3,
+    "original_columns_unchanged": true
+  },
+  "rental_contract": {
+    "count_before": 3,
+    "count_after": 3,
+    "original_columns_unchanged": true
+  },
+  "rental_contract_line": {
+    "count_before": 3,
+    "count_after": 3,
+    "original_columns_unchanged": true
+  },
+  "rental_operation_ticket": {
+    "count_before": 2,
+    "count_after": 2,
+    "original_columns_unchanged": true
+  },
+  "rental_operation_ticket_vehicle": {
+    "count_before": 2,
+    "count_after": 2,
+    "original_columns_unchanged": true
+  }
+}

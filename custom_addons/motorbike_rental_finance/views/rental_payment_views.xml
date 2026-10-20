@@ -35,14 +35,22 @@
                 <sheet>
                     <group string="Thông tin giao dịch">
                         <field name="name"/>
-                        <field name="customer_id"/>
+                        <!-- Đặt Hợp đồng và Loại giao dịch trước Khách hàng để nhân viên chọn nguồn dữ liệu.
+                             name là tên kỹ thuật của trường Python; không phải nhãn hiển thị cho người dùng.
+                             Đổi một trong hai trường này sẽ chạy hàm _onchange_contract_payment. -->
                         <field name="contract_id"/>
                         <field name="transaction_type"/>
-                        
+                        <!-- readonly="1": chỉ xem khách do hợp đồng cung cấp, không tự chọn khách khác.
+                             force_save="1": gửi giá trị được onchange tự điền về server khi lưu,
+                             dù trường đang chỉ đọc; nhờ đó giá trị tự điền vẫn được lưu vào bản ghi. -->
+                        <field name="customer_id" readonly="1" force_save="1"/>
                     </group>
                     <group string="Thông tin thanh toán">
-                        <field name="amount"/>
-                        <field name="currency_id"/>
+                        <!-- Số tiền tự lấy theo loại giao dịch: cọc, tiền thuê hoặc chênh lệch thu/hoàn.
+                             Khóa nhập tay và dùng force_save để lưu lại đúng số đã tự điền. -->
+                        <field name="amount" readonly="1" force_save="1"/>
+                        <!-- Đồng tiền luôn theo hợp đồng, không cho chọn đồng tiền khác trên form này. -->
+                        <field name="currency_id" readonly="1" force_save="1"/>
                         <field name="payment_method"/>
                         <field name="payment_date"/>
                     </group>

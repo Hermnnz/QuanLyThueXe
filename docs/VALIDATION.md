@@ -1,3 +1,39 @@
+# Bảo dưỡng định kỳ 18.0.5.8.0 — ngày 18/10/2026
+
+Hồi quy trên bản sao đạt 82/82; nhóm định kỳ mở rộng 11/11; nâng cấp demo nhóm định kỳ/giao diện 15/15, sau chỉnh cụm nút chuẩn nhóm giao diện 5/5. Không cộng các lượt thành một tổng. Dữ liệu 8 bảng nghiệp vụ cũ giữ nguyên. Xem [báo cáo chức năng, giới hạn và backup](PERIODIC_MAINTENANCE_20261018.md).
+
+---
+
+# Kiểm chứng tích hợp dev Odoo 18: Fleet 18.0.5.7.0
+
+Ngày 16/10/2026: cài đủ bốn module, 71/71 kiểm thử Fleet/Core/Operations đạt, gồm HTTP website và tài khoản nhân viên. Nâng cấp từ dev cũ có dữ liệu mẫu đạt; xem [báo cáo tích hợp](INTEGRATION_DEV_18_20261016.md) và [bảo toàn dữ liệu](DEV18_UPGRADE_VERIFICATION.json). Các báo cáo Odoo 19 dưới đây là lịch sử.
+
+---
+
+# Kiểm chứng mới nhất: 19.0.5.6.0
+
+Ngày 16/10/2026: nâng cấp demo đạt 56/56, 0 failed, 0 errors; báo cáo FLEET_RELEASE_1956_DATA_PRESERVATION.json xác nhận dữ liệu giữ nguyên. Phạm vi và giới hạn: RELEASE_19.0.5.6.0.md. Các phần bên dưới là lịch sử của các phiên bản trước.
+
+---
+
+# Rà soát toàn bộ source ngày 16 tháng 10 năm 2026
+
+Bản 19.0.5.3.0: sửa bốn trường hợp đã tái hiện liên quan tổ hợp trạng thái/kỹ thuật, copy kết quả cũ, lịch chặn thuê thời lượng 0 và đầu vào chi phí không hữu hạn. Cài mới và nâng cấp demo đều 38/38 đạt, exit 0. Xem `SOURCE_AUDIT_20261016.md` và `FLEET_SOURCE_AUDIT_DATA_PRESERVATION.json`. Các phần dưới là lịch sử kiểm chứng phiên bản trước.
+
+---
+
+# Menu và màn hình mặc định Đội xe cho thuê
+
+Ngày 16/10/2026, module `19.0.5.2.0`. Ứng dụng Đội xe cho thuê mở action Xe máy điện ở Kanban. Menu chính có Xe máy điện và Bảo dưỡng xe điện; nhóm Quản lý chuẩn Odoo chứa các mục gốc, danh sách xe gốc đổi tên Xe (quản lý chuẩn).
+
+Nâng cấp demo đạt 34/34 kiểm thử, exit 0; kiểm thử view hiện có kiểm tra Kanban là view đầu tiên, action của ứng dụng và parent menu. RPC giao/trả/ODO/lịch bảo dưỡng/UNIQUE/readonly đạt. Kiểm tra UI trực tiếp: vào mục xe chuẩn, sau đó chọn lại ứng dụng từ All Apps; hệ thống mở Kanban mới không qua link action, có bốn cột và menu đã tách rõ. Không còn giới hạn chưa click UI cho phần điều hướng này; các kiểm chứng UI khác vẫn theo phạm vi ghi trong lịch sử bên dưới.
+
+Toàn bộ dòng của ba bảng xe/bảo dưỡng/ODO giữ nguyên; bằng chứng `FLEET_MENU_DATA_PRESERVATION.json`. Backup trước lần nâng cấp cuối: `archive/before-fleet-integration-20261016-160247`. Không thay đổi nghiệp vụ, ACL, API giao/trả hoặc schema Fleet.
+
+Runner nâng cấp dùng `--http-port=0` cho tiến trình test, tránh các tab đang mở nối websocket vào tiến trình ngắn hạn và giữ nó chưa thoát. Demo phục vụ người dùng vẫn ở cổng 8072.
+
+---
+
 # Rà soát cuối trước bàn giao
 
 Ngày 12/10/2026, bản `19.0.5.1.0`. Kiểm tra code, SQL/DBML, trạng thái demo và các đường nhập trực tiếp bên cạnh workflow. Bổ sung kiểm tra số hữu hạn ở model `fleet.vehicle.odometer`: NaN/Infinity bị chặn cả khi tạo/sửa log trực tiếp, không chỉ qua API giao/trả. Test ODO chuẩn đã thêm các tình huống này.

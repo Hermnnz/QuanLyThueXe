@@ -33,6 +33,15 @@
         sequence="20"
     />
 
+        <!-- Thêm menu Hóa đơn vào trong nhóm Giao dịch của Finance -->
+    <menuitem
+        id="menu_finance_account_invoice"
+        name="Hóa đơn"
+        parent="menu_motorbike_rental_finance_transaction"
+        action="account.action_move_out_invoice_type"
+        sequence="30"
+    />
+
 
     <!-- NHÓM CẤU HÌNH -->
     <menuitem
@@ -59,6 +68,14 @@
     />
 
     <menuitem
+        id="menu_finance_dashboard"
+        name="Tổng quan doanh thu"
+        parent="menu_motorbike_rental_finance_reporting"
+        action="spreadsheet_dashboard.ir_actions_dashboard_action"
+        sequence="5"
+    />
+
+    <menuitem
         id="menu_report_payment"
         name="Báo cáo dòng tiền"
         parent="menu_motorbike_rental_finance_reporting"
@@ -73,5 +90,27 @@
         action="action_motorbike_rental_charge_report"
         sequence="20"
     />
+
+        <!-- Ẩn icon Hóa đơn gốc của Odoo ngoài màn hình chính -->
+    <record id="account.menu_finance" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+
+        <!-- Ẩn icon Liên hệ gốc của Odoo ngoài màn hình chính -->
+    <record id="contacts.menu_contacts" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+
+    <!--  Ẩn icon Báo cáo tổng quan gốc ngoài màn hình chính -->
+    <record id="spreadsheet_dashboard.spreadsheet_dashboard_menu_root" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+
+        <!-- Ẩn Trình theo dõi Liên kết (Link Tracker / UTM) ngoài màn hình chính -->
+    <record id="utm.menu_link_tracker_root" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+
+
 
 </odoo>

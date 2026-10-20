@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_move_form_inherit_rental_finance" model="ir.ui.view">
+        <field name="name">account.move.form.inherit.rental.finance</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <!-- Thêm trường Hợp đồng thuê xe ngay trên đầu form -->
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="contract_id" 
+                       options="{'no_create': True}" 
+                       placeholder="Chọn hợp đồng để tự nạp tiền thuê và phụ phí"/>
+            </xpath>
+
+            <!-- Ẩn cột Sản phẩm (bàn ghế tủ demo Odoo) -->
+            <xpath expr="//field[@name='invoice_line_ids']//list//field[@name='product_id']" position="attributes">
+                <attribute name="column_invisible">1</attribute>
+            </xpath>
+
+            <!-- Giữ khóa ngoại charge_id và price_catalog_id nhưng ẨN hoàn toàn, không hiện lên giao diện -->
+            <xpath expr="//field[@name='invoice_line_ids']//list//field[@name='name']" position="before">
+                <field name="charge_id" column_invisible="1"/>
+                <field name="price_catalog_id" column_invisible="1"/>
+            </xpath>
+
+            <!-- xpath tìm vị trí trong giao diện gốc; //sheet là phần nội dung chính của form hóa đơn.
+                 position="inside" nghĩa là chèn khối bên dưới vào trong phần nội dung đó.
+                 group gom các trường vào một vùng; string là tiêu đề tiếng Việt nhân viên nhìn thấy. -->
+            <xpath expr="//sheet" position="inside">
+                <!-- invisible nghĩa là điều kiện ẩn: chưa chọn hợp đồng hoặc không phải hóa đơn khách thì ẩn.
+                     not là "không/chưa có"; or là "hoặc"; != là "khác".
+                     out_invoice là tên kỹ thuật Odoo dùng cho hóa đơn bán hàng cho khách. -->
+                <group string="Xác nhận thu/hoàn tiền"
+                       invisible="not contract_id or move_type != 'out_invoice'">
+
+                    <!-- Trường này chứa số dư có dấu âm/dương để quyết định hiện phần thu hay hoàn.
+                         invisible="1" luôn ẩn trường khỏi màn hình, nhưng giao diện vẫn đọc được giá trị.
+                         name phải trùng tên trường đã khai báo trong account_move.py. -->
+                    <field name="rental_balance" invisible="1"/>
+
+                    <!-- rental_settlement_amount là trị tuyệt đối của số dư, nên số tiền hiển thị luôn dương.
+                         Trong XML, &lt; là cách viết ký tự nhỏ hơn; &lt;= 0 nghĩa là nhỏ hơn hoặc bằng 0.
+                         Ẩn khi số dư không dương: chỉ hiện dòng thu thêm nếu khách còn thiếu tiền.
+                         Trường compute mặc định chỉ đọc, nhân viên không sửa số tiền cần thu/hoàn. -->
+                    <field name="rental_settlement_amount"
+                           string="Cần thu thêm / Đã thu thêm"
+                           invisible="rental_balance &lt;= 0"/>
+
+                    <!-- &gt; là cách viết ký tự lớn hơn trong XML.
+                         Ẩn khi số dư không âm: chỉ hiện dòng hoàn tiền nếu đang giữ dư tiền của khách.
+                         Sau khi xác nhận hóa đơn, số này vẫn là khoản đã chốt, không bị đổi thành 0. -->
+                    <field name="rental_settlement_amount"
+                           string="Cần hoàn khách / Đã hoàn khách"
+                           invisible="rental_balance &gt;= 0"/>
+
+                    <!-- Phương thức là tiền mặt/chuyển khoản/thẻ tín dụng.
+                         == là so sánh bằng; nếu số dư bằng 0 thì không có khoản thu/hoàn nên ẩn trường.
+                         readonly nghĩa là chỉ đọc: sau khi rời trạng thái draft (nháp) thì không sửa trên form. -->
+                    <field name="rental_payment_method"
+                           invisible="rental_balance == 0"
+                           readonly="state != 'draft'"/>
+
+                    <!-- Cùng một trường Boolean nhưng đổi câu xác nhận theo chiều tiền.
+                         Boolean là ô tích: True là đã tích, False là chưa tích.
+                         Chỉ nhánh thu thêm hiện ô này; số tiền cụ thể nằm ngay ở dòng phía trên. -->
+                    <field name="rental_money_confirmed"
+                           string="Tôi xác nhận đã thu đủ tiền còn thiếu"
+                           invisible="rental_balance &lt;= 0"
+                           readonly="state != 'draft'"/>
+
+                    <!-- Nhánh hoàn tiền hiện câu khác để nhân viên không nhầm với thu tiền.
+                         Python trong action_post vẫn kiểm tra ô tích, không chỉ dựa vào giao diện XML.
+                         Khi số dư bằng 0 thì cả hai ô xác nhận đều ẩn và không bắt buộc tích. -->
+                    <field name="rental_money_confirmed"
+                           string="Tôi xác nhận đã hoàn đủ tiền cho khách"
+                           invisible="rental_balance &gt;= 0"
+                           readonly="state != 'draft'"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

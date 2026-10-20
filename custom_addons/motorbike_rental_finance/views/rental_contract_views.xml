@@ -9,13 +9,13 @@
         <field name="inherit_id" ref="motorbike_rental_core.view_rental_contract_form"/>
         <field name="arch" type="xml">
 
-            <!-- 1. Chèn nút Quyết toán vào Header trước nút Hoàn tất -->
-            <xpath expr="//header/button[@name='action_done']" position="before">
-                <button name="action_settlement" 
-                        type="object" 
-                        string="Quyết toán thanh toán" 
-                        class="oe_highlight" 
-                        invisible="state != 'in_progress' or settlement_status == 'settled'"/>
+            <!-- 1. Nhân viên kết thúc hợp đồng bằng nút Xác nhận hóa đơn, không bấm Hoàn tất riêng.
+                 xpath tìm nút action_done trong header (thanh nút phía trên) của giao diện Core.
+                 position="attributes" sửa thuộc tính nút đã có, không tạo hoặc xóa nút trong Core.
+                 invisible = 1 nghĩa là luôn ẩn nút Hoàn tất trên form hợp đồng khi có module Finance.
+                 Hàm write trong rental_contract.py vẫn kiểm tra ở server để không thể bỏ qua bằng code. -->
+            <xpath expr="//header/button[@name='action_done']" position="attributes">
+                <attribute name="invisible">1</attribute>
             </xpath>
 
             <!-- 2. Chèn 2 Tab hiển thị Phụ phí và Lịch sử thanh toán vào dưới Sheet -->

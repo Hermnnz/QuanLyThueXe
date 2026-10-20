@@ -101,30 +101,7 @@
         <field name="state">confirmed</field>
     </record>
 
-    <record id="demo_payment_additional_01" model="motorbike.rental.payment">
-        <field name="name">AP-20260922-001</field>
-        <field name="customer_id" ref="demo_partner_tran_thi_binh"/>
-        <field name="transaction_type">additional_payment</field>
-        <field name="currency_id" ref="base.VND"/>
-        <field name="amount">100000</field>
-        <field name="payment_method">cash</field>
-        <field name="payment_date">2026-09-22</field>
-        <field name="reference">MBR-AP-001</field>
-        <field name="state">draft</field>
-        <field name="note">Thu thêm phí giao xe và trả xe trễ.</field>
-    </record>
-
-    <record id="demo_payment_refund_01" model="motorbike.rental.payment">
-        <field name="name">RF-20260923-001</field>
-        <field name="customer_id" ref="demo_partner_tran_thi_binh"/>
-        <field name="transaction_type">refund</field>
-        <field name="currency_id" ref="base.VND"/>
-        <field name="amount">200000</field>
-        <field name="payment_method">bank_transfer</field>
-        <field name="payment_date">2026-09-23</field>
-        <field name="reference">MBR-RF-001</field>
-        <field name="state">confirmed</field>
-    </record>
+    <!-- Phiếu thu thêm/hoàn tiền chỉ sinh từ hóa đơn cuối hợp đồng, không tạo mẫu trực tiếp. -->
 
     <!-- Rental charges -->
     <record id="demo_charge_delivery_01" model="motorbike.rental.charge">

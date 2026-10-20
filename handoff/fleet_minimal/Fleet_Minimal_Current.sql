@@ -1,4 +1,4 @@
--- Fleet integration 19.0.5.1.0, snapshot 2026-10-12.
+-- Fleet integration 19.0.5.6.0, snapshot 2026-10-16.
 
 -- Schema-only, includes Odoo core fields; NOT an Odoo installer or migration.
 
@@ -67,7 +67,10 @@ CREATE TABLE "fleet_vehicle" (
     "block_reason" text,
     "is_electric_motorbike" boolean,
     "technical_ready" boolean,
-    "rental_blocked" boolean
+    "rental_blocked" boolean,
+    "odometer" double precision,
+    "license_plate_key" character varying,
+    "vehicle_code_key" character varying
 );
 
 CREATE TABLE "fleet_vehicle_log_services" (
@@ -115,9 +118,13 @@ ALTER TABLE "fleet_vehicle" ADD CONSTRAINT "fleet_vehicle_driver_id_fkey" FOREIG
 
 ALTER TABLE "fleet_vehicle" ADD CONSTRAINT "fleet_vehicle_future_driver_id_fkey" FOREIGN KEY (future_driver_id) REFERENCES res_partner(id) ON DELETE SET NULL;
 
+ALTER TABLE "fleet_vehicle" ADD CONSTRAINT "fleet_vehicle_license_plate_unique" UNIQUE (license_plate_key);
+
 ALTER TABLE "fleet_vehicle" ADD CONSTRAINT "fleet_vehicle_manager_id_fkey" FOREIGN KEY (manager_id) REFERENCES res_users(id) ON DELETE SET NULL;
 
 ALTER TABLE "fleet_vehicle" ADD CONSTRAINT "fleet_vehicle_model_id_fkey" FOREIGN KEY (model_id) REFERENCES fleet_vehicle_model(id) ON DELETE RESTRICT;
+
+ALTER TABLE "fleet_vehicle" ADD CONSTRAINT "fleet_vehicle_normalized_code_unique" UNIQUE (vehicle_code_key);
 
 ALTER TABLE "fleet_vehicle" ADD CONSTRAINT "fleet_vehicle_pkey" PRIMARY KEY (id);
 
@@ -127,7 +134,11 @@ ALTER TABLE "fleet_vehicle" ADD CONSTRAINT "fleet_vehicle_vehicle_code_unique" U
 
 ALTER TABLE "fleet_vehicle" ADD CONSTRAINT "fleet_vehicle_write_uid_fkey" FOREIGN KEY (write_uid) REFERENCES res_users(id) ON DELETE SET NULL;
 
+CREATE INDEX fleet_vehicle__license_plate_key_index ON fleet_vehicle USING btree (license_plate_key);
+
 CREATE INDEX fleet_vehicle__vehicle_code_index ON fleet_vehicle USING btree (vehicle_code);
+
+CREATE INDEX fleet_vehicle__vehicle_code_key_index ON fleet_vehicle USING btree (vehicle_code_key);
 
 ALTER TABLE "fleet_vehicle_log_services" ADD CONSTRAINT "fleet_vehicle_log_services_brand_id_fkey" FOREIGN KEY (brand_id) REFERENCES fleet_vehicle_model_brand(id) ON DELETE SET NULL;
 

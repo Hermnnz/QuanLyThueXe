@@ -27,8 +27,7 @@ class TestFleetIntegration(TransactionCase):
 
     def service(self, **values):
         return self.env['fleet.vehicle.log.services'].create({
-            'vehicle_id': self.vehicle.id, 'state': 'scheduled',
-            'scheduled_start': self.start, 'scheduled_end': self.end, **values})
+            'vehicle_id': self.vehicle.id, 'state': 'new', **values})
 
     def test_delivery_and_passed_return(self):
         self.deliver(odometer_start=100, checkout_at=self.start)
@@ -44,7 +43,7 @@ class TestFleetIntegration(TransactionCase):
 
     def test_return_results_and_reinspection(self):
         for result in ['failed', 'pending', 'maintenance']:
-            self.vehicle.write({'technical_ready': True, 'operational_status': 'available'})
+            self.vehicle.action_confirm_technical_ready()
             self.deliver()
             self.vehicle.action_return_vehicle(result)
             self.assertFalse(self.vehicle.technical_ready)
@@ -96,16 +95,16 @@ class TestFleetIntegration(TransactionCase):
         self.assertEqual(self.vehicle.odometer, 0)
         self.assertEqual(self.env['fleet.vehicle.odometer'].search_count([('vehicle_id', '=', self.vehicle.id)]), 2)
 
-    def test_scheduled_maintenance_overlap_and_boundaries(self):
+    def test_draft_does_not_reserve_dates_but_running_blocks(self):
         service = self.service()
+        self.assertTrue(self.eligibility()['fleet_ok'])
+        service.action_start()
         self.assertFalse(self.eligibility()['fleet_ok'])
         self.assertIn('blocking_maintenance', self.eligibility()['reasons'])
-        self.assertTrue(self.eligibility('2026-11-30 02:00:00', self.start)['fleet_ok'])
-        self.assertTrue(self.eligibility(self.end, '2026-12-04 02:00:00')['fleet_ok'])
         with self.assertRaises(UserError), self.cr.savepoint():
             self.deliver(odometer_start=10)
-        self.assertEqual(self.vehicle.odometer, 0)
         service.action_cancel()
+        self.vehicle.action_confirm_technical_ready()
         self.assertTrue(self.eligibility()['fleet_ok'])
 
     def test_nonblocking_archived_and_new_maintenance(self):
@@ -144,14 +143,14 @@ class TestFleetIntegration(TransactionCase):
 
     def test_integration_access(self):
         outsider = self.env['res.users'].create({'name': 'No Fleet', 'login': 'w8_no_fleet',
-            'group_ids': [Command.set([self.env.ref('base.group_user').id])]})
+            ('group_ids' if 'group_ids' in self.env['res.users']._fields else 'groups_id'): [Command.set([self.env.ref('base.group_user').id])]})
         for method, args in [('check_fleet_availability', (self.start, self.end)),
                              ('action_deliver_vehicle', (self.start, self.end)),
                              ('action_return_vehicle', ('passed',))]:
             with self.assertRaises(AccessError), self.cr.savepoint():
                 getattr(self.vehicle.with_user(outsider), method)(*args)
         officer = self.env['res.users'].create({'name': 'Fleet', 'login': 'w8_fleet',
-            'group_ids': [Command.set([self.env.ref('fleet.fleet_group_user').id])]})
+            ('group_ids' if 'group_ids' in self.env['res.users']._fields else 'groups_id'): [Command.set([self.env.ref('fleet.fleet_group_user').id])]})
         vehicle = self.vehicle.with_user(officer)
         vehicle.action_deliver_vehicle(self.start, self.end, odometer_start=10, checkout_at=self.start)
         vehicle.action_return_vehicle('passed', odometer_end=20, checkin_at=self.end)
@@ -177,10 +176,12 @@ class TestFleetIntegration(TransactionCase):
     def test_optional_vehicle_code_and_copy(self):
         values = {'model_id': self.vehicle.model_id.id, 'is_electric_motorbike': True}
         blank = self.env['fleet.vehicle'].create([values, values])
-        self.assertFalse(any(blank.mapped('vehicle_code')))
+        self.assertEqual(len(set(blank.mapped('vehicle_code'))), 2)
+        self.assertTrue(all(blank.mapped('vehicle_code')))
         self.vehicle.vehicle_code = 'COPY-W8'
         copied = self.vehicle.copy()
-        self.assertFalse(copied.vehicle_code)
+        self.assertTrue(copied.vehicle_code)
+        self.assertNotEqual(copied.vehicle_code, self.vehicle.vehicle_code)
 
     def test_vehicle_form_state_is_readonly_but_workflow_works(self):
         with Form(self.vehicle) as form:

@@ -117,5 +117,5 @@ finally:
 
 after = {m: call(m, 'search_count', [[]], all_rows) for m in models}
 assert before == after
-print('Web RPC PASS: delivery, explicit return, native ODO, maintenance intervals, unique codes, readonly form and four states.')
+print('Web RPC PASS: delivery, explicit return, stored current ODO and standard logs, maintenance intervals, unique codes, readonly form and four states.')
 print('Existing record counts retained:', after)

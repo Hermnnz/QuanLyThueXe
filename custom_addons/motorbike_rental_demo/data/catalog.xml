@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="1">
+    <record id="demo_w8_brand_vinfast" model="fleet.vehicle.model.brand">
+      <field name="name">VinFast</field>
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_brand_datbike" model="fleet.vehicle.model.brand">
+      <field name="name">Dat Bike</field>
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_model_evo" model="fleet.vehicle.model">
+      <field name="name">Evo200</field>
+      <field name="brand_id" ref="demo_w8_brand_vinfast" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_price_evo" model="rental.vehicle.type">
+      <field name="name">Evo200 — Giá thuê mẫu</field>
+      <field name="model_id" ref="demo_w8_model_evo" />
+      <field name="daily_rate">150000</field>
+      <field name="currency_id" ref="base.VND" />
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_model_evo_lite" model="fleet.vehicle.model">
+      <field name="name">Evo200 Lite</field>
+      <field name="brand_id" ref="demo_w8_brand_vinfast" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_price_evo_lite" model="rental.vehicle.type">
+      <field name="name">Evo200 Lite — Giá thuê mẫu</field>
+      <field name="model_id" ref="demo_w8_model_evo_lite" />
+      <field name="daily_rate">140000</field>
+      <field name="currency_id" ref="base.VND" />
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_model_feliz" model="fleet.vehicle.model">
+      <field name="name">Feliz S</field>
+      <field name="brand_id" ref="demo_w8_brand_vinfast" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_price_feliz" model="rental.vehicle.type">
+      <field name="name">Feliz S — Giá thuê mẫu</field>
+      <field name="model_id" ref="demo_w8_model_feliz" />
+      <field name="daily_rate">200000</field>
+      <field name="currency_id" ref="base.VND" />
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_model_klara_s_2022" model="fleet.vehicle.model">
+      <field name="name">Klara S (2022)</field>
+      <field name="brand_id" ref="demo_w8_brand_vinfast" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_price_klara_s_2022" model="rental.vehicle.type">
+      <field name="name">Klara S (2022) — Giá thuê mẫu</field>
+      <field name="model_id" ref="demo_w8_model_klara_s_2022" />
+      <field name="daily_rate">200000</field>
+      <field name="currency_id" ref="base.VND" />
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_model_vento_s" model="fleet.vehicle.model">
+      <field name="name">Vento S</field>
+      <field name="brand_id" ref="demo_w8_brand_vinfast" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_price_vento_s" model="rental.vehicle.type">
+      <field name="name">Vento S — Giá thuê mẫu</field>
+      <field name="model_id" ref="demo_w8_model_vento_s" />
+      <field name="daily_rate">250000</field>
+      <field name="currency_id" ref="base.VND" />
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_model_theon_s" model="fleet.vehicle.model">
+      <field name="name">Theon S</field>
+      <field name="brand_id" ref="demo_w8_brand_vinfast" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_price_theon_s" model="rental.vehicle.type">
+      <field name="name">Theon S — Giá thuê mẫu</field>
+      <field name="model_id" ref="demo_w8_model_theon_s" />
+      <field name="daily_rate">300000</field>
+      <field name="currency_id" ref="base.VND" />
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_model_ludo" model="fleet.vehicle.model">
+      <field name="name">Ludo</field>
+      <field name="brand_id" ref="demo_w8_brand_vinfast" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_price_ludo" model="rental.vehicle.type">
+      <field name="name">Ludo — Giá thuê mẫu</field>
+      <field name="model_id" ref="demo_w8_model_ludo" />
+      <field name="daily_rate">100000</field>
+      <field name="currency_id" ref="base.VND" />
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_model_impes" model="fleet.vehicle.model">
+      <field name="name">Impes</field>
+      <field name="brand_id" ref="demo_w8_brand_vinfast" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_price_impes" model="rental.vehicle.type">
+      <field name="name">Impes — Giá thuê mẫu</field>
+      <field name="model_id" ref="demo_w8_model_impes" />
+      <field name="daily_rate">110000</field>
+      <field name="currency_id" ref="base.VND" />
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_model_tempest" model="fleet.vehicle.model">
+      <field name="name">Tempest</field>
+      <field name="brand_id" ref="demo_w8_brand_vinfast" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_price_tempest" model="rental.vehicle.type">
+      <field name="name">Tempest — Giá thuê mẫu</field>
+      <field name="model_id" ref="demo_w8_model_tempest" />
+      <field name="daily_rate">120000</field>
+      <field name="currency_id" ref="base.VND" />
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_model_klara_a2" model="fleet.vehicle.model">
+      <field name="name">Klara A2</field>
+      <field name="brand_id" ref="demo_w8_brand_vinfast" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_price_klara_a2" model="rental.vehicle.type">
+      <field name="name">Klara A2 — Giá thuê mẫu</field>
+      <field name="model_id" ref="demo_w8_model_klara_a2" />
+      <field name="daily_rate">160000</field>
+      <field name="currency_id" ref="base.VND" />
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_model_weaver" model="fleet.vehicle.model">
+      <field name="name">Weaver</field>
+      <field name="brand_id" ref="demo_w8_brand_datbike" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_price_weaver" model="rental.vehicle.type">
+      <field name="name">Weaver — Giá thuê mẫu</field>
+      <field name="model_id" ref="demo_w8_model_weaver" />
+      <field name="daily_rate">250000</field>
+      <field name="currency_id" ref="base.VND" />
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_model_weaver_200" model="fleet.vehicle.model">
+      <field name="name">Weaver 200</field>
+      <field name="brand_id" ref="demo_w8_brand_datbike" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_price_weaver_200" model="rental.vehicle.type">
+      <field name="name">Weaver 200 — Giá thuê mẫu</field>
+      <field name="model_id" ref="demo_w8_model_weaver_200" />
+      <field name="daily_rate">270000</field>
+      <field name="currency_id" ref="base.VND" />
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_model_weaver_plus" model="fleet.vehicle.model">
+      <field name="name">Weaver++</field>
+      <field name="brand_id" ref="demo_w8_brand_datbike" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_price_weaver_plus" model="rental.vehicle.type">
+      <field name="name">Weaver++ — Giá thuê mẫu</field>
+      <field name="model_id" ref="demo_w8_model_weaver_plus" />
+      <field name="daily_rate">300000</field>
+      <field name="currency_id" ref="base.VND" />
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_model_quantum" model="fleet.vehicle.model">
+      <field name="name">Quantum</field>
+      <field name="brand_id" ref="demo_w8_brand_datbike" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_price_quantum" model="rental.vehicle.type">
+      <field name="name">Quantum — Giá thuê mẫu</field>
+      <field name="model_id" ref="demo_w8_model_quantum" />
+      <field name="daily_rate">300000</field>
+      <field name="currency_id" ref="base.VND" />
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_model_quantum_s1" model="fleet.vehicle.model">
+      <field name="name">Quantum S1</field>
+      <field name="brand_id" ref="demo_w8_brand_datbike" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_price_quantum_s1" model="rental.vehicle.type">
+      <field name="name">Quantum S1 — Giá thuê mẫu</field>
+      <field name="model_id" ref="demo_w8_model_quantum_s1" />
+      <field name="daily_rate">300000</field>
+      <field name="currency_id" ref="base.VND" />
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_model_quantum_s2" model="fleet.vehicle.model">
+      <field name="name">Quantum S2</field>
+      <field name="brand_id" ref="demo_w8_brand_datbike" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_price_quantum_s2" model="rental.vehicle.type">
+      <field name="name">Quantum S2 — Giá thuê mẫu</field>
+      <field name="model_id" ref="demo_w8_model_quantum_s2" />
+      <field name="daily_rate">250000</field>
+      <field name="currency_id" ref="base.VND" />
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_model_quantum_s3" model="fleet.vehicle.model">
+      <field name="name">Quantum S3</field>
+      <field name="brand_id" ref="demo_w8_brand_datbike" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_price_quantum_s3" model="rental.vehicle.type">
+      <field name="name">Quantum S3 — Giá thuê mẫu</field>
+      <field name="model_id" ref="demo_w8_model_quantum_s3" />
+      <field name="daily_rate">220000</field>
+      <field name="currency_id" ref="base.VND" />
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_model_era" model="fleet.vehicle.model">
+      <field name="name">ERA</field>
+      <field name="brand_id" ref="demo_w8_brand_datbike" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+    <record id="demo_w8_price_era" model="rental.vehicle.type">
+      <field name="name">ERA — Giá thuê mẫu</field>
+      <field name="model_id" ref="demo_w8_model_era" />
+      <field name="daily_rate">200000</field>
+      <field name="currency_id" ref="base.VND" />
+      <field name="active" eval="True" />
+    </record>
+    <function model="fleet.vehicle.model.brand" name="write">
+      <function model="fleet.vehicle.model.brand" name="search">
+        <value eval="[('id', 'not in', [ref('demo_w8_brand_vinfast'), ref('demo_w8_brand_datbike')]), ('model_ids', '=', False)]" />
+      </function>
+      <value eval="{'active': False}" />
+    </function>
+  </data>
+</odoo>

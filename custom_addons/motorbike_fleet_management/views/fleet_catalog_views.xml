@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="rental_model_form" model="ir.ui.view">
+    <field name="name">fleet.vehicle.model.rental.form</field>
+    <field name="model">fleet.vehicle.model</field>
+    <field name="inherit_id" ref="fleet.fleet_vehicle_model_view_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//sheet" position="replace">
+        <sheet>
+          <widget name="web_ribbon" title="Đã lưu trữ" bg_color="text-bg-danger" invisible="active"/>
+          <field name="image_128" widget="image" class="oe_avatar"/>
+          <group string="Thông tin dòng xe">
+            <field name="name" string="Tên dòng xe"/>
+            <field name="active" string="Đang sử dụng"/>
+            <field name="brand_id" string="Hãng xe"/>
+            <field name="vehicle_type" string="Loại phương tiện"/>
+          </group>
+        </sheet>
+      </xpath>
+    </field>
+  </record>
+  <record id="rental_model_list" model="ir.ui.view">
+    <field name="name">fleet.vehicle.model.rental.list</field>
+    <field name="model">fleet.vehicle.model</field>
+    <field name="inherit_id" ref="fleet.fleet_vehicle_model_view_tree"/>
+    <field name="arch" type="xml">
+      <xpath expr="//list" position="replace">
+        <list string="Dòng xe">
+          <field name="brand_id" string="Hãng xe"/>
+          <field name="name" string="Dòng xe"/>
+          <field name="vehicle_count" string="Số phương tiện"/>
+          <field name="vehicle_type" string="Loại phương tiện"/>
+        </list>
+      </xpath>
+    </field>
+  </record>
+  <record id="rental_model_search" model="ir.ui.view">
+    <field name="name">fleet.vehicle.model.rental.search</field>
+    <field name="model">fleet.vehicle.model</field>
+    <field name="inherit_id" ref="fleet.fleet_vehicle_model_view_search"/>
+    <field name="arch" type="xml">
+      <xpath expr="//filter[@name='groupby_category']" position="replace"/>
+    </field>
+  </record>
+  <record id="rental_brand_form" model="ir.ui.view">
+    <field name="name">fleet.vehicle.model.brand.rental.form</field>
+    <field name="model">fleet.vehicle.model.brand</field>
+    <field name="inherit_id" ref="fleet.fleet_vehicle_model_brand_view_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='name']" position="after">
+        <field name="active" string="Đang sử dụng"/>
+      </xpath>
+    </field>
+  </record>
+</odoo>

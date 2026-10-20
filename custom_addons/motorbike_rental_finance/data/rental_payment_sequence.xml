@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- noupdate="1": các lần cập nhật module sau không đặt lại bộ đếm đã chạy.
+         ir.sequence là bộ cấp số chuẩn của Odoo; mỗi loại thanh toán có một bộ riêng.
+         implementation="standard" dùng cơ chế cấp số của PostgreSQL để tránh cấp cùng số khi thao tác đồng thời.
+         prefix là phần đầu mã: %(year)s, %(month)s, %(day)s được thay bằng ngày thanh toán.
+         padding="3" viết số thứ tự tối thiểu 3 chữ số, ví dụ 1 thành 001; số 1000 vẫn hiển thị đủ.
+         number_increment="1": mỗi lần tăng một số.
+         use_date_range=False: số thứ tự tăng liên tục, không đặt lại theo ngày/tháng/năm.
+         company_id=False: dùng chung bộ đếm giữa các công ty, vì mã thanh toán không có tiền tố công ty. -->
+    <data noupdate="1">
+        <!-- DP: giao dịch thu tiền cọc. -->
+        <record id="seq_rental_payment_deposit" model="ir.sequence">
+            <field name="name">Mã thanh toán tiền cọc</field>
+            <field name="code">motorbike.rental.payment.deposit</field>
+            <field name="prefix">DP-%(year)s%(month)s%(day)s-</field>
+            <field name="padding">3</field>
+            <field name="number_increment">1</field>
+            <field name="implementation">standard</field>
+            <field name="use_date_range" eval="False"/>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <!-- RP: giao dịch thu tiền thuê. -->
+        <record id="seq_rental_payment_rental" model="ir.sequence">
+            <field name="name">Mã thanh toán tiền thuê</field>
+            <field name="code">motorbike.rental.payment.rental</field>
+            <field name="prefix">RP-%(year)s%(month)s%(day)s-</field>
+            <field name="padding">3</field>
+            <field name="number_increment">1</field>
+            <field name="implementation">standard</field>
+            <field name="use_date_range" eval="False"/>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <!-- RF: giao dịch hoàn tiền cho khách. -->
+        <record id="seq_rental_payment_refund" model="ir.sequence">
+            <field name="name">Mã hoàn tiền</field>
+            <field name="code">motorbike.rental.payment.refund</field>
+            <field name="prefix">RF-%(year)s%(month)s%(day)s-</field>
+            <field name="padding">3</field>
+            <field name="number_increment">1</field>
+            <field name="implementation">standard</field>
+            <field name="use_date_range" eval="False"/>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <!-- AP: giao dịch thu thêm phần còn thiếu. -->
+        <record id="seq_rental_payment_additional" model="ir.sequence">
+            <field name="name">Mã thu thêm</field>
+            <field name="code">motorbike.rental.payment.additional</field>
+            <field name="prefix">AP-%(year)s%(month)s%(day)s-</field>
+            <field name="padding">3</field>
+            <field name="number_increment">1</field>
+            <field name="implementation">standard</field>
+            <field name="use_date_range" eval="False"/>
+            <field name="company_id" eval="False"/>
+        </record>
+    </data>
+
+    <!-- function gọi hàm Python nội bộ sau khi bốn bộ cấp số đã tồn tại.
+         Đặt ngoài noupdate để mỗi lần nâng cấp đều kiểm tra tiếp nối mã cũ.
+         Hàm chỉ tăng bộ đếm khi cần, không đổi tên hay số tiền của thanh toán đã có. -->
+    <function model="motorbike.rental.payment" name="_initialize_payment_sequences"/>
+</odoo>
