@@ -7,6 +7,18 @@ class RentalContract(models.Model):
     _name = 'rental.contract'
     _description = 'Hợp đồng thuê xe'
     _order = 'start_date desc, id desc'
+    _sql_constraints = [
+        (
+            'valid_rental_date_range',
+            'CHECK(end_date > start_date)',
+            'Ngày kết thúc phải sau ngày bắt đầu.',
+        ),
+        (
+            'nonnegative_rental_deposit',
+            'CHECK(deposit_amount >= 0)',
+            'Tiền đặt cọc không được âm.',
+        ),
+    ]
 
     name = fields.Char(string='Mã hợp đồng', required=True, copy=False, default='/')
     customer_id = fields.Many2one(
@@ -20,7 +32,7 @@ class RentalContract(models.Model):
         required=True,
         default=lambda self: fields.Datetime.add(fields.Datetime.now(), days=1),
     )
-    rental_days = fields.Integer(string='Số ngày thuê', compute='_compute_amounts', store=True)
+    rental_days = fields.Integer(string='Số ngày thuê', compute='_compute_rental_days', store=True)
     currency_id = fields.Many2one(
         'res.currency', string='Tiền tệ', required=True,
         default=lambda self: self.env.company.currency_id,
@@ -28,19 +40,14 @@ class RentalContract(models.Model):
     deposit_amount = fields.Monetary(
         string='Tiền đặt cọc', required=True, default=0, currency_field='currency_id'
     )
-    min_rental_days = fields.Integer(
-        string='Số ngày thuê tối thiểu', required=True, default=1
-    )
-    max_rental_days = fields.Integer(
-        string='Số ngày thuê tối đa',
-        default=0,
-        help='Để 0 nếu không giới hạn số ngày thuê.',
-    )
     line_ids = fields.One2many(
         'rental.contract.line', 'contract_id', string='Xe thuê', copy=True
     )
     total_amount = fields.Monetary(
-        string='Tổng tiền thuê', compute='_compute_amounts', store=True, currency_field='currency_id'
+        string='Tổng tiền thuê',
+        compute='_compute_total_amount',
+        store=True,
+        currency_field='currency_id',
     )
     state = fields.Selection(
         [
@@ -58,8 +65,8 @@ class RentalContract(models.Model):
     )
     notes = fields.Text(string='Ghi chú')
 
-    @api.depends('start_date', 'end_date', 'line_ids.daily_rate')
-    def _compute_amounts(self):
+    @api.depends('start_date', 'end_date')
+    def _compute_rental_days(self):
         for contract in self:
             days = 0
             if contract.start_date and contract.end_date:
@@ -67,14 +74,21 @@ class RentalContract(models.Model):
                 if seconds > 0:
                     days = max(1, math.ceil(seconds / 86400))
             contract.rental_days = max(days, 0)
-            contract.total_amount = contract.rental_days * sum(
-                contract.line_ids.mapped('daily_rate')
+
+    @api.depends('line_ids.subtotal', 'currency_id')
+    def _compute_total_amount(self):
+        for contract in self:
+            total = sum(contract.line_ids.mapped('subtotal'))
+            contract.total_amount = (
+                contract.currency_id.round(total) if contract.currency_id else total
             )
 
     @api.model_create_multi
     def create(self, vals_list):
         default_state = self.default_get(['state']).get('state', 'draft')
         for vals in vals_list:
+            if vals.get('deposit_amount', 0) < 0:
+                raise ValidationError(_('Tiền đặt cọc không được âm.'))
             if vals.get('state', default_state) != 'draft':
                 raise UserError(_('Hợp đồng mới phải ở trạng thái Nháp.'))
             if vals.get('name', '/') == '/':
@@ -82,6 +96,14 @@ class RentalContract(models.Model):
         return super().create(vals_list)
 
     def write(self, vals):
+        if vals.get('deposit_amount', 0) < 0:
+            raise ValidationError(_('Tiền đặt cọc không được âm.'))
+        if set(vals) - {'state'}:
+            locked_contract = self.filtered(lambda contract: contract.state != 'draft')
+            if locked_contract:
+                raise UserError(
+                    _('Không thể chỉnh sửa hợp đồng sau khi đã xác nhận hoặc kết thúc.')
+                )
         if 'state' in vals:
             transitions = {
                 'draft': {'confirmed', 'cancelled'},
@@ -106,9 +128,15 @@ class RentalContract(models.Model):
                     )
         return super().write(vals)
 
+    def unlink(self):
+        if self.filtered(lambda contract: contract.state != 'draft'):
+            raise UserError(
+                _('Không thể xóa hợp đồng sau khi đã xác nhận hoặc kết thúc.')
+            )
+        return super().unlink()
+
     @api.constrains(
-        'start_date', 'end_date', 'min_rental_days', 'max_rental_days',
-        'deposit_amount', 'state', 'line_ids'
+        'start_date', 'end_date', 'deposit_amount', 'state', 'line_ids'
     )
     def _check_rental_period(self):
         for contract in self:
@@ -116,23 +144,8 @@ class RentalContract(models.Model):
                 raise ValidationError(_('Tiền đặt cọc không được âm.'))
             if not contract.start_date or not contract.end_date:
                 continue
-            if contract.min_rental_days < 1:
-                raise ValidationError(_('Số ngày thuê tối thiểu phải từ 1 trở lên.'))
-            if contract.max_rental_days and contract.max_rental_days < contract.min_rental_days:
-                raise ValidationError(
-                    _('Số ngày thuê tối đa phải lớn hơn hoặc bằng số ngày tối thiểu.')
-                )
             if contract.end_date <= contract.start_date:
                 raise ValidationError(_('Ngày kết thúc phải sau ngày bắt đầu.'))
-            days = contract.rental_days
-            if days < contract.min_rental_days:
-                raise ValidationError(
-                    _('Thời hạn thuê phải ít nhất %s ngày.') % contract.min_rental_days
-                )
-            if contract.max_rental_days and days > contract.max_rental_days:
-                raise ValidationError(
-                    _('Thời hạn thuê không được vượt quá %s ngày.') % contract.max_rental_days
-                )
             if contract.state in ('confirmed', 'in_progress'):
                 if not contract.line_ids:
                     raise ValidationError(_('Hợp đồng phải có ít nhất một xe để xác nhận.'))
@@ -143,12 +156,6 @@ class RentalContract(models.Model):
         vehicle_ids = self.line_ids.mapped('vehicle_id').ids
         if not vehicle_ids:
             return
-        for eligibility in self.line_ids.mapped('vehicle_id').check_fleet_availability(
-                self.start_date, self.end_date):
-            if not eligibility['fleet_ok']:
-                vehicle = self.env['fleet.vehicle'].browse(eligibility['vehicle_id'])
-                raise ValidationError(_('Xe %s chưa đủ điều kiện khai thác: %s') % (
-                    vehicle.display_name, ', '.join(eligibility['reasons'])))
         conflict = self.search(
             [
                 ('id', '!=', self.id),
@@ -213,7 +220,16 @@ class RentalContractLine(models.Model):
         index=True,
     )
     _sql_constraints = [
-        ('unique_contract_vehicle', 'UNIQUE(contract_id, vehicle_id)', 'Mỗi xe chỉ được xuất hiện một lần trong một hợp đồng!')
+        (
+            'unique_contract_vehicle',
+            'UNIQUE(contract_id, vehicle_id)',
+            'Mỗi xe chỉ được xuất hiện một lần trong một hợp đồng!',
+        ),
+        (
+            'nonnegative_daily_rate',
+            'CHECK(daily_rate >= 0)',
+            'Giá thuê mỗi ngày không được âm.',
+        ),
     ]
     vehicle_type_id = fields.Many2one(
         'rental.vehicle.type',
@@ -221,6 +237,9 @@ class RentalContractLine(models.Model):
         required=True,
         ondelete='restrict',
         domain=[('active', '=', True)],
+    )
+    vehicle_model_id = fields.Many2one(
+        related='vehicle_type_id.model_id', string='Dòng xe', readonly=True
     )
     currency_id = fields.Many2one(
         'res.currency', related='contract_id.currency_id', store=True, readonly=True
@@ -232,23 +251,64 @@ class RentalContractLine(models.Model):
         string='Thành tiền', compute='_compute_subtotal', store=True, currency_field='currency_id'
     )
 
-    @api.depends('contract_id.rental_days', 'daily_rate')
+    @api.depends('contract_id.rental_days', 'daily_rate', 'currency_id')
     def _compute_subtotal(self):
         for line in self:
-            line.subtotal = line.contract_id.rental_days * line.daily_rate
+            amount = line.contract_id.rental_days * line.daily_rate
+            line.subtotal = line.currency_id.round(amount) if line.currency_id else amount
 
     @api.onchange('vehicle_type_id')
     def _onchange_vehicle_type_id(self):
         if self.vehicle_type_id:
             self.daily_rate = self.vehicle_type_id.daily_rate
+            if (
+                self.vehicle_id
+                and self.vehicle_id.model_id != self.vehicle_type_id.model_id
+            ):
+                self.vehicle_id = False
+            return {
+                'domain': {
+                    'vehicle_id': [
+                        ('active', '=', True),
+                        ('model_id', '=', self.vehicle_type_id.model_id.id),
+                    ],
+                },
+            }
+        return {'domain': {'vehicle_id': [('active', '=', True)]}}
 
     @api.model_create_multi
     def create(self, vals_list):
+        default_contract_id = self.default_get(['contract_id']).get('contract_id')
         for vals in vals_list:
+            contract_id = vals.get('contract_id', default_contract_id)
+            contract = self.env['rental.contract'].browse(contract_id)
+            if contract and contract.state != 'draft':
+                raise UserError(
+                    _('Không thể thêm xe vào hợp đồng sau khi đã xác nhận.')
+                )
             if vals.get('vehicle_type_id') and 'daily_rate' not in vals:
                 vehicle_type = self.env['rental.vehicle.type'].browse(vals['vehicle_type_id'])
                 vals['daily_rate'] = vehicle_type.daily_rate
         return super().create(vals_list)
+
+    def write(self, vals):
+        contracts = self.mapped('contract_id')
+        if vals.get('contract_id'):
+            contracts |= self.env['rental.contract'].browse(vals['contract_id'])
+        if contracts.filtered(lambda contract: contract.state != 'draft'):
+            raise UserError(
+                _('Không thể chỉnh sửa xe trong hợp đồng sau khi đã xác nhận.')
+            )
+        return super().write(vals)
+
+    def unlink(self):
+        if self.mapped('contract_id').filtered(
+            lambda contract: contract.state != 'draft'
+        ):
+            raise UserError(
+                _('Không thể xóa xe khỏi hợp đồng sau khi đã xác nhận.')
+            )
+        return super().unlink()
 
     @api.constrains('vehicle_id', 'vehicle_type_id', 'contract_id', 'daily_rate')
     def _check_vehicle_line(self):
@@ -257,8 +317,14 @@ class RentalContractLine(models.Model):
                 raise ValidationError(_('Giá thuê mỗi ngày không được âm.'))
             if not line.vehicle_type_id or not line.contract_id:
                 continue
+            if not line.vehicle_id.active:
+                raise ValidationError(_('Không thể cho thuê xe đã lưu trữ.'))
+            if not line.vehicle_type_id.active:
+                raise ValidationError(_('Không thể sử dụng bảng giá đã lưu trữ.'))
             if line.vehicle_id.model_id != line.vehicle_type_id.model_id:
-                raise ValidationError(_('Dòng giá phải đúng với dòng xe được chọn.'))
+                raise ValidationError(
+                    _('Dòng xe của bảng giá phải trùng với dòng xe thực tế.')
+                )
             if line.vehicle_type_id.currency_id != line.contract_id.currency_id:
                 raise ValidationError(
                     _('Tiền tệ của dòng giá phải trùng với tiền tệ trên hợp đồng.')

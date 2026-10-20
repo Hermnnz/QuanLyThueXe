@@ -1,14 +1,2 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<odoo>
-    <record id="website.contactus_page" model="website.page">
-        <field name="is_published" eval="False"/>
-    </record>
-    <record id="website.header_call_to_action" model="ir.ui.view">
-        <field name="active" eval="False"/>
-    </record>
-    <delete model="website.menu" search="[('url', '=', '/contactus')]"/>
-    <template id="website_footer_remove_contact_links" inherit_id="website.footer_custom">
-        <xpath expr="//div[@id='footer']//a[@href='/contactus']/ancestor::li[1]" position="replace"/>
-        <xpath expr="//div[@id='connect']//a[@href='/contactus']/ancestor::li[1]" position="replace"/>
-    </template>
-</odoo>
+<odoo/>

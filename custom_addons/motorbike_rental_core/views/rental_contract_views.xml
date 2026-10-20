@@ -1,5 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
+    <record id="view_rental_contract_calendar" model="ir.ui.view">
+        <field name="name">rental.contract.calendar</field>
+        <field name="model">rental.contract</field>
+        <field name="arch" type="xml">
+            <calendar string="Lịch thuê xe" date_start="start_date" date_stop="end_date" color="state" mode="week" quick_create="false">
+                <field name="name"/>
+                <field name="customer_id"/>
+                <field name="state"/>
+                <field name="rental_days"/>
+                <field name="total_amount"/>
+            </calendar>
+        </field>
+    </record>
+
     <record id="view_rental_contract_list" model="ir.ui.view">
         <field name="name">rental.contract.list</field>
         <field name="model">rental.contract</field>
@@ -35,31 +49,30 @@
                     </div>
                     <group>
                         <group string="Thông tin thuê">
-                            <field name="customer_id"/>
-                            <field name="start_date"/>
-                            <field name="end_date"/>
-                            <field name="min_rental_days"/>
-                            <field name="max_rental_days"/>
+                            <field name="customer_id" readonly="state != 'draft'"/>
+                            <field name="start_date" readonly="state != 'draft'"/>
+                            <field name="end_date" readonly="state != 'draft'"/>
                         </group>
                         <group string="Chi phí">
                             <field name="currency_id" invisible="1"/>
                             <field name="rental_days"/>
-                            <field name="deposit_amount"/>
+                            <field name="deposit_amount" readonly="state != 'draft'"/>
                             <field name="total_amount"/>
                         </group>
                     </group>
                     <group string="Xe thuê">
-                        <field name="line_ids">
+                        <field name="line_ids" readonly="state != 'draft'">
                             <list editable="bottom">
-                                <field name="vehicle_id" string="Xe thuê"/>
-                                <field name="vehicle_type_id" domain="[('active', '=', True), ('currency_id', '=', parent.currency_id)]"/>
+                                <field name="vehicle_type_id" domain="[('active', '=', True), ('currency_id', '=', parent.currency_id)]" options="{'no_create': True}"/>
+                                <field name="vehicle_model_id" column_invisible="True"/>
+                                <field name="vehicle_id" string="Xe thuê" domain="[('active', '=', True), ('model_id', '=', vehicle_model_id)]" options="{'no_create': True}"/>
                                 <field name="daily_rate" readonly="1"/>
                                 <field name="subtotal" readonly="1"/>
                             </list>
                         </field>
                     </group>
                     <group>
-                        <field name="notes" placeholder="Ghi chú cho hợp đồng..."/>
+                        <field name="notes" placeholder="Ghi chú cho hợp đồng..." readonly="state != 'draft'"/>
                     </group>
                 </sheet>
             </form>
@@ -73,14 +86,20 @@
             <search string="Tìm hợp đồng thuê xe">
                 <field name="name"/>
                 <field name="customer_id"/>
+                <field name="start_date"/>
+                <field name="end_date"/>
                 <filter name="draft" string="Nháp" domain="[('state', '=', 'draft')]"/>
                 <filter name="confirmed" string="Đã xác nhận" domain="[('state', '=', 'confirmed')]"/>
                 <filter name="in_progress" string="Đang thuê" domain="[('state', '=', 'in_progress')]"/>
+                <filter name="reserved" string="Đã giữ xe / đang thuê" domain="[('state', 'in', ['confirmed', 'in_progress'])]"/>
                 <filter name="done" string="Hoàn tất" domain="[('state', '=', 'done')]"/>
                 <filter name="cancelled" string="Đã hủy" domain="[('state', '=', 'cancelled')]"/>
+                <filter name="start_date_period" string="Khoảng thời gian bắt đầu" date="start_date"/>
+                <filter name="end_date_period" string="Khoảng thời gian kết thúc" date="end_date"/>
                 <separator/>
                 <filter name="group_state" string="Nhóm theo trạng thái" context="{'group_by': 'state'}"/>
                 <filter name="group_customer" string="Nhóm theo khách hàng" context="{'group_by': 'customer_id'}"/>
+                <filter name="group_start_date" string="Nhóm theo ngày bắt đầu" context="{'group_by': 'start_date:day'}"/>
             </search>
         </field>
     </record>
@@ -92,8 +111,17 @@
         <field name="search_view_id" ref="view_rental_contract_search"/>
     </record>
 
-    <menuitem id="menu_motorbike_rental_root" name="Motorbike Rental" sequence="35" groups="motorbike_rental_core.group_rental_user"/>
+    <record id="action_rental_contract_calendar" model="ir.actions.act_window">
+        <field name="name">Lịch thuê xe</field>
+        <field name="res_model">rental.contract</field>
+        <field name="view_mode">calendar,list,form</field>
+        <field name="search_view_id" ref="view_rental_contract_search"/>
+        <field name="context">{'search_default_reserved': 1}</field>
+    </record>
+
+    <menuitem id="menu_motorbike_rental_root" name="Cho thuê xe máy" sequence="35" groups="motorbike_rental_core.group_rental_user"/>
     <menuitem id="menu_rental_management" name="Quản lý thuê xe" parent="menu_motorbike_rental_root" sequence="10"/>
+    <menuitem id="menu_rental_calendar" name="Lịch thuê xe" parent="menu_rental_management" action="action_rental_contract_calendar" sequence="5"/>
     <menuitem id="menu_rental_contract" name="Hợp đồng thuê xe" parent="menu_rental_management" action="action_rental_contract" sequence="10"/>
     <menuitem id="menu_rental_configuration" name="Cấu hình" parent="menu_motorbike_rental_root" sequence="90" groups="motorbike_rental_core.group_rental_manager"/>
     <menuitem id="menu_rental_vehicle_type" name="Bảng giá thuê theo dòng xe" parent="menu_rental_configuration" action="action_rental_vehicle_type" sequence="20" groups="motorbike_rental_core.group_rental_manager"/>
