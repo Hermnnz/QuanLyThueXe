@@ -51,6 +51,14 @@ class TestRentalContract(TransactionCase):
             values['daily_rate'] = daily_rate
         return self.env['rental.contract.line'].create(values)
 
+    def _record_upfront_payment(self, contract):
+        if 'motorbike.rental.payment' in self.env.registry:
+            self.env['motorbike.rental.payment'].create({
+                'contract_id': contract.id, 'customer_id': contract.customer_id.id,
+                'currency_id': contract.currency_id.id, 'transaction_type': 'rental_payment',
+                'amount': contract.total_amount, 'payment_method': 'cash', 'state': 'confirmed',
+            })
+
     def test_compute_rental_days_and_amounts(self):
         contract = self._create_contract()
         first_line = self._add_vehicle(contract, self.vehicle1)
@@ -68,6 +76,7 @@ class TestRentalContract(TransactionCase):
         with self.assertRaises(UserError):
             contract.write({'state': 'in_progress'})
 
+        self._record_upfront_payment(contract)
         contract.action_confirm()
         self.assertEqual(contract.state, 'confirmed')
         contract.action_start()
@@ -97,6 +106,7 @@ class TestRentalContract(TransactionCase):
 
         confirmed_contract = self._create_contract()
         self._add_vehicle(confirmed_contract, self.vehicle1)
+        self._record_upfront_payment(confirmed_contract)
         confirmed_contract.action_confirm()
         confirmed_contract.action_cancel()
         self.assertEqual(confirmed_contract.state, 'cancelled')
@@ -104,6 +114,7 @@ class TestRentalContract(TransactionCase):
     def test_rejects_overlapping_vehicle_reservation(self):
         first_contract = self._create_contract()
         self._add_vehicle(first_contract, self.vehicle1)
+        self._record_upfront_payment(first_contract)
         first_contract.action_confirm()
 
         overlapping_contract = self._create_contract(
@@ -111,6 +122,7 @@ class TestRentalContract(TransactionCase):
             end_date='2026-10-06 08:00:00',
         )
         self._add_vehicle(overlapping_contract, self.vehicle1)
+        self._record_upfront_payment(overlapping_contract)
         with self.assertRaises(ValidationError), self.cr.savepoint():
             overlapping_contract.action_confirm()
 

@@ -1,5 +1,5 @@
 # 1. Đầu file: Các dòng import
-from odoo import Command, api, fields, models
+from odoo import api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
 
@@ -101,6 +101,71 @@ class MotorbikeRentalCharge(models.Model):
             if record.contract_id and record.contract_id.customer_id != record.customer_id:
                 raise ValidationError("Khách hàng trên phiếu phí phải trùng với khách hàng của Hợp đồng thuê!")
 
+    @api.model_create_multi
+    def create(self, vals_list):  # Chặn tạo phụ phí cho hợp đồng đã hoàn tất.
+        for vals in vals_list:
+            # browse lấy hợp đồng theo mã số; chưa chọn thì trả tập rỗng.
+            contract = self.env["rental.contract"].browse(vals.get("contract_id"))
+            if contract.state == "done":
+                raise UserError("Hợp đồng đã hoàn tất, không thể tạo thêm phụ phí.")
+
+        return super().create(vals_list)  # Đủ điều kiện thì tạo như bình thường.
+
+    def write(self, vals):  # Chặn chuyển phụ phí vào hợp đồng hoàn tất; phụ phí đã thuộc hợp đồng hoàn tất chỉ được sửa ghi chú.
+        # write là hàm Odoo gọi khi lưu thay đổi.
+        # self là các khoản phụ phí đang được sửa.
+        # vals chứa tên trường và giá trị mới muốn lưu.
+
+        # Chỉ kiểm tra khi dữ liệu lưu có chọn hợp đồng đích.
+        if vals.get("contract_id"):
+            # browse lấy bản ghi hợp đồng theo ID (mã số trong database).
+            contract = self.env["rental.contract"].browse(vals["contract_id"])
+
+            for record in self:  # Kiểm tra từng phiếu đang được sửa.
+                # Chặn chuyển sang hợp đồng đã hoàn tất; giữ nguyên hợp đồng thì cho qua.
+                if record.contract_id != contract and contract.state == "done":
+                    raise UserError("Không thể chuyển phiếu vào hợp đồng đã hoàn tất.")
+
+        for charge in self:  # Lần lượt kiểm tra từng khoản phụ phí.
+
+            # contract_id là hợp đồng liên kết với khoản phụ phí.
+            # done là giá trị kỹ thuật của trạng thái Hoàn tất.
+            if charge.contract_id.state == "done":
+
+                # Duyệt dictionary bằng vòng for sẽ lấy từng tên trường.
+                # Ví dụ vals = {"unit_price": 500000, "note": "Ghi chú mới"}
+                # thì field_name lần lượt là "unit_price" và "note".
+                for field_name in vals:
+
+                    # note là trường Ghi chú.
+                    # != nghĩa là "khác": chỉ cần có trường khác ghi chú
+                    # thì chặn toàn bộ lần lưu này.
+                    if field_name != "note":
+                        # raise UserError dừng thao tác trước khi lưu và hiện thông báo cho nhân viên.
+                        raise UserError(
+                            "Hợp đồng đã hoàn tất. "
+                            "Khoản phụ phí chỉ được chỉnh sửa ghi chú."
+                        )
+
+        # super() gọi cách lưu sẵn có của Odoo.
+        # Chỉ lưu khi tất cả khoản phụ phí đều vượt qua kiểm tra.
+        return super().write(vals)
+
+    def unlink(self):  # Không cho xóa phụ phí thuộc hợp đồng đã hoàn tất.
+        # unlink là hàm Odoo gọi khi người dùng hoặc code yêu cầu xóa bản ghi.
+        # Phải kiểm tra cả thao tác xóa một khoản và xóa nhiều khoản cùng lúc.
+
+        for charge in self:
+            if charge.contract_id.state == "done":
+                # raise UserError dừng trước khi xóa và hiện thông báo.
+                raise UserError(
+                    "Không thể xóa khoản phụ phí của hợp đồng đã hoàn tất."
+                )
+
+        # Chỉ thực hiện xóa nếu không có khoản nào thuộc hợp đồng hoàn tất.
+        # Các quyền xóa và kiểm tra sẵn có của Odoo vẫn được áp dụng.
+        return super().unlink()
+
     # 5. Các hàm tính toán ( @api.depends , @api.onchange )
     @api.depends("quantity", "unit_price")
     def _compute_amount(self):
@@ -144,64 +209,10 @@ class MotorbikeRentalCharge(models.Model):
                 raise UserError("Không thể chỉnh sửa khoản phí của hợp đồng đã quyết toán!")
             record.state = "draft"
 
-    def action_create_invoice(self):
-        """Hỗ trợ xuất hóa đơn cho 1 hoặc gộp nhiều khoản phí của cùng 1 khách hàng."""
-        if not self:
-            return
-
-        # 1. Nếu chỉ chọn 1 bản ghi và đã có hóa đơn chưa bị hủy -> mở hóa đơn đó lên
-        if len(self) == 1 and self.invoice_id and self.invoice_id.state != "cancel":
-            return {
-                "name": "Hóa đơn khách hàng",
-                "type": "ir.actions.act_window",
-                "res_model": "account.move",
-                "res_id": self.invoice_id.id,
-                "view_mode": "form",
-                "target": "current",
-            }
-
-        # 2. Kiểm tra điều kiện hợp lệ trước khi tạo hóa đơn
-        if any(rec.state != "confirmed" for rec in self):
-            raise UserError("Tất cả các khoản phí phải ở trạng thái 'Đã xác nhận' trước khi tạo hóa đơn!")
-        if any(rec.invoice_id and rec.invoice_id.state != "cancel" for rec in self):
-            raise UserError("Có khoản phí đã được xuất hóa đơn rồi, không thể tạo trùng!")
-        if len(self.mapped("customer_id")) > 1:
-            raise UserError("Chỉ có thể gộp hóa đơn cho các khoản phí của cùng một khách hàng!")
-        if len(self.mapped("currency_id")) > 1:
-            raise UserError("Các khoản phí phải cùng một loại tiền tệ mới có thể gộp chung hóa đơn!")
-
-        # 3. Chuẩn bị các dòng chi tiết hóa đơn (Đồng bộ đầy đủ charge_id & price_catalog_id với account_move.py)
-        invoice_lines = [
-            Command.create({
-                "name": f"Phụ phí: {rec.name}",
-                "quantity": rec.quantity,
-                "price_unit": rec.unit_price,
-                "charge_id": rec.id,
-                "price_catalog_id": rec.price_catalog_id.id if rec.price_catalog_id else False,
-            })
-            for rec in self
-        ]
-
-        # Không gắn contract_id ở đây để tránh việc hóa đơn thiếu tiền xe tự động đóng hợp đồng
-        # Hóa đơn quyết toán đóng hợp đồng chuẩn sẽ được xuất từ menu Hóa đơn (chọn Hợp đồng có cả tiền thuê xe)
-        invoice_vals = {
-            "move_type": "out_invoice",
-            "partner_id": self[0].customer_id.id,
-            "currency_id": self[0].currency_id.id,
-            "contract_id": False,
-            "invoice_date": fields.Date.context_today(self),
-            "invoice_line_ids": invoice_lines,
-        }
-
-        # 4. Tạo hóa đơn và liên kết ngược lại các phiếu phí
-        invoice = self.env["account.move"].create(invoice_vals)
-        self.write({"invoice_id": invoice.id})
-
-        return {
-            "name": "Hóa đơn khách hàng",
-            "type": "ir.actions.act_window",
-            "res_model": "account.move",
-            "res_id": invoice.id,
-            "view_mode": "form",
-            "target": "current",
-        }
+    def action_create_invoice(self):  # Chặn tạo hóa đơn riêng cho phụ phí.
+        # Giữ hàm để các nơi còn gọi nút cũ cũng bị chặn.
+        # UserError dừng thao tác và hiện hướng dẫn cho nhân viên.
+        raise UserError(
+            "Phụ phí phải được gộp vào hóa đơn cuối hợp đồng. "
+            "Vui lòng tạo hóa đơn và chọn hợp đồng tương ứng."
+        )

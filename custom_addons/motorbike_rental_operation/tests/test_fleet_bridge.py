@@ -17,10 +17,18 @@ class TestFleetRentalBridge(TransactionCase):
         cls.price = cls.env['rental.vehicle.type'].create({'name': 'Bridge price', 'model_id': model.id, 'daily_rate': 100})
 
     def contract(self, **values):
-        return self.env['rental.contract'].create({
+        contract = self.env['rental.contract'].create({
             'customer_id': self.customer.id, 'start_date': '2026-12-01 08:00:00',
             'end_date': '2026-12-03 08:00:00', 'line_ids': [(0, 0, {
                 'vehicle_id': self.vehicle.id, 'vehicle_type_id': self.price.id})], **values})
+        if 'motorbike.rental.payment' in self.env.registry:
+            contract.payment_ids.action_confirm()
+            self.env['motorbike.rental.payment'].create({
+                'contract_id': contract.id, 'customer_id': contract.customer_id.id,
+                'currency_id': contract.currency_id.id, 'transaction_type': 'rental_payment',
+                'amount': contract.total_amount, 'payment_method': 'cash', 'state': 'confirmed',
+            })
+        return contract
 
     def operation(self, contract):
         return self.env['rental.operation.ticket'].create({
