@@ -27,5 +27,14 @@
             <field name="padding">4</field>
             <field name="company_id" eval="False"/>
         </record>
+
+        <!-- Sequence for Biên Lai Giao Xe -->
+        <record id="seq_rental_delivery_receipt" model="ir.sequence">
+            <field name="name">Mã Biên Lai Giao Xe</field>
+            <field name="code">rental.delivery.receipt</field>
+            <field name="prefix">BLGX-%(year)s-</field>
+            <field name="padding">4</field>
+            <field name="company_id" eval="False"/>
+        </record>
     </data>
 </odoo>

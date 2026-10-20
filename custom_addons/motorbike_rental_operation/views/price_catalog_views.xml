@@ -10,12 +10,12 @@
         <field name="name">motorbike.rental.price.catalog.list</field>
         <field name="model">motorbike.rental.price.catalog</field>
         <field name="arch" type="xml">
-            <list string="Bảng giá" class="o_price_catalog_no_selector">
+            <list string="Bảng giá">
+                <field name="currency_id" column_invisible="1"/>
                 <field name="name"/>
                 <field name="code"/>
                 <field name="category"/>
                 <field name="unit_price"/>
-                <field name="currency_id"/>
                 <field name="unit"/>
                 <field name="effective_from" optional="show"/>
                 <field name="effective_to" optional="show"/>

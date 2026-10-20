@@ -12,17 +12,18 @@
         <field name="arch" type="xml">
             <list string="Sự cố">
                 <field name="currency_id" column_invisible="1"/>
-                <field name="name"/>
-                <field name="ticket_id"/>
-                <field name="vehicle_id"/>
-                <field name="price_catalog_id"/>
-                <field name="fault_party"/>
-                <field name="damage_description"/>
-                <field name="date_reported"/>
+                <field name="name" width="130px"/>
+                <field name="ticket_id" width="160px"/>
+                <field name="vehicle_id" width="180px"/>
+                <field name="price_catalog_id" width="200px"/>
+                <field name="fault_party" width="150px"/>
+                <field name="needs_repair" width="110px"/>
+                <field name="damage_description" width="280px"/>
+                <field name="date_reported" width="175px"/>
                 <field name="status" widget="badge" 
                        decoration-info="status == 'new'" 
                        decoration-warning="status == 'processing'" 
-                       decoration-success="status == 'resolved'"/>
+                       decoration-success="status == 'resolved'" width="140px"/>
             </list>
         </field>
     </record>
@@ -45,10 +46,6 @@
                             class="btn-success" 
                             invisible="status != 'processing'"
                             confirm="Bạn có chắc chắn sự cố này đã được xử lý/khắc phục hoàn tất?"/>
-                    <button name="action_reset_new" 
-                            type="object" 
-                            string="Đặt lại Mới" 
-                            invisible="status == 'new'"/>
                     <field name="status" widget="statusbar" statusbar_visible="new,processing,resolved"/>
                 </header>
                 <sheet>
@@ -66,6 +63,7 @@
                         <group>
                             <field name="fault_party"/>
                             <field name="price_catalog_id" options="{'no_create': True, 'no_open': True}"/>
+                            <field name="needs_repair"/>
                         </group>
                     </group>
                     <group string="Mô tả lỗi / Hư hỏng">
@@ -88,7 +86,10 @@
                 <filter string="Mới" name="new" domain="[('status','=','new')]"/>
                 <filter string="Đang xử lý" name="processing" domain="[('status','=','processing')]"/>
                 <filter string="Đã giải quyết" name="resolved" domain="[('status','=','resolved')]"/>
+                <filter string="Cần sửa chữa" name="needs_repair" domain="[('needs_repair','=',True)]"/>
+                <filter string="Không cần sửa chữa" name="no_needs_repair" domain="[('needs_repair','=',False)]"/>
                 <group expand="0" string="Nhóm theo">
+                    <filter string="Cần sửa chữa" name="group_by_needs_repair" context="{'group_by':'needs_repair'}"/>
                     <filter string="Trạng thái" name="group_by_status" context="{'group_by':'status'}"/>
                     <filter string="Lỗi thuộc về" name="group_by_fault_party" context="{'group_by':'fault_party'}"/>
                 </group>

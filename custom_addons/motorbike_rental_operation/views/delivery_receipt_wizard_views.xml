@@ -1,0 +1,314 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_rental_delivery_receipt_wizard_form" model="ir.ui.view">
+        <field name="name">rental.delivery.receipt.wizard.form</field>
+        <field name="model">rental.delivery.receipt.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Xác Nhận &amp; Xuất Biên Lai Giao Xe">
+                <sheet>
+                    <!-- Các trường ẩn điều khiển hiển thị tab -->
+                    <field name="ticket_id" invisible="1"/>
+                    <field name="receipt_1_visible" invisible="1"/>
+                    <field name="receipt_2_visible" invisible="1"/>
+                    <field name="receipt_3_visible" invisible="1"/>
+                    <field name="receipt_4_visible" invisible="1"/>
+                    <field name="receipt_5_visible" invisible="1"/>
+                    <field name="receipt_6_visible" invisible="1"/>
+
+                    <!-- Danh sách các tab biên lai: mỗi biên lai là 1 tab riêng biệt -->
+                    <notebook>
+                        <!-- TAB BIÊN LAI 1 -->
+                        <page string="Biên lai 1" name="tab_receipt_1" invisible="not receipt_1_visible">
+                            <div class="mb-2">
+                                <h5 class="text-primary fw-bold mb-1">
+                                    <field name="receipt_1_name" readonly="1"/>
+                                </h5>
+                            </div>
+                            <group>
+                                <group string="Khách hàng nhận xe">
+                                    <field name="receipt_1_customer_id" string="Khách hàng"/>
+                                    <field name="receipt_1_customer_phone" string="Số điện thoại" widget="phone"/>
+                                </group>
+                                <group string="Thời gian &amp; Địa điểm giao">
+                                    <field name="receipt_1_delivery_time" string="Giờ giao xe"/>
+                                    <field name="receipt_1_delivery_date" string="Ngày giao xe"/>
+                                    <field name="receipt_1_delivery_location" string="Địa điểm giao xe"/>
+                                </group>
+                            </group>
+
+                            <div class="o_horizontal_separator text-uppercase fw-bold mt-2 mb-2" style="font-size: 12px; color: #495057;">
+                                <i class="fa fa-cubes me-1"/> Phụ kiện kèm theo (Bàn giao theo nhóm xe)
+                            </div>
+                            <group>
+                                <group>
+                                    <field name="receipt_1_qty_helmet" string="Mũ bảo hiểm (cái)"/>
+                                    <field name="receipt_1_qty_raincoat" string="Áo mưa (cái)"/>
+                                </group>
+                                <group>
+                                    <field name="receipt_1_qty_phone_holder" string="Giá đỡ ĐT / Màn hình (cái)"/>
+                                    <field name="receipt_1_qty_charger" string="Bộ sạc xe (bộ)"/>
+                                </group>
+                            </group>
+
+                            <div class="o_horizontal_separator text-uppercase fw-bold mt-3 mb-2" style="font-size: 12px; color: #495057;">
+                                <i class="fa fa-motorcycle me-1"/> Thông tin xe &amp; Tình trạng ngoại quan ban đầu
+                            </div>
+                            <field name="receipt_1_vehicle_ids">
+                                <list editable="bottom" create="0" delete="0">
+                                    <field name="vehicle_id" string="Xe" readonly="1"/>
+                                    <field name="license_plate" string="Biển số" readonly="1"/>
+                                    <field name="delivery_time" string="Giờ giao" readonly="1"/>
+                                    <field name="delivery_location" string="Vị trí giao" readonly="1" optional="show"/>
+                                    <field name="delivery_visual_note" string="Tình trạng ngoại quan ban đầu (vết xước, phụ kiện...)"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <!-- TAB BIÊN LAI 2 -->
+                        <page string="Biên lai 2" name="tab_receipt_2" invisible="not receipt_2_visible">
+                            <div class="mb-2">
+                                <h5 class="text-primary fw-bold mb-1">
+                                    <field name="receipt_2_name" readonly="1"/>
+                                </h5>
+                            </div>
+                            <group>
+                                <group string="Khách hàng nhận xe">
+                                    <field name="receipt_2_customer_id" string="Khách hàng"/>
+                                    <field name="receipt_2_customer_phone" string="Số điện thoại" widget="phone"/>
+                                </group>
+                                <group string="Thời gian &amp; Địa điểm giao">
+                                    <field name="receipt_2_delivery_time" string="Giờ giao xe"/>
+                                    <field name="receipt_2_delivery_date" string="Ngày giao xe"/>
+                                    <field name="receipt_2_delivery_location" string="Địa điểm giao xe"/>
+                                </group>
+                            </group>
+
+                            <div class="o_horizontal_separator text-uppercase fw-bold mt-2 mb-2" style="font-size: 12px; color: #495057;">
+                                <i class="fa fa-cubes me-1"/> Phụ kiện kèm theo (Bàn giao theo nhóm xe)
+                            </div>
+                            <group>
+                                <group>
+                                    <field name="receipt_2_qty_helmet" string="Mũ bảo hiểm (cái)"/>
+                                    <field name="receipt_2_qty_raincoat" string="Áo mưa (cái)"/>
+                                </group>
+                                <group>
+                                    <field name="receipt_2_qty_phone_holder" string="Giá đỡ ĐT / Màn hình (cái)"/>
+                                    <field name="receipt_2_qty_charger" string="Bộ sạc xe (bộ)"/>
+                                </group>
+                            </group>
+
+                            <div class="o_horizontal_separator text-uppercase fw-bold mt-3 mb-2" style="font-size: 12px; color: #495057;">
+                                <i class="fa fa-motorcycle me-1"/> Thông tin xe &amp; Tình trạng ngoại quan ban đầu
+                            </div>
+                            <field name="receipt_2_vehicle_ids">
+                                <list editable="bottom" create="0" delete="0">
+                                    <field name="vehicle_id" string="Xe" readonly="1"/>
+                                    <field name="license_plate" string="Biển số" readonly="1"/>
+                                    <field name="delivery_time" string="Giờ giao" readonly="1"/>
+                                    <field name="delivery_location" string="Vị trí giao" readonly="1" optional="show"/>
+                                    <field name="delivery_visual_note" string="Tình trạng ngoại quan ban đầu (vết xước, phụ kiện...)"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <!-- TAB BIÊN LAI 3 -->
+                        <page string="Biên lai 3" name="tab_receipt_3" invisible="not receipt_3_visible">
+                            <div class="mb-2">
+                                <h5 class="text-primary fw-bold mb-1">
+                                    <field name="receipt_3_name" readonly="1"/>
+                                </h5>
+                            </div>
+                            <group>
+                                <group string="Khách hàng nhận xe">
+                                    <field name="receipt_3_customer_id" string="Khách hàng"/>
+                                    <field name="receipt_3_customer_phone" string="Số điện thoại" widget="phone"/>
+                                </group>
+                                <group string="Thời gian &amp; Địa điểm giao">
+                                    <field name="receipt_3_delivery_time" string="Giờ giao xe"/>
+                                    <field name="receipt_3_delivery_date" string="Ngày giao xe"/>
+                                    <field name="receipt_3_delivery_location" string="Địa điểm giao xe"/>
+                                </group>
+                            </group>
+
+                            <div class="o_horizontal_separator text-uppercase fw-bold mt-2 mb-2" style="font-size: 12px; color: #495057;">
+                                <i class="fa fa-cubes me-1"/> Phụ kiện kèm theo (Bàn giao theo nhóm xe)
+                            </div>
+                            <group>
+                                <group>
+                                    <field name="receipt_3_qty_helmet" string="Mũ bảo hiểm (cái)"/>
+                                    <field name="receipt_3_qty_raincoat" string="Áo mưa (cái)"/>
+                                </group>
+                                <group>
+                                    <field name="receipt_3_qty_phone_holder" string="Giá đỡ ĐT / Màn hình (cái)"/>
+                                    <field name="receipt_3_qty_charger" string="Bộ sạc xe (bộ)"/>
+                                </group>
+                            </group>
+
+                            <div class="o_horizontal_separator text-uppercase fw-bold mt-3 mb-2" style="font-size: 12px; color: #495057;">
+                                <i class="fa fa-motorcycle me-1"/> Thông tin xe &amp; Tình trạng ngoại quan ban đầu
+                            </div>
+                            <field name="receipt_3_vehicle_ids">
+                                <list editable="bottom" create="0" delete="0">
+                                    <field name="vehicle_id" string="Xe" readonly="1"/>
+                                    <field name="license_plate" string="Biển số" readonly="1"/>
+                                    <field name="delivery_time" string="Giờ giao" readonly="1"/>
+                                    <field name="delivery_location" string="Vị trí giao" readonly="1" optional="show"/>
+                                    <field name="delivery_visual_note" string="Tình trạng ngoại quan ban đầu (vết xước, phụ kiện...)"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <!-- TAB BIÊN LAI 4 -->
+                        <page string="Biên lai 4" name="tab_receipt_4" invisible="not receipt_4_visible">
+                            <div class="mb-2">
+                                <h5 class="text-primary fw-bold mb-1">
+                                    <field name="receipt_4_name" readonly="1"/>
+                                </h5>
+                            </div>
+                            <group>
+                                <group string="Khách hàng nhận xe">
+                                    <field name="receipt_4_customer_id" string="Khách hàng"/>
+                                    <field name="receipt_4_customer_phone" string="Số điện thoại" widget="phone"/>
+                                </group>
+                                <group string="Thời gian &amp; Địa điểm giao">
+                                    <field name="receipt_4_delivery_time" string="Giờ giao xe"/>
+                                    <field name="receipt_4_delivery_date" string="Ngày giao xe"/>
+                                    <field name="receipt_4_delivery_location" string="Địa điểm giao xe"/>
+                                </group>
+                            </group>
+
+                            <div class="o_horizontal_separator text-uppercase fw-bold mt-2 mb-2" style="font-size: 12px; color: #495057;">
+                                <i class="fa fa-cubes me-1"/> Phụ kiện kèm theo (Bàn giao theo nhóm xe)
+                            </div>
+                            <group>
+                                <group>
+                                    <field name="receipt_4_qty_helmet" string="Mũ bảo hiểm (cái)"/>
+                                    <field name="receipt_4_qty_raincoat" string="Áo mưa (cái)"/>
+                                </group>
+                                <group>
+                                    <field name="receipt_4_qty_phone_holder" string="Giá đỡ ĐT / Màn hình (cái)"/>
+                                    <field name="receipt_4_qty_charger" string="Bộ sạc xe (bộ)"/>
+                                </group>
+                            </group>
+
+                            <div class="o_horizontal_separator text-uppercase fw-bold mt-3 mb-2" style="font-size: 12px; color: #495057;">
+                                <i class="fa fa-motorcycle me-1"/> Thông tin xe &amp; Tình trạng ngoại quan ban đầu
+                            </div>
+                            <field name="receipt_4_vehicle_ids">
+                                <list editable="bottom" create="0" delete="0">
+                                    <field name="vehicle_id" string="Xe" readonly="1"/>
+                                    <field name="license_plate" string="Biển số" readonly="1"/>
+                                    <field name="delivery_time" string="Giờ giao" readonly="1"/>
+                                    <field name="delivery_location" string="Vị trí giao" readonly="1" optional="show"/>
+                                    <field name="delivery_visual_note" string="Tình trạng ngoại quan ban đầu (vết xước, phụ kiện...)"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <!-- TAB BIÊN LAI 5 -->
+                        <page string="Biên lai 5" name="tab_receipt_5" invisible="not receipt_5_visible">
+                            <div class="mb-2">
+                                <h5 class="text-primary fw-bold mb-1">
+                                    <field name="receipt_5_name" readonly="1"/>
+                                </h5>
+                            </div>
+                            <group>
+                                <group string="Khách hàng nhận xe">
+                                    <field name="receipt_5_customer_id" string="Khách hàng"/>
+                                    <field name="receipt_5_customer_phone" string="Số điện thoại" widget="phone"/>
+                                </group>
+                                <group string="Thời gian &amp; Địa điểm giao">
+                                    <field name="receipt_5_delivery_time" string="Giờ giao xe"/>
+                                    <field name="receipt_5_delivery_date" string="Ngày giao xe"/>
+                                    <field name="receipt_5_delivery_location" string="Địa điểm giao xe"/>
+                                </group>
+                            </group>
+
+                            <div class="o_horizontal_separator text-uppercase fw-bold mt-2 mb-2" style="font-size: 12px; color: #495057;">
+                                <i class="fa fa-cubes me-1"/> Phụ kiện kèm theo (Bàn giao theo nhóm xe)
+                            </div>
+                            <group>
+                                <group>
+                                    <field name="receipt_5_qty_helmet" string="Mũ bảo hiểm (cái)"/>
+                                    <field name="receipt_5_qty_raincoat" string="Áo mưa (cái)"/>
+                                </group>
+                                <group>
+                                    <field name="receipt_5_qty_phone_holder" string="Giá đỡ ĐT / Màn hình (cái)"/>
+                                    <field name="receipt_5_qty_charger" string="Bộ sạc xe (bộ)"/>
+                                </group>
+                            </group>
+
+                            <div class="o_horizontal_separator text-uppercase fw-bold mt-3 mb-2" style="font-size: 12px; color: #495057;">
+                                <i class="fa fa-motorcycle me-1"/> Thông tin xe &amp; Tình trạng ngoại quan ban đầu
+                            </div>
+                            <field name="receipt_5_vehicle_ids">
+                                <list editable="bottom" create="0" delete="0">
+                                    <field name="vehicle_id" string="Xe" readonly="1"/>
+                                    <field name="license_plate" string="Biển số" readonly="1"/>
+                                    <field name="delivery_time" string="Giờ giao" readonly="1"/>
+                                    <field name="delivery_location" string="Vị trí giao" readonly="1" optional="show"/>
+                                    <field name="delivery_visual_note" string="Tình trạng ngoại quan ban đầu (vết xước, phụ kiện...)"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <!-- TAB BIÊN LAI 6 -->
+                        <page string="Biên lai 6" name="tab_receipt_6" invisible="not receipt_6_visible">
+                            <div class="mb-2">
+                                <h5 class="text-primary fw-bold mb-1">
+                                    <field name="receipt_6_name" readonly="1"/>
+                                </h5>
+                            </div>
+                            <group>
+                                <group string="Khách hàng nhận xe">
+                                    <field name="receipt_6_customer_id" string="Khách hàng"/>
+                                    <field name="receipt_6_customer_phone" string="Số điện thoại" widget="phone"/>
+                                </group>
+                                <group string="Thời gian &amp; Địa điểm giao">
+                                    <field name="receipt_6_delivery_time" string="Giờ giao xe"/>
+                                    <field name="receipt_6_delivery_date" string="Ngày giao xe"/>
+                                    <field name="receipt_6_delivery_location" string="Địa điểm giao xe"/>
+                                </group>
+                            </group>
+
+                            <div class="o_horizontal_separator text-uppercase fw-bold mt-2 mb-2" style="font-size: 12px; color: #495057;">
+                                <i class="fa fa-cubes me-1"/> Phụ kiện kèm theo (Bàn giao theo nhóm xe)
+                            </div>
+                            <group>
+                                <group>
+                                    <field name="receipt_6_qty_helmet" string="Mũ bảo hiểm (cái)"/>
+                                    <field name="receipt_6_qty_raincoat" string="Áo mưa (cái)"/>
+                                </group>
+                                <group>
+                                    <field name="receipt_6_qty_phone_holder" string="Giá đỡ ĐT / Màn hình (cái)"/>
+                                    <field name="receipt_6_qty_charger" string="Bộ sạc xe (bộ)"/>
+                                </group>
+                            </group>
+
+                            <div class="o_horizontal_separator text-uppercase fw-bold mt-3 mb-2" style="font-size: 12px; color: #495057;">
+                                <i class="fa fa-motorcycle me-1"/> Thông tin xe &amp; Tình trạng ngoại quan ban đầu
+                            </div>
+                            <field name="receipt_6_vehicle_ids">
+                                <list editable="bottom" create="0" delete="0">
+                                    <field name="vehicle_id" string="Xe" readonly="1"/>
+                                    <field name="license_plate" string="Biển số" readonly="1"/>
+                                    <field name="delivery_time" string="Giờ giao" readonly="1"/>
+                                    <field name="delivery_location" string="Vị trí giao" readonly="1" optional="show"/>
+                                    <field name="delivery_visual_note" string="Tình trạng ngoại quan ban đầu (vết xước, phụ kiện...)"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <footer>
+                    <button name="action_confirm_and_print" 
+                            type="object" 
+                            string="Xác nhận &amp; In Biên lai" 
+                            class="btn-primary" 
+                            icon="fa-print"/>
+                    <button string="Hủy bỏ" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

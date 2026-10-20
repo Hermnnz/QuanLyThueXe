@@ -58,14 +58,14 @@
 
     <!-- 2. Danh mục Phụ phí (Surcharge) -->
     <record id="price_catalog_late_fee" model="motorbike.rental.price.catalog">
-        <field name="name">Phí trả xe trễ</field>
+        <field name="name">Phí thu hồi xe trễ</field>
         <field name="code">PT-TRE-50K</field>
         <field name="category">surcharge</field>
         <field name="currency_id" ref="base.VND"/>
         <field name="unit_price">50000</field>
         <field name="unit">hour</field>
         <field name="effective_from">2026-01-01</field>
-        <field name="note">Tính 50.000 VND cho mỗi giờ trả xe trễ so với giờ hẹn.</field>
+        <field name="note">Tính 50.000 VND cho mỗi giờ thu hồi xe trễ so với giờ hẹn.</field>
     </record>
 
     <record id="price_catalog_processing_fee" model="motorbike.rental.price.catalog">
@@ -99,6 +99,6 @@
         <field name="unit_price">80000</field>
         <field name="unit">time</field>
         <field name="effective_from">2026-01-01</field>
-        <field name="note">Áp dụng khi xe cần vệ sinh đặc biệt sau khi hoàn trả.</field>
+        <field name="note">Áp dụng khi xe cần vệ sinh đặc biệt sau khi thu hồi.</field>
     </record>
 </odoo>

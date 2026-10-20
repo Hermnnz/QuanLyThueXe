@@ -77,6 +77,8 @@ class RentalIncidentLog(models.Model):
 
     damage_description = fields.Text(string='Mô tả chi tiết lỗi')
 
+    needs_repair = fields.Boolean(string='Cần sửa chữa', default=True)
+
     status = fields.Selection([
         ('new', 'Mới'),
         ('processing', 'Đang xử lý'),
@@ -111,14 +113,6 @@ class RentalIncidentLog(models.Model):
                 raise UserError(f'Sự cố {label} đã hoàn tất trước đó!')
             rec.write({
                 'status': 'resolved',
-                'is_selected': False,
-            })
-
-    def action_reset_new(self):
-        """Khôi phục sự cố về trạng thái Mới"""
-        for rec in self:
-            rec.write({
-                'status': 'new',
                 'is_selected': False,
             })
 

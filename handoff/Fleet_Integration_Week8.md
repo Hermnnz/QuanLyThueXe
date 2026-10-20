@@ -3,7 +3,7 @@
 Module `motorbike_fleet_management`, Odoo 19, phiên bản `19.0.5.1.0`.
 
 ## Phần Fleet đã sửa
-
+6
 - Mã xe đã cấp là duy nhất trên toàn bộ xe, gồm xe lưu trữ, được bảo vệ bằng UNIQUE trong database. Không bắt buộc cấp mã khi tạo; copy xe để mã trống.
 - Trạng thái và technical_ready chỉ đọc trên form; thay đổi bằng workflow. ORM/RPC/import của module vẫn áp dụng các validation hiện có, không bị cấm toàn bộ write.
 

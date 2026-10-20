@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_rental_vehicle_schedule_wizard_form" model="ir.ui.view">
+        <field name="name">rental.vehicle.schedule.wizard.form</field>
+        <field name="model">rental.vehicle.schedule.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Cập nhật Địa điểm &amp; Giờ Giao xe">
+                <sheet>
+                    <div class="alert alert-info d-flex align-items-center mb-3" role="alert">
+                        <i class="fa fa-info-circle fa-2x me-3 text-info"/>
+                        <div>
+                            Đang áp dụng cập nhật cho <strong><field name="vehicle_count" readonly="1"/> xe</strong> đang được chọn.
+                        </div>
+                    </div>
+                    <group>
+                        <group string="Thông tin Giao xe">
+                            <field name="delivery_location" placeholder="Nhập địa điểm giao (VD: Tại cửa hàng, Khách sạn...)" required="1"/>
+                            <field name="delivery_time" placeholder="VD: 08:30 hoặc 14:00"/>
+                        </group>
+                        <group string="Thông tin Thu hồi xe">
+                            <field name="return_location" placeholder="Mặc định: Tại cửa hàng"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Danh sách xe được chọn">
+                            <field name="vehicle_ids" readonly="1">
+                                <list create="0" delete="0">
+                                    <field name="vehicle_id"/>
+                                    <field name="status" widget="badge"/>
+                                    <field name="delivery_location"/>
+                                    <field name="delivery_time"/>
+                                    <field name="return_location"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <footer>
+                    <button name="action_apply" type="object" string="Cập nhật (Enter)" class="btn-primary" default="1"/>
+                    <button string="Hủy bỏ" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

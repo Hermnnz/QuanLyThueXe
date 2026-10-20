@@ -18,9 +18,17 @@ class RentalOperationTicket(models.Model):
     # Hợp đồng thuê xe liên kết
     contract_id = fields.Many2one('rental.contract', string='Hợp đồng thuê', required=True)
     customer_id = fields.Many2one('res.partner', string='Khách hàng', related='contract_id.customer_id', store=True, readonly=True)
+    customer_phone = fields.Char(string='Số điện thoại', related='customer_id.phone', store=True, readonly=True)
 
     rental_order_ref = fields.Char(related='contract_id.name', string='Mã hợp đồng', store=True, readonly=True)
-    actual_return_date = fields.Datetime(string='Giờ trả thực tế')
+    contract_state = fields.Selection(
+        related='contract_id.state',
+        string='Trạng thái hợp đồng',
+        store=True,
+        readonly=True
+    )
+    actual_delivery_date = fields.Datetime(string='Thời gian giao thực tế')
+    actual_return_date = fields.Datetime(string='Thời gian thu hồi thực tế')
 
     # TỰ ĐỘNG GỌI DỮ LIỆU TỪ HỢP ĐỒNG ĐỂ FILL VÀO PHIẾU BÀN GIAO
     @api.onchange('contract_id')
@@ -32,26 +40,36 @@ class RentalOperationTicket(models.Model):
         vehicle_lines = []
         for line in self.contract_id.line_ids:
             if line.vehicle_id:
+                has_electric = getattr(line.vehicle_id, 'is_electric_motorbike', False)
                 vehicle_vals = {
                     'vehicle_id': line.vehicle_id.id,
                     'vehicle_price': line.daily_rate,
-                    'delivery_location': self.quick_delivery_location or 'Tại cửa hàng',
-                    'return_location': self.quick_return_location or 'Tại cửa hàng',
+                    'delivery_location': 'Tại cửa hàng',
+                    'return_location': 'Tại cửa hàng',
+                    'delivery_time': False,
                     'date_checkout': self.contract_id.start_date,
                     'date_checkin': self.contract_id.end_date,
+                    'actual_delivery_date': False,
+                    'actual_return_date': False,
                     'status': 'waiting',
                     'is_selected': False,
                     'is_custom_delivery_location': False,
                     'is_custom_return_location': False,
+                    'is_custom_delivery_time': False,
+                    'qty_helmet': 2,
+                    'qty_raincoat': 2,
+                    'qty_phone_holder': 1,
+                    'qty_charger': 1 if has_electric else 0,
+                    'delivery_visual_note': 'Xe vận hành tốt, ngoại quan bình thường, không trầy xước phát sinh.',
                 }
                 vehicle_lines.append((0, 0, vehicle_vals))
 
         # (5, 0, 0) xóa sạch các dòng cũ nếu đổi hợp đồng, sau đó nạp các dòng xe mới
         self.vehicle_detail_ids = [(5, 0, 0)] + vehicle_lines
 
-    expected_checkout = fields.Datetime(string='Ngày Giao Xe', related='contract_id.start_date', store=True, readonly=True)
+    expected_checkout = fields.Datetime(string='Thời gian giao xe', related='contract_id.start_date', store=True, readonly=True)
     rental_duration_days = fields.Integer(string='Thời gian thuê (Ngày)', related='contract_id.rental_days', store=True, readonly=True)
-    expected_checkin = fields.Datetime(string='Ngày Trả Xe', related='contract_id.end_date', store=True, readonly=True)
+    expected_checkin = fields.Datetime(string='Thời gian thu hồi', related='contract_id.end_date', store=True, readonly=True)
 
     # Tiền tệ
     currency_id = fields.Many2one(
@@ -62,9 +80,10 @@ class RentalOperationTicket(models.Model):
         readonly=True,
     )
 
-    # Thiết lập giao/nhận chung của hợp đồng cho toàn bộ xe trong phiếu
+    # Thiết lập giao/thu hồi chung của hợp đồng cho toàn bộ xe trong phiếu
     quick_delivery_location = fields.Char(string='Địa điểm Giao chung (Hợp đồng)', default='Tại cửa hàng')
-    quick_return_location = fields.Char(string='Địa điểm Nhận chung (Hợp đồng)', default='Tại cửa hàng')
+    quick_return_location = fields.Char(string='Địa điểm Thu hồi chung (Hợp đồng)', default='Tại cửa hàng')
+    quick_delivery_time = fields.Char(string='Giờ Giao chung (Hợp đồng)', default='08:00', help='Giờ giao xe mặc định (VD: 08:30)')
 
     @api.onchange('quick_delivery_location')
     def _onchange_quick_delivery_location(self):
@@ -78,6 +97,12 @@ class RentalOperationTicket(models.Model):
             if not line.is_custom_return_location and line.status != 'returned':
                 line.return_location = self.quick_return_location or 'Tại cửa hàng'
 
+    @api.onchange('quick_delivery_time')
+    def _onchange_quick_delivery_time(self):
+        for line in self.vehicle_detail_ids:
+            if not line.is_custom_delivery_time and line.status in ('waiting', 'delivering'):
+                line.delivery_time = self.quick_delivery_time or '08:00'
+
     def write(self, vals):
         if 'quick_delivery_location' in vals:
             for rec in self:
@@ -86,10 +111,14 @@ class RentalOperationTicket(models.Model):
         if 'quick_return_location' in vals:
             for rec in self:
                 if rec.state == 'done':
-                    raise UserError('Phiếu vận hành đã hoàn tất, không được phép chỉnh sửa Địa điểm nhận chung!')
+                    raise UserError('Phiếu vận hành đã hoàn tất, không được phép chỉnh sửa Địa điểm thu hồi chung!')
+        if 'quick_delivery_time' in vals:
+            for rec in self:
+                if rec.state == 'done':
+                    raise UserError('Phiếu vận hành đã hoàn tất, không được phép chỉnh sửa Giờ giao chung!')
 
         res = super(RentalOperationTicket, self).write(vals)
-        if 'quick_delivery_location' in vals or 'quick_return_location' in vals:
+        if 'quick_delivery_location' in vals or 'quick_return_location' in vals or 'quick_delivery_time' in vals:
             for rec in self:
                 for line in rec.vehicle_detail_ids:
                     line_vals = {}
@@ -97,13 +126,22 @@ class RentalOperationTicket(models.Model):
                         line_vals['delivery_location'] = rec.quick_delivery_location or 'Tại cửa hàng'
                     if 'quick_return_location' in vals and not line.is_custom_return_location and line.status != 'returned':
                         line_vals['return_location'] = rec.quick_return_location or 'Tại cửa hàng'
+                    if 'quick_delivery_time' in vals and not line.is_custom_delivery_time and line.status in ('waiting', 'delivering'):
+                        line_vals['delivery_time'] = rec.quick_delivery_time or '08:00'
                     if line_vals:
                         line.write(line_vals)
         return res
 
-    # Liên kết bảng con chi tiết xe và sự cố
+    # Liên kết bảng con chi tiết xe, sự cố và biên lai giao xe
     vehicle_detail_ids = fields.One2many('rental.operation.ticket.vehicle', 'ticket_id', string='Chi tiết Xe')
     incident_ids = fields.One2many('rental.operation.incident.log', 'ticket_id', string='Sự cố & Hư hỏng')
+    receipt_ids = fields.One2many('rental.delivery.receipt', 'ticket_id', string='Biên lai giao xe')
+    receipt_count = fields.Integer(string='Số biên lai', compute='_compute_receipt_count')
+
+    @api.depends('receipt_ids')
+    def _compute_receipt_count(self):
+        for rec in self:
+            rec.receipt_count = len(rec.receipt_ids)
 
     # Trạng thái phiếu tự động cập nhật theo các xe con
     state = fields.Selection([
@@ -114,7 +152,7 @@ class RentalOperationTicket(models.Model):
 
     @api.depends('vehicle_detail_ids.status')
     def _compute_state(self):
-        """Tự động tính trạng thái của phiếu tổng dựa trên các xe con"""
+        """Tự động tính trạng thái của phiếu tổng dựa trên các xe con. Hợp đồng chỉ hoàn tất khi tất cả các xe được thu hồi thành công."""
         for rec in self:
             if not rec.vehicle_detail_ids:
                 rec.state = 'waiting'
@@ -124,6 +162,12 @@ class RentalOperationTicket(models.Model):
                 rec.state = 'done'
                 if not rec.actual_return_date:
                     rec.actual_return_date = fields.Datetime.now()
+                # Cập nhật hợp đồng sang hoàn tất khi tất cả các xe được thu hồi thành công
+                if rec.contract_id and rec.contract_id.state not in ('done', 'cancelled'):
+                    if rec.contract_id.state == 'confirmed':
+                        rec.contract_id.write({'state': 'in_progress'})
+                    if rec.contract_id.state == 'in_progress':
+                        rec.contract_id.write({'state': 'done'})
             elif all(s == 'waiting' for s in statuses):
                 rec.state = 'waiting'
             else:
@@ -170,16 +214,64 @@ class RentalOperationTicket(models.Model):
             rec.returned_count = len(rec.returned_vehicle_ids)
             rec.total_vehicle_count = len(rec.vehicle_detail_ids)
 
+    # Đánh dấu có ít nhất 1 xe đang được tick chọn
+    has_selected_vehicles = fields.Boolean(
+        string='Có xe được chọn',
+        compute='_compute_has_selected_vehicles',
+    )
+
+    @api.depends('vehicle_detail_ids.is_selected')
+    def _compute_has_selected_vehicles(self):
+        for rec in self:
+            rec.has_selected_vehicles = any(rec.vehicle_detail_ids.mapped('is_selected'))
+
+    @api.onchange('vehicle_detail_ids')
+    def _onchange_vehicle_detail_ids(self):
+        self.has_selected_vehicles = any(self.vehicle_detail_ids.mapped('is_selected'))
+
     # Thao tác tick chọn hàng loạt
     def action_select_all_vehicles(self):
         """Chọn tất cả xe trong phiếu"""
         for rec in self:
+            if rec.state == 'done' or (rec.contract_id and rec.contract_id.state == 'done'):
+                continue
             rec.vehicle_detail_ids.write({'is_selected': True})
+            rec.has_selected_vehicles = bool(rec.vehicle_detail_ids)
 
     def action_deselect_all_vehicles(self):
         """Bỏ chọn tất cả xe trong phiếu"""
         for rec in self:
             rec.vehicle_detail_ids.write({'is_selected': False})
+            rec.has_selected_vehicles = False
+
+    def action_bulk_update_schedule(self):
+        """Mở popup cập nhật địa điểm và thời gian giao xe cho các xe được chọn"""
+        self.ensure_one()
+        if self.state == 'done' or (self.contract_id and self.contract_id.state == 'done'):
+            raise UserError('Hợp đồng / Phiếu vận hành đã hoàn tất toàn bộ, không thể thực hiện thao tác này!')
+        selected_lines = self.vehicle_detail_ids.filtered(lambda l: l.is_selected)
+        if not selected_lines:
+            raise UserError('Vui lòng tick chọn ít nhất một xe để cập nhật địa điểm/thời gian!')
+
+        first_line = selected_lines[0]
+        default_loc = first_line.delivery_location or 'Tại cửa hàng'
+        default_time = first_line.delivery_time or ''
+        default_ret_loc = first_line.return_location or 'Tại cửa hàng'
+
+        return {
+            'name': 'Cập nhật Địa điểm & Giờ Giao xe',
+            'type': 'ir.actions.act_window',
+            'res_model': 'rental.vehicle.schedule.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_ticket_id': self.id,
+                'default_vehicle_ids': [(6, 0, selected_lines.ids)],
+                'default_delivery_location': default_loc,
+                'default_delivery_time': default_time,
+                'default_return_location': default_ret_loc,
+            }
+        }
 
     # Thao tác tick chọn hàng loạt cho Sự cố
     def action_select_all_incidents(self):
@@ -237,6 +329,8 @@ class RentalOperationTicket(models.Model):
     def action_bulk_start_delivery(self):
         """Mở popup xác nhận bắt đầu giao các xe được chọn"""
         self.ensure_one()
+        if self.state == 'done' or (self.contract_id and self.contract_id.state == 'done'):
+            raise UserError('Hợp đồng / Phiếu vận hành đã hoàn tất toàn bộ, không thể thực hiện thao tác này!')
         selected_lines = self.vehicle_detail_ids.filtered(lambda l: l.is_selected)
         if not selected_lines:
             selected_lines = self.vehicle_detail_ids.filtered(lambda l: l.status == 'waiting')
@@ -271,6 +365,8 @@ class RentalOperationTicket(models.Model):
     def action_bulk_confirm_delivery(self):
         """Mở popup xác nhận đã giao các xe được chọn (cho phép từ Chưa thực hiện hoặc Đang giao)"""
         self.ensure_one()
+        if self.state == 'done' or (self.contract_id and self.contract_id.state == 'done'):
+            raise UserError('Hợp đồng / Phiếu vận hành đã hoàn tất toàn bộ, không thể thực hiện thao tác này!')
         selected_lines = self.vehicle_detail_ids.filtered(lambda l: l.is_selected)
         if not selected_lines:
             selected_lines = self.vehicle_detail_ids.filtered(lambda l: l.status in ('waiting', 'delivering'))
@@ -305,6 +401,8 @@ class RentalOperationTicket(models.Model):
     def action_bulk_confirm_return(self):
         """Mở popup xác nhận thu hồi các xe được chọn (bắt buộc phải ở trạng thái Đã giao xe)"""
         self.ensure_one()
+        if self.state == 'done' or (self.contract_id and self.contract_id.state == 'done'):
+            raise UserError('Hợp đồng / Phiếu vận hành đã hoàn tất toàn bộ, không thể thực hiện thao tác này!')
         selected_lines = self.vehicle_detail_ids.filtered(lambda l: l.is_selected)
         if not selected_lines:
             selected_lines = self.vehicle_detail_ids.filtered(lambda l: l.status == 'renting')
@@ -339,6 +437,123 @@ class RentalOperationTicket(models.Model):
     def action_view_vehicles(self):
         """Hàm hỗ trợ nút thống kê trên form"""
         return True
+
+    def action_view_delivery_receipts(self):
+        """Hàm mở danh sách Biên lai giao xe từ Smart Button"""
+        self.ensure_one()
+        return {
+            'name': 'Biên Lai Giao Xe',
+            'type': 'ir.actions.act_window',
+            'res_model': 'rental.delivery.receipt',
+            'view_mode': 'list,form',
+            'domain': [('ticket_id', '=', self.id)],
+            'context': {'default_ticket_id': self.id},
+        }
+
+    def action_open_delivery_receipt_wizard(self):
+        """Mở popup xác nhận và xuất biên lai giao xe: tự động gom nhóm theo người, địa điểm, giờ giao để xuất các biên lai riêng biệt"""
+        self.ensure_one()
+        if self.state == 'done' or (self.contract_id and self.contract_id.state == 'done'):
+            raise UserError('Hợp đồng / Phiếu vận hành đã hoàn tất toàn bộ, không thể xuất biên lai giao xe!')
+
+        # 1. Lọc các xe được tick chọn
+        selected_lines = self.vehicle_detail_ids.filtered(lambda l: l.is_selected)
+        if selected_lines:
+            already_delivered = selected_lines.filtered(lambda l: l.status in ('renting', 'returned'))
+            if already_delivered:
+                names = ', '.join(already_delivered.mapped(lambda l: l._get_vehicle_label()))
+                raise UserError(f'Xe {names} đã được giao xe thành công!')
+        else:
+            # Nếu không tick chọn xe nào: chỉ lấy các xe chưa giao thành công (chờ giao hoặc đang giao)
+            selected_lines = self.vehicle_detail_ids.filtered(lambda l: l.status in ('waiting', 'delivering'))
+            if not selected_lines:
+                delivered_lines = self.vehicle_detail_ids.filtered(lambda l: l.status in ('renting', 'returned'))
+                if delivered_lines:
+                    names = ', '.join(delivered_lines.mapped(lambda l: l._get_vehicle_label()))
+                    raise UserError(f'Xe {names} đã được giao xe thành công!')
+                raise UserError('Không có xe nào để xuất biên lai giao xe!')
+
+        # 3. Phân nhóm các xe theo (Khách hàng, Địa điểm giao, Giờ giao)
+        groups_dict = {}
+        for line in selected_lines:
+            cust = self.customer_id
+            loc = (line.delivery_location or 'Tại cửa hàng').strip()
+            tm = (line.delivery_time or '08:00').strip()
+            key = f"{cust.id}_{loc}_{tm}"
+            if key not in groups_dict:
+                groups_dict[key] = {
+                    'customer_id': cust.id,
+                    'customer_phone': self.customer_phone or (cust.phone or cust.mobile or ''),
+                    'location': loc,
+                    'time': tm,
+                    'lines': []
+                }
+            groups_dict[key]['lines'].append(line)
+
+        # 4. Chuẩn bị dữ liệu từng tab biên lai
+        wizard_vals = {
+            'ticket_id': self.id,
+        }
+
+        group_idx = 1
+        total_groups = len(groups_dict)
+
+        for key, g in groups_dict.items():
+            tab_idx = min(group_idx, 6)
+            veh_count = len(g['lines'])
+            if total_groups > 1:
+                grp_name = f"Biên lai {group_idx}: Giờ giao {g['time']} ({veh_count} xe)"
+            else:
+                grp_name = f"Biên lai: Giờ giao {g['time']} ({veh_count} xe)"
+
+            v_vals_list = []
+            for vline in g['lines']:
+                initial_note = vline.delivery_visual_note or vline._get_vehicle_exterior_condition(vline.vehicle_id)
+                v_vals_list.append((0, 0, {
+                    'vehicle_detail_id': vline.id,
+                    'group_key': key,
+                    'group_name': grp_name,
+                    'delivery_visual_note': initial_note or 'Xe vận hành tốt, ngoại quan bình thường, không trầy xước phát sinh.',
+                }))
+
+            if not wizard_vals.get(f'receipt_{tab_idx}_visible'):
+                wizard_vals.update({
+                    f'receipt_{tab_idx}_visible': True,
+                    f'receipt_{tab_idx}_name': grp_name,
+                    f'receipt_{tab_idx}_customer_id': g['customer_id'],
+                    f'receipt_{tab_idx}_customer_phone': g.get('customer_phone') or '',
+                    f'receipt_{tab_idx}_delivery_time': g['time'],
+                    f'receipt_{tab_idx}_delivery_date': fields.Date.context_today(self),
+                    f'receipt_{tab_idx}_delivery_location': g['location'],
+                    f'receipt_{tab_idx}_vehicle_count': veh_count,
+                    # Mặc định theo số lượng xe: 2 mũ, 2 áo mưa, 1 giá đt, 1 sạc trên 1 xe
+                    f'receipt_{tab_idx}_qty_helmet': 2 * veh_count,
+                    f'receipt_{tab_idx}_qty_raincoat': 2 * veh_count,
+                    f'receipt_{tab_idx}_qty_phone_holder': 1 * veh_count,
+                    f'receipt_{tab_idx}_qty_charger': 1 * veh_count,
+                    f'receipt_{tab_idx}_vehicle_ids': v_vals_list,
+                })
+            else:
+                prev_veh_ids = wizard_vals[f'receipt_{tab_idx}_vehicle_ids']
+                prev_veh_ids.extend(v_vals_list)
+                wizard_vals[f'receipt_{tab_idx}_vehicle_count'] += veh_count
+                wizard_vals[f'receipt_{tab_idx}_qty_helmet'] += 2 * veh_count
+                wizard_vals[f'receipt_{tab_idx}_qty_raincoat'] += 2 * veh_count
+                wizard_vals[f'receipt_{tab_idx}_qty_phone_holder'] += 1 * veh_count
+                wizard_vals[f'receipt_{tab_idx}_qty_charger'] += 1 * veh_count
+
+            group_idx += 1
+
+        wizard = self.env['rental.delivery.receipt.wizard'].create(wizard_vals)
+
+        return {
+            'name': 'Xác Nhận & Xuất Biên Lai Giao Xe',
+            'type': 'ir.actions.act_window',
+            'res_model': 'rental.delivery.receipt.wizard',
+            'res_id': wizard.id,
+            'view_mode': 'form',
+            'target': 'new',
+        }
 
     def action_reset_waiting(self):
         """Khôi phục toàn bộ xe về trạng thái chờ giao"""

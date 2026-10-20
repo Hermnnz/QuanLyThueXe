@@ -30,21 +30,179 @@ td[name="is_selected"] input[type="checkbox"]:checked {
     box-shadow: 0 2px 4px rgba(13, 110, 253, 0.4) !important;
 }
 
-/* Xóa biến mất hoàn toàn cột checkbox chọn dòng ở bảng Phụ phí & Bồi thường */
-.o_price_catalog_no_selector .o_list_record_selector,
-.o_price_catalog_no_selector th.o_list_record_selector,
-.o_price_catalog_no_selector td.o_list_record_selector,
-.o_price_catalog_no_selector th:first-child:has(input[type="checkbox"]),
-.o_price_catalog_no_selector td:first-child:has(input[type="checkbox"]) {
-    display: none !important;
-    width: 0 !important;
-    max-width: 0 !important;
-    min-width: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    border: none !important;
-    visibility: hidden !important;
-    pointer-events: none !important;
+/* Style cho tab biên lai trong popup xuất biên lai */
+.o_form_view .nav-tabs .nav-link {
+    font-weight: 500;
+    font-size: 13.5px;
 }
 
+.o_form_view .nav-tabs .nav-link.active {
+    font-weight: 700;
+    color: #0d6efd !important;
+    border-bottom: 2px solid #0d6efd !important;
+}
 
+/* Tùy chỉnh độ rộng và chống che khuất tiêu đề / dữ liệu bảng danh sách */
+
+/* Cho phép cuộn ngang mượt mà khi bảng có nhiều cột, không bị ép co rút */
+.o_field_widget[name="vehicle_detail_ids"] .o_list_renderer,
+.o_field_widget[name="incident_ids"] .o_list_renderer,
+.o_field_widget[name="waiting_vehicle_ids"] .o_list_renderer,
+.o_field_widget[name="delivering_vehicle_ids"] .o_list_renderer,
+.o_field_widget[name="renting_vehicle_ids"] .o_list_renderer,
+.o_field_widget[name="returned_vehicle_ids"] .o_list_renderer,
+.o_field_widget[name="receipt_ids"] .o_list_renderer,
+div[name="receipt_ids"] .o_list_renderer {
+    overflow-x: auto !important;
+    display: block !important;
+    width: 100% !important;
+}
+
+.o_field_widget[name="vehicle_detail_ids"] .o_list_table {
+    min-width: 1750px !important;
+}
+
+.o_field_widget[name="incident_ids"] .o_list_table {
+    min-width: 1300px !important;
+}
+
+.o_field_widget[name="receipt_ids"] .o_list_table,
+div[name="receipt_ids"] .o_list_table {
+    min-width: 1800px !important;
+    width: 100% !important;
+}
+
+/* Đảm bảo tiêu đề các cột trong bảng không bao giờ bị ngắt dòng khó đọc hoặc bị cắt bớt */
+.o_list_table th {
+    white-space: nowrap !important;
+    vertical-align: middle !important;
+    overflow: visible !important;
+}
+
+.o_list_table th *,
+.o_list_table th .o_column_title,
+.o_list_table th .text-truncate,
+.o_list_table th span,
+.o_list_table th div,
+.o_list_table th a {
+    white-space: nowrap !important;
+    text-overflow: clip !important;
+    overflow: visible !important;
+    max-width: none !important;
+    font-weight: 600 !important;
+}
+
+/* Cột mã / tên */
+td[name="name"],
+th[data-name="name"] {
+    min-width: 150px !important;
+    white-space: nowrap !important;
+}
+
+/* Cột ngày tháng: luôn hiển thị đầy đủ ngày giờ, không bị ẩn hay ngắt quãng */
+td[name="date_checkout"],
+td[name="actual_delivery_date"],
+td[name="date_checkin"],
+td[name="actual_return_date"],
+td[name="date_reported"],
+td[name="expected_checkout"],
+td[name="expected_checkin"],
+td[name="delivery_date"],
+th[data-name="date_checkout"],
+th[data-name="actual_delivery_date"],
+th[data-name="date_checkin"],
+th[data-name="actual_return_date"],
+th[data-name="date_reported"],
+th[data-name="expected_checkout"],
+th[data-name="expected_checkin"],
+th[data-name="delivery_date"] {
+    min-width: 175px !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+}
+
+/* Cột vị trí giao / thu hồi xe */
+td[name="delivery_location"],
+td[name="return_location"],
+th[data-name="delivery_location"],
+th[data-name="return_location"] {
+    min-width: 250px !important;
+}
+
+/* Cột giờ giao */
+td[name="delivery_time"],
+th[data-name="delivery_time"] {
+    min-width: 120px !important;
+    white-space: nowrap !important;
+}
+
+/* Cột xe */
+td[name="vehicle_id"],
+th[data-name="vehicle_id"] {
+    min-width: 180px !important;
+}
+
+/* Cột danh sách xe bàn giao trong biên lai */
+td[name="vehicle_ids"],
+th[data-name="vehicle_ids"] {
+    min-width: 280px !important;
+}
+
+/* Các cột phụ kiện bàn giao kèm xe - đảm bảo tiêu đề dài hiển thị trọn vẹn */
+td[name="qty_helmet"],
+th[data-name="qty_helmet"] {
+    min-width: 130px !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+}
+
+td[name="qty_raincoat"],
+th[data-name="qty_raincoat"] {
+    min-width: 120px !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+}
+
+td[name="qty_phone_holder"],
+th[data-name="qty_phone_holder"] {
+    min-width: 160px !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+}
+
+td[name="qty_charger"],
+th[data-name="qty_charger"] {
+    min-width: 130px !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+}
+
+td[name="delivery_visual_note"],
+th[data-name="delivery_visual_note"] {
+    min-width: 240px !important;
+}
+
+/* Cột nút bấm in biên lai trong bảng */
+th.o_list_button,
+td.o_list_button {
+    min-width: 140px !important;
+    white-space: nowrap !important;
+}
+
+/* Cột trạng thái */
+td[name="status"],
+th[data-name="status"],
+td[name="state"],
+th[data-name="state"] {
+    min-width: 140px !important;
+    white-space: nowrap !important;
+}
+
+/* Cột Cần sửa chữa */
+td[name="needs_repair"],
+th[data-name="needs_repair"] {
+    min-width: 110px !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+}
