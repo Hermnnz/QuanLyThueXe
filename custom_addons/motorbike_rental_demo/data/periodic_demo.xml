@@ -189,14 +189,12 @@
     </record>
     <record id="periodic_service_scheduled" model="fleet.vehicle.log.services">
       <field name="vehicle_id" ref="periodic_vehicle_soon_km" />
-      <field name="description">Lịch bảo dưỡng định kỳ: kiểm tra phanh, lốp và hệ thống điện</field>
+      <field name="description">Phiếu bảo dưỡng định kỳ: kiểm tra phanh, lốp và hệ thống điện</field>
       <field name="maintenance_type">preventive</field>
       <field name="date" eval="(DateTime.now() + timedelta(days=0)).strftime('%Y-%m-%d')" />
-      <field name="scheduled_start" eval="(DateTime.now() + timedelta(days=2)).strftime('%Y-%m-%d 01:00:00')" />
-      <field name="scheduled_end" eval="(DateTime.now() + timedelta(days=2)).strftime('%Y-%m-%d 04:00:00')" />
       <field name="blocks_rental" eval="True" />
-      <field name="notes">Hẹn kiểm tra sau hai ngày. Nhân viên kiểm tra tình trạng thực tế trước khi xác định phụ tùng và chi phí.</field>
-      <field name="state">scheduled</field>
+      <field name="notes">Phiếu mới chờ nhân viên bắt đầu; chưa giữ lịch thuê. Nhân viên kiểm tra tình trạng thực tế trước khi xác định phụ tùng và chi phí.</field>
+      <field name="state">new</field>
     </record>
   </data>
 </odoo>

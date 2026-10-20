@@ -7,7 +7,7 @@
     <field name="view_id" ref="vehicle_kanban_electric"/>
     <field name="search_view_id" ref="vehicle_search_electric"/>
     <field name="domain">[]</field>
-    <field name="context">{'default_is_electric_motorbike': True, 'default_fuel_type': 'electric'}</field>
+    <field name="context">{'default_is_electric_motorbike': True, 'default_fuel_type': 'electric', 'active_test': False}</field>
   </record>
   <record id="action_electric_motorbikes_kanban" model="ir.actions.act_window.view">
     <field name="sequence">1</field>

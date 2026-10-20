@@ -17,11 +17,11 @@
       </xpath>
       <xpath expr="//header" position="inside">
         <field name="is_electric_motorbike" invisible="1" />
-        <button name="action_confirm_technical_ready" type="object" string="Xác nhận đạt kỹ thuật" class="btn-primary" invisible="not is_electric_motorbike or not active or operational_status == 'renting'" />
-        <button name="action_preventive_service" type="object" string="Tạo phiếu bảo dưỡng định kỳ" groups="motorbike_fleet_management.group_motorbike_technician,fleet.fleet_group_manager" invisible="not is_electric_motorbike or not active or open_preventive_count != 0" />
+        <button name="action_confirm_technical_ready" groups="fleet.fleet_group_manager" type="object" string="Xác nhận đạt kỹ thuật" class="btn-primary" invisible="not is_electric_motorbike or not active or operational_status == 'renting'"/>
+        <button name="action_preventive_service" type="object" string="Tạo phiếu bảo dưỡng định kỳ" groups="motorbike_fleet_management.group_fleet_staff,fleet.fleet_group_manager" invisible="not is_electric_motorbike or not active or open_preventive_count != 0" />
         <button name="action_preventive_service" type="object" string="Xem phiếu định kỳ đang xử lý" invisible="not is_electric_motorbike or open_preventive_count == 0" />
         <field name="open_preventive_count" invisible="1" />
-        <field name="operational_status" widget="statusbar" readonly="1" statusbar_visible="available,renting,pending_inspection,maintenance" invisible="not is_electric_motorbike" />
+        <field name="operational_status" widget="statusbar" readonly="1" statusbar_visible="available,renting,pending_inspection,maintenance,inactive" invisible="not is_electric_motorbike" />
       </xpath>
       <xpath expr="//sheet/group" position="attributes">
         <attribute name="invisible">1</attribute>
@@ -154,7 +154,7 @@
         <filter name="service_missing" string="Thiếu mốc ban đầu" domain="[('service_schedule_state', '=', 'missing_baseline')]" />
         <filter name="service_due" string="Đến hạn bảo dưỡng" domain="[('service_schedule_state', 'in', ['due', 'overdue'])]" />
         <separator />
-        <filter name="archived" string="Đã lưu trữ" domain="[('active', '=', False)]" />
+        <filter name="archived" string="Ngừng hoạt động" domain="[('active', '=', False)]" />
         <group>
           <filter name="group_status" string="Trạng thái" context="{'group_by': 'operational_status'}" />
           <filter name="group_model" string="Dòng xe" context="{'group_by': 'model_id'}" />
@@ -166,31 +166,37 @@
     <field name="name">vehicle_kanban_electric</field>
     <field name="model">fleet.vehicle</field>
     <field name="arch" type="xml">
-      <kanban delete="false" default_group_by="operational_status" records_draggable="false" quick_create="false" group_create="false" group_delete="false" group_edit="false">
+      <kanban class="o_fleet_vehicle_kanban" delete="false" default_group_by="operational_status" records_draggable="false" quick_create="false" group_create="false" group_delete="false" group_edit="false">
         <field name="operational_status" />
         <field name="technical_ready" />
         <field name="rental_blocked" />
         <field name="service_schedule_state" />
         <templates>
           <t t-name="card">
-            <field name="vehicle_code" class="fw-bold fs-5" />
-            <field name="license_plate" />
-            <field name="model_id" />
-            <div class="small text-muted">ODO: <field name="odometer" /> km</div>
-            <span t-if="record.technical_ready.raw_value" class="badge text-bg-success">Đạt kỹ thuật</span>
+            <t t-set="fleetRibbon" t-value="record.service_schedule_state.raw_value === 'overdue' ? 'overdue' : record.operational_status.raw_value === 'inactive' ? 'inactive' : record.service_schedule_state.raw_value === 'due' ? 'due' : record.rental_blocked.raw_value ? 'blocked' : record.service_schedule_state.raw_value === 'soon' ? 'soon' : record.service_schedule_state.raw_value === 'missing_baseline' ? 'missing' : ''"/>
+            <div t-if="fleetRibbon" t-att-class="'o_fleet_kanban_ribbon o_fleet_kanban_ribbon_' + fleetRibbon">
+              <span t-if="fleetRibbon === 'overdue'">Quá hạn<br/>bảo dưỡng</span>
+              <span t-elif="fleetRibbon === 'inactive'">Ngừng<br/>hoạt động</span>
+              <span t-elif="fleetRibbon === 'due'">Đến hạn<br/>bảo dưỡng</span>
+              <span t-elif="fleetRibbon === 'blocked'">Khóa thuê</span>
+              <span t-elif="fleetRibbon === 'soon'">Sắp đến hạn<br/>bảo dưỡng</span>
+              <span t-else="">Thiếu mốc<br/>bảo dưỡng</span>
+            </div>
+            <div t-att-class="'o_fleet_vehicle_identity' + (fleetRibbon ? ' o_fleet_vehicle_identity_has_ribbon' : '')">
+              <div><field name="vehicle_code" class="fw-bold fs-5"/></div>
+              <div><field name="license_plate"/></div>
+              <div><field name="model_id"/></div>
+              <div class="small text-muted">ODO: <field name="odometer"/> km</div>
+            </div>
+            <div class="o_fleet_secondary_badges d-flex justify-content-end flex-wrap gap-1 mb-1">
+              <span t-if="record.rental_blocked.raw_value &amp;&amp; fleetRibbon !== 'blocked'" class="badge text-bg-danger">Khóa thuê</span>
+            </div>
+            <span t-if="record.operational_status.raw_value === 'inactive'" class="badge text-bg-secondary">Ngừng hoạt động</span>
+            <span t-elif="record.technical_ready.raw_value" class="badge text-bg-success">Đạt kỹ thuật</span>
             <span t-else="" class="badge text-bg-warning">Chờ xác nhận kỹ thuật</span>
-            <span t-if="record.rental_blocked.raw_value" class="badge text-bg-danger">Khóa thuê</span>
-            <div>
-              <span t-if="record.service_schedule_state.raw_value === 'soon'" class="badge text-bg-warning">Sắp đến hạn bảo dưỡng</span>
-              <span t-if="record.service_schedule_state.raw_value === 'due'" class="badge text-bg-danger">Đến hạn bảo dưỡng</span>
-              <span t-if="record.service_schedule_state.raw_value === 'overdue'" class="badge text-bg-danger">Quá hạn bảo dưỡng</span>
-              <span t-if="record.service_schedule_state.raw_value === 'missing_baseline'" class="badge text-bg-secondary">Thiếu mốc bảo dưỡng</span>
-            </div>
-            <div t-if="record.service_next_date.raw_value">Hạn định kỳ: <field name="service_next_date" />
-            </div>
-            <div t-if="record.service_next_odo.raw_value &gt; 0">Mốc ODO: <field name="service_next_odo" /> km</div>
-            <div class="mt-2">Ngày hẹn riêng: <field name="next_service_date" />
-            </div>
+            <div t-if="record.service_next_date.raw_value">Hạn định kỳ: <field name="service_next_date"/></div>
+            <div t-if="record.service_next_odo.raw_value &gt; 0">Mốc ODO: <field name="service_next_odo"/> km</div>
+            <div class="mt-2">Ngày hẹn riêng: <field name="next_service_date"/></div>
           </t>
         </templates>
       </kanban>

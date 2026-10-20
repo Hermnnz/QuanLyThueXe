@@ -1,3 +1,5 @@
+> Hiện hành: Demo `18.0.1.2.3`, yêu cầu Fleet `18.0.5.12.0`. Bỏ lịch dự kiến; các phiếu chờ xử lý ở trạng thái Mới, không giữ lịch xe. Các mô tả lịch dự kiến bên dưới là thông tin của bản cũ. XML ID giữ nguyên để không sinh bộ demo trùng khi nâng cấp.
+
 # Bản dữ liệu bảo dưỡng định kỳ 18.0.1.2.2
 
 Yêu cầu **Fleet 18.0.5.9.0** trở lên. Bộ dữ liệu hiện có **14 xe**, **7 phiếu bảo dưỡng mẫu**, 18 dòng xe/bảng giá, 3 khách hàng, 3 hợp đồng và 2 phiếu vận hành. Số phiếu thực tế có thể nhiều hơn nếu bạn đã tạo thêm khi thử; không xóa các phiếu đó. Sáu xe và các hợp đồng cũ được giữ nguyên; bổ sung tám xe để minh họa bảo dưỡng.

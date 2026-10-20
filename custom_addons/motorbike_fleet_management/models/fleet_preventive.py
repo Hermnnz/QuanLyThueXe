@@ -84,7 +84,7 @@ class FleetVehiclePreventive(models.Model):
                 continue
             if services.search_count([('vehicle_id', '=', vehicle.id),
                     ('maintenance_type', '=', 'preventive'),
-                    ('state', 'in', ['new', 'scheduled', 'running'])]):
+                    ('state', 'in', ['new', 'running'])]):
                 continue
             notes = ['Hệ thống tự tạo vì xe đến hoặc quá hạn bảo dưỡng định kỳ.']
             if due_km:
@@ -194,7 +194,7 @@ class FleetVehiclePreventive(models.Model):
     def _open_preventive_services(self):
         return self.env['fleet.vehicle.log.services'].search([
             ('vehicle_id', 'in', self.ids), ('maintenance_type', '=', 'preventive'),
-            ('state', 'in', ['new', 'scheduled', 'running'])], order='id desc')
+            ('state', 'in', ['new', 'running'])], order='id desc')
 
     @api.depends('log_services.state', 'log_services.maintenance_type', 'log_services.active')
     def _compute_open_preventive_count(self):

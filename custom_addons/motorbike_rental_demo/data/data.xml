@@ -224,12 +224,7 @@
       <field name="date">2026-10-18</field>
       <field name="maintenance_type">preventive</field>
       <field name="blocks_rental" eval="True" />
-      <field name="scheduled_start">2026-10-20 01:00:00</field>
-      <field name="scheduled_end">2026-10-20 05:00:00</field>
     </record>
-    <function model="fleet.vehicle.log.services" name="action_schedule">
-      <value eval="[ref('demo_w8_service_scheduled')]" />
-    </function>
     <record id="demo_w8_deposit_2" model="motorbike.rental.payment">
       <field name="customer_id" ref="demo_w8_customer_2" />
       <field name="contract_id" ref="demo_w8_contract_2" />

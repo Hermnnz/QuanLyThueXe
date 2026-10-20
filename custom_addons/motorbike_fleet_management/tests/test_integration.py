@@ -27,8 +27,7 @@ class TestFleetIntegration(TransactionCase):
 
     def service(self, **values):
         return self.env['fleet.vehicle.log.services'].create({
-            'vehicle_id': self.vehicle.id, 'state': 'scheduled',
-            'scheduled_start': self.start, 'scheduled_end': self.end, **values})
+            'vehicle_id': self.vehicle.id, 'state': 'new', **values})
 
     def test_delivery_and_passed_return(self):
         self.deliver(odometer_start=100, checkout_at=self.start)
@@ -96,16 +95,16 @@ class TestFleetIntegration(TransactionCase):
         self.assertEqual(self.vehicle.odometer, 0)
         self.assertEqual(self.env['fleet.vehicle.odometer'].search_count([('vehicle_id', '=', self.vehicle.id)]), 2)
 
-    def test_scheduled_maintenance_overlap_and_boundaries(self):
+    def test_draft_does_not_reserve_dates_but_running_blocks(self):
         service = self.service()
+        self.assertTrue(self.eligibility()['fleet_ok'])
+        service.action_start()
         self.assertFalse(self.eligibility()['fleet_ok'])
         self.assertIn('blocking_maintenance', self.eligibility()['reasons'])
-        self.assertTrue(self.eligibility('2026-11-30 02:00:00', self.start)['fleet_ok'])
-        self.assertTrue(self.eligibility(self.end, '2026-12-04 02:00:00')['fleet_ok'])
         with self.assertRaises(UserError), self.cr.savepoint():
             self.deliver(odometer_start=10)
-        self.assertEqual(self.vehicle.odometer, 0)
         service.action_cancel()
+        self.vehicle.action_confirm_technical_ready()
         self.assertTrue(self.eligibility()['fleet_ok'])
 
     def test_nonblocking_archived_and_new_maintenance(self):

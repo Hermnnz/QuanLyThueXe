@@ -34,8 +34,7 @@ class TestFleetRentalBridge(TransactionCase):
             contract.action_confirm()
         self.vehicle.write({'rental_blocked': False})
         service = self.env['fleet.vehicle.log.services'].create({
-            'vehicle_id': self.vehicle.id, 'state': 'scheduled',
-            'scheduled_start': contract.start_date, 'scheduled_end': contract.end_date})
+            'vehicle_id': self.vehicle.id, 'state': 'running'})
         with self.assertRaises(ValidationError), self.cr.savepoint():
             contract.action_confirm()
         service.action_cancel()
@@ -72,7 +71,7 @@ class TestFleetRentalBridge(TransactionCase):
         self.assertEqual(self.vehicle.operational_status, 'maintenance')
         service.result = 'Đã sửa và kiểm tra'
         service.action_done()
-        self.assertEqual(self.vehicle.operational_status, 'pending_inspection')
+        self.assertEqual(self.vehicle.operational_status, 'available')
         self.vehicle.action_confirm_technical_ready()
         self.assertEqual(self.vehicle.operational_status, 'available')
         self.assertEqual(self.env['fleet.vehicle.odometer'].search_count([('vehicle_id', '=', self.vehicle.id)]), 2)

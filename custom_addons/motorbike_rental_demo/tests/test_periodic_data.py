@@ -24,7 +24,7 @@ class TestPeriodicDemoData(TransactionCase):
         scheduled = self.env.ref('motorbike_rental_demo.periodic_service_scheduled')
         self.assertEqual(running.state, 'running')
         self.assertEqual(running.vehicle_id.operational_status, 'maintenance')
-        self.assertEqual(scheduled.state, 'scheduled')
+        self.assertEqual(scheduled.state, 'new')
         self.assertEqual(scheduled.vehicle_id.operational_status, 'available')
         self.assertEqual(scheduled.vehicle_id.action_preventive_service()['res_id'], scheduled.id)
         for key in ['routine_ok', 'overdue_km']:

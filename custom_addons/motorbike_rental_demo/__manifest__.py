@@ -1,6 +1,6 @@
 {
     'name': 'Motorbike Rental Demo Data',
-    'version': '18.0.1.2.2',
+    'version': '18.0.1.2.3',
     'summary': 'Bộ dữ liệu mẫu chung Fleet, Rental Core, Operations và Finance',
     'license': 'LGPL-3',
     'depends': ['motorbike_rental_finance'],

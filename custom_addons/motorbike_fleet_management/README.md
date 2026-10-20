@@ -1,3 +1,9 @@
+> Hiện hành — Fleet `18.0.5.13.0`: hoàn tất phiếu cuối đưa xe Sẵn sàng, hủy vẫn Chờ kiểm tra; cột Ngừng hoạt động, cảnh báo ở góc thẻ và hai vai trò Quản lý/Nhân viên. Nhân viên chỉ xem/tạo và Bắt đầu/Hoàn tất qua hộp thoại kết quả. Xem [hướng dẫn](../../docs/FLEET_ROLES_KANBAN_WORKFLOW_20261020.md).
+
+> Hiện hành — Fleet `18.0.5.12.0`: bỏ lịch dự kiến và Đã lên lịch, phiếu Mới không giữ lịch xe; chỉ bắt đầu sửa mới chặn thuê. Đổi nhãn Ngày bắt đầu/Ngày kết thúc, giữ mốc ODO hoàn tất. Xem [hướng dẫn](../../docs/SIMPLIFIED_SERVICE_WORKFLOW_20261020.md).
+
+> Mới nhất — Fleet `18.0.5.11.0`: phiếu bảo dưỡng mới tạo Hoạt động cho người phụ trách xe, hoặc quản lý Fleet nếu xe chưa phân công. Xem ở biểu tượng đồng hồ; không gửi email tự động.
+
 > Mới nhất — Fleet `18.0.5.10.0`: tự tạo một phiếu định kỳ Nháp khi đến/quá hạn theo ODO hoặc ngày; không tự bắt đầu sửa hay khóa xe. Xem [hướng dẫn tự động](../../docs/AUTO_PREVENTIVE_SERVICE_20261020.md).
 
 > Quy tắc mới 20/10/2026 — Fleet `18.0.5.9.1`: không xóa phương tiện trong mọi trường hợp (kể cả sudo/admin); chỉ Lưu trữ/Ngừng sử dụng và có thể khôi phục. Xe đang thuê phải nhận trả trước khi lưu trữ. Form/list/kanban xe ẩn thao tác Xóa. Quy tắc chỉ áp dụng hồ sơ xe, không thay đổi quyền xóa phiếu bảo dưỡng.

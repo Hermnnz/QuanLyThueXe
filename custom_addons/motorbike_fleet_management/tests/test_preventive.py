@@ -79,7 +79,7 @@ class TestPeriodicMaintenance(TransactionCase):
         self.assertTrue(service.service_odometer_recorded)
         self.assertEqual(service.service_odometer, 500)
         self.assertEqual(vehicle.service_next_odo, 1500)
-        self.assertEqual(vehicle.operational_status, 'pending_inspection')
+        self.assertEqual(vehicle.operational_status, 'available')
         service.active = False
         self.assertEqual(vehicle.service_next_odo, 1500)
 
@@ -162,10 +162,9 @@ class TestPeriodicMaintenance(TransactionCase):
         appointment._auto_create_due_services()
         self.assertFalse(appointment._open_preventive_services())
 
-    def test_auto_respects_existing_scheduled_archived_and_running_jobs(self):
+    def test_auto_respects_existing_archived_and_running_jobs(self):
         vehicle = self.anchored()
         job = self.env['fleet.vehicle.log.services'].browse(vehicle.action_preventive_service()['res_id'])
-        job.write({'state': 'scheduled', 'scheduled_start': '2027-01-01 01:00:00', 'scheduled_end': '2027-01-01 02:00:00'})
         job.active = False
         vehicle.odometer = 1100
         self.assertFalse(vehicle._auto_create_due_services())

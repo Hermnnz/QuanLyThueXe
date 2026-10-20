@@ -62,10 +62,9 @@ class TestFleetBusinessHardening(TransactionCase):
         vehicle.action_return_vehicle('passed')
         self.assertEqual(vehicle.operational_status, 'available')
 
-    def test_cannot_reclassify_scheduled_or_running_service(self):
+    def test_cannot_reclassify_draft_or_running_service(self):
         vehicle = self.ready()
-        service = self.env['fleet.vehicle.log.services'].create({'vehicle_id': vehicle.id, 'state': 'scheduled',
-            'scheduled_start': '2027-01-01 00:00:00', 'scheduled_end': '2027-01-02 00:00:00'})
+        service = self.env['fleet.vehicle.log.services'].create({'vehicle_id': vehicle.id, 'state': 'new'})
         with self.assertRaises(UserError), self.cr.savepoint():
             vehicle.is_electric_motorbike = False
         service.action_start()

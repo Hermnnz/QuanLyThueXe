@@ -46,7 +46,7 @@ class TestFleetDocsContract(TransactionCase):
             'is_electric_motorbike': True, 'active': True, 'state': 'new'})
         expected = {'vehicle_id', 'description', 'state', 'date', 'notes', 'amount',
                     'maintenance_type', 'next_service_date', 'result', 'blocks_rental',
-                    'scheduled_start', 'scheduled_end', 'actual_start', 'actual_end'}
+                    'actual_start', 'actual_end'}
         self.assertFalse(expected - service, str(expected - service))
         self.assertFalse({'purchaser_id', 'technician_id', 'vendor_id', 'service_type_id'} & service)
 

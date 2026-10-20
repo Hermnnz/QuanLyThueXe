@@ -25,6 +25,7 @@
         <attribute name="string">Phương tiện</attribute>
       </xpath>
       <xpath expr="//field[@name='vehicle_id']" position="after">
+        <field name="vehicle_code" readonly="1" invisible="not is_electric_motorbike and not context.get('motorbike_only')"/>
         <div class="o_form_label" invisible="not is_electric_motorbike and not context.get('motorbike_only')">Khách hàng</div>
         <div name="rental_customer_placeholder" class="text-muted" invisible="not is_electric_motorbike and not context.get('motorbike_only')"
              title="Chỉ hiển thị giao diện; chưa liên kết khách hàng từ sự cố hoặc hợp đồng.">Chưa liên kết</div>
@@ -53,12 +54,11 @@
         <attribute name="string">Ghi chú</attribute>
       </xpath>
       <xpath expr="//header/field[@name='state']" position="replace">
-        <button name="action_schedule" type="object" string="Lên lịch" invisible="(not is_electric_motorbike and not context.get('motorbike_only')) or state != 'new'"/>
-        <button name="action_start" type="object" string="Bắt đầu" class="btn-primary" invisible="(not is_electric_motorbike and not context.get('motorbike_only')) or state not in ['new', 'scheduled']"/>
+        <button name="action_start" type="object" string="Bắt đầu" class="btn-primary" invisible="(not is_electric_motorbike and not context.get('motorbike_only')) or state != 'new'"/>
         <button name="action_done" type="object" string="Hoàn tất" class="btn-primary" invisible="(not is_electric_motorbike and not context.get('motorbike_only')) or state != 'running'"/>
-        <button name="action_cancel" type="object" string="Hủy" invisible="(not is_electric_motorbike and not context.get('motorbike_only')) or state in ['done', 'cancelled']"/>
+        <button name="action_cancel" groups="fleet.fleet_group_manager" type="object" string="Hủy" invisible="state in ['done', 'cancelled']"/>
         <field name="state" widget="statusbar" readonly="is_electric_motorbike"
-               statusbar_visible="new,scheduled,running,done"/>
+               statusbar_visible="new,running,done,cancelled"/>
       </xpath>
       <xpath expr="//sheet" position="inside">
         <field name="is_electric_motorbike" invisible="1"/>
@@ -69,10 +69,8 @@
             <field name="next_service_date" readonly="state in ['done', 'cancelled']"/>
           </group>
           <group>
-            <field name="scheduled_start" readonly="state in ['done', 'cancelled']"/>
-            <field name="scheduled_end" readonly="state in ['done', 'cancelled']"/>
-            <field name="actual_start" readonly="state in ['done', 'cancelled']"/>
-            <field name="actual_end" readonly="state in ['done', 'cancelled']"/>
+            <field name="actual_start" string="Ngày bắt đầu" readonly="state in ['done', 'cancelled']"/>
+            <field name="actual_end" string="Ngày kết thúc" readonly="state in ['done', 'cancelled']"/>
             <field name="service_odometer_recorded" readonly="1" invisible="1"/>
             <field name="service_odometer" readonly="1" invisible="not service_odometer_recorded"/>
             <field name="result" readonly="state in ['done', 'cancelled']"/>
@@ -93,16 +91,16 @@
         <field name="vehicle_id"/>
         <field name="description"/>
         <field name="maintenance_type"/>
+        <field name="actual_start" string="Ngày bắt đầu"/>
+        <field name="actual_end" string="Ngày kết thúc"/>
         <field name="state"/>
         <filter name="new" string="Mới" domain="[('state', '=', 'new')]"/>
-        <filter name="scheduled" string="Đã lên lịch" domain="[('state', '=', 'scheduled')]"/>
         <filter name="running" string="Đang thực hiện" domain="[('state', '=', 'running')]"/>
         <filter name="done" string="Hoàn tất" domain="[('state', '=', 'done')]"/>
         <filter name="cancelled" string="Đã hủy" domain="[('state', '=', 'cancelled')]"/>
         <separator/>
         <filter name="blocks_rental" string="Chặn thuê" domain="[('blocks_rental', '=', True)]"/>
         <separator/>
-        <filter name="planned_dates" string="Lịch dự kiến" date="scheduled_start"/>
         <separator/>
         <filter name="archived" string="Đã lưu trữ" domain="[('active', '=', False)]"/>
         <group>
@@ -121,8 +119,8 @@
         <field name="id" string="ID phiếu" readonly="1"/>
         <field name="vehicle_id"/>
         <field name="maintenance_type"/>
-        <field name="scheduled_start"/>
-        <field name="scheduled_end"/>
+        <field name="actual_start" string="Ngày bắt đầu"/>
+        <field name="actual_end" string="Ngày kết thúc"/>
         <field name="state"/>
         <field name="blocks_rental"/>
         <field name="amount"/>
