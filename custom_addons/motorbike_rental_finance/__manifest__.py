@@ -26,6 +26,8 @@
         "views/finance_actions.xml",
         "views/finance_menu.xml",
         "data/finance_demo.xml",
+        # Nạp sau dữ liệu mẫu để bộ cấp số tiếp nối cả mã mẫu và mã đã có trong database.
+        "data/rental_payment_sequence.xml",
     ],
 
     "installable": True,

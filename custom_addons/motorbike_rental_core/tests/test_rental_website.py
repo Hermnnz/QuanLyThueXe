@@ -25,11 +25,11 @@ class TestRentalWebsite(HttpCase):
         })
         vehicle = self.env['fleet.vehicle'].create({
             'model_id': model.id,
-            'is_electric_motorbike': True, 'technical_ready': True, 'operational_status': 'available', 'license_plate': '29-WEB01',
+            'license_plate': '29-WEB01',
         })
         self.env['fleet.vehicle'].create({
             'model_id': model.id,
-            'is_electric_motorbike': True, 'technical_ready': True, 'operational_status': 'available', 'license_plate': '29-WEB02',
+            'license_plate': '29-WEB02',
         })
 
         response = self.url_open('/thue-xe')
@@ -44,14 +44,6 @@ class TestRentalWebsite(HttpCase):
         self.assertIn('evo.jpg', response.text)
 
     def test_public_booking_creates_one_line_per_selected_vehicle(self):
-        rental_user_group = self.env.ref(
-            'motorbike_rental_core.group_rental_user'
-        )
-        self.env['res.users'].create({
-            'name': 'Rental Website Test User',
-            'login': 'rental-website-test-user',
-            'groups_id': [(6, 0, [rental_user_group.id])],
-        })
         brand = self.env['fleet.vehicle.model.brand'].create({
             'name': 'Multi Rental Test Brand',
         })
@@ -67,8 +59,8 @@ class TestRentalWebsite(HttpCase):
             'daily_rate': 250000,
         })
         self.env['fleet.vehicle'].create([
-            {'model_id': model.id, 'is_electric_motorbike': True, 'technical_ready': True, 'operational_status': 'available', 'license_plate': '29-MULTI01'},
-            {'model_id': model.id, 'is_electric_motorbike': True, 'technical_ready': True, 'operational_status': 'available', 'license_plate': '29-MULTI02'},
+            {'model_id': model.id, 'license_plate': '29-MULTI01'},
+            {'model_id': model.id, 'license_plate': '29-MULTI02'},
         ])
         page = self.url_open('/thue-xe')
         csrf_token = re.search(
