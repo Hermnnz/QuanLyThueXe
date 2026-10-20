@@ -1,3 +1,5 @@
+> Mới nhất — Fleet `18.0.5.10.0`: tự tạo một phiếu định kỳ Nháp khi đến/quá hạn theo ODO hoặc ngày; không tự bắt đầu sửa hay khóa xe. Xem [hướng dẫn tự động](../../docs/AUTO_PREVENTIVE_SERVICE_20261020.md).
+
 > Quy tắc mới 20/10/2026 — Fleet `18.0.5.9.1`: không xóa phương tiện trong mọi trường hợp (kể cả sudo/admin); chỉ Lưu trữ/Ngừng sử dụng và có thể khôi phục. Xe đang thuê phải nhận trả trước khi lưu trữ. Form/list/kanban xe ẩn thao tác Xóa. Quy tắc chỉ áp dụng hồ sơ xe, không thay đổi quyền xóa phiếu bảo dưỡng.
 
 > Hiện tại: Fleet `18.0.5.9.0`, menu **Quản lý xe**, chu kỳ và ngưỡng cảnh báo cấu hình riêng trên từng xe. Không kế thừa từ dòng xe. Code cũ được giữ trong `legacy/model_policy_18_0_5_8_0`. Xem [hướng dẫn mới](../../docs/PER_VEHICLE_MAINTENANCE_20261018.md).

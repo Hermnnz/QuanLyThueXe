@@ -135,3 +135,63 @@ class TestPeriodicMaintenance(TransactionCase):
             self.vehicle(service_reference_date=fields.Date.today(), service_reference_odo=501)
         with self.assertRaises(ValidationError), self.cr.savepoint():
             self.vehicle(service_reference_date=fields.Date.today() + timedelta(days=1))
+
+    def test_auto_create_at_due_km_once_and_keep_vehicle_available(self):
+        vehicle = self.anchored()
+        vehicle.odometer = 1000
+        self.assertFalse(vehicle._open_preventive_services())
+        vehicle.odometer = 1100
+        job = vehicle._open_preventive_services()
+        self.assertEqual(len(job), 1)
+        self.assertEqual(job.state, 'new')
+        self.assertTrue(job.blocks_rental)
+        self.assertEqual(vehicle.operational_status, 'available')
+        self.assertTrue(vehicle.technical_ready)
+        vehicle.odometer = 1101
+        vehicle._auto_create_due_services()
+        self.env['fleet.vehicle']._cron_refresh_service_alerts()
+        self.assertEqual(vehicle._open_preventive_services(), job)
+        self.assertEqual(vehicle.action_preventive_service()['res_id'], job.id)
+
+    def test_auto_date_due_uses_cron_and_ignores_manual_appointment(self):
+        vehicle = self.anchored()
+        with patch.object(type(vehicle), '_maintenance_today', return_value=vehicle.service_next_date):
+            self.env['fleet.vehicle']._cron_refresh_service_alerts()
+            self.assertEqual(len(vehicle._open_preventive_services()), 1)
+        appointment = self.vehicle(next_service_date=fields.Date.today())
+        appointment._auto_create_due_services()
+        self.assertFalse(appointment._open_preventive_services())
+
+    def test_auto_respects_existing_scheduled_archived_and_running_jobs(self):
+        vehicle = self.anchored()
+        job = self.env['fleet.vehicle.log.services'].browse(vehicle.action_preventive_service()['res_id'])
+        job.write({'state': 'scheduled', 'scheduled_start': '2027-01-01 01:00:00', 'scheduled_end': '2027-01-01 02:00:00'})
+        job.active = False
+        vehicle.odometer = 1100
+        self.assertFalse(vehicle._auto_create_due_services())
+        job.active = True
+        job.action_start()
+        self.assertFalse(vehicle._auto_create_due_services())
+        job.result = 'Đã thực hiện bảo dưỡng'
+        job.action_done()
+        self.assertEqual(vehicle.service_next_odo, 2100)
+        self.assertFalse(vehicle._auto_create_due_services())
+
+    def test_auto_ignores_missing_baseline_inactive_and_non_electric(self):
+        missing = self.vehicle(odometer=5000)
+        self.assertFalse(missing._auto_create_due_services())
+        archived = self.anchored()
+        archived.active = False
+        archived.odometer = 1200
+        self.assertFalse(archived._auto_create_due_services())
+        other = self.env['fleet.vehicle'].create({'model_id': self.model.id,
+            'is_electric_motorbike': False, 'service_interval_km': 1000,
+            'service_reference_date': fields.Date.today(), 'service_reference_odo': 0, 'odometer': 1200})
+        self.assertFalse(other._auto_create_due_services())
+
+    def test_auto_can_prepare_draft_for_rented_vehicle_without_returning_it(self):
+        vehicle = self.anchored()
+        vehicle.write({'operational_status': 'renting'})
+        vehicle.odometer = 1100
+        self.assertEqual(vehicle.operational_status, 'renting')
+        self.assertEqual(vehicle._open_preventive_services().state, 'new')

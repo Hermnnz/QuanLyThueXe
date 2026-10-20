@@ -46,6 +46,58 @@ class FleetVehiclePreventive(models.Model):
     service_alert_message = fields.Text('Chi tiết hạn bảo dưỡng', compute='_compute_service_alert', store=True)
     open_preventive_count = fields.Integer('Phiếu định kỳ đang xử lý', compute='_compute_open_preventive_count')
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        vehicles = super().create(vals_list)
+        if not self.env.context.get('install_mode'):
+            vehicles._auto_create_due_services()
+        return vehicles
+
+    def write(self, vals):
+        result = super().write(vals)
+        triggers = {'odometer', 'service_interval_km', 'service_interval_months',
+                    'service_reference_date', 'service_reference_odo', 'active',
+                    'is_electric_motorbike'}
+        if triggers.intersection(vals) and not self.env.context.get('install_mode'):
+            self._auto_create_due_services()
+        return result
+
+    def _auto_create_due_services(self):
+        """Create a system draft only for a verified, due periodic milestone.
+
+        The same vehicle lock is used by the manual button. Archived unfinished
+        jobs also count, so hiding a job cannot silently create a duplicate.
+        """
+        services = self.env['fleet.vehicle.log.services'].sudo().with_context(active_test=False)
+        created = services.browse()
+        for vehicle in self.sudo().sorted('id'):
+            self.env.cr.execute('SELECT id FROM fleet_vehicle WHERE id=%s FOR UPDATE', (vehicle.id,))
+            vehicle.invalidate_recordset(['active', 'is_electric_motorbike', 'odometer',
+                'service_interval_km', 'service_interval_months', 'service_last_date',
+                'service_next_date', 'service_next_odo'])
+            if not vehicle.active or not vehicle.is_electric_motorbike or not vehicle.service_last_date:
+                continue
+            due_km = bool(vehicle.service_interval_km and vehicle.odometer >= vehicle.service_next_odo)
+            due_date = bool(vehicle.service_interval_months and vehicle.service_next_date
+                            and vehicle.service_next_date <= vehicle._maintenance_today())
+            if not (due_km or due_date):
+                continue
+            if services.search_count([('vehicle_id', '=', vehicle.id),
+                    ('maintenance_type', '=', 'preventive'),
+                    ('state', 'in', ['new', 'scheduled', 'running'])]):
+                continue
+            notes = ['Hệ thống tự tạo vì xe đến hoặc quá hạn bảo dưỡng định kỳ.']
+            if due_km:
+                notes.append('ODO hiện tại %g km; hạn %g km.' % (vehicle.odometer, vehicle.service_next_odo))
+            if due_date:
+                notes.append('Hạn theo ngày: %s.' % vehicle.service_next_date)
+            created |= services.with_context(active_test=True).create({
+                'vehicle_id': vehicle.id, 'maintenance_type': 'preventive', 'state': 'new',
+                'company_id': vehicle.company_id.id or self.env.company.id,
+                'description': 'Bảo dưỡng định kỳ tự động — ' + (vehicle.vehicle_code or vehicle.display_name),
+                'notes': '\n'.join(notes), 'blocks_rental': True})
+        return created
+
     @api.constrains('service_interval_km', 'service_interval_months', 'service_warning_km', 'service_warning_days')
     def _check_vehicle_service_policy(self):
         for vehicle in self:
@@ -135,7 +187,9 @@ class FleetVehiclePreventive(models.Model):
     def _cron_refresh_service_alerts(self):
         vehicles = self.search([('is_electric_motorbike', '=', True)])
         for start in range(0, len(vehicles), 500):
-            vehicles[start:start + 500]._compute_service_alert()
+            batch = vehicles[start:start + 500]
+            batch._compute_service_alert()
+            batch._auto_create_due_services()
 
     def _open_preventive_services(self):
         return self.env['fleet.vehicle.log.services'].search([
