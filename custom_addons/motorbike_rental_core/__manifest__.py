@@ -4,7 +4,13 @@
     'summary': 'Quản lý khách hàng và hợp đồng thuê xe máy',
     'category': 'Services/Rental',
     'license': 'LGPL-3',
-    'depends': ['base', 'contacts', 'fleet', 'website'],
+    'depends': [
+        'base',
+        'contacts',
+        'fleet',
+        'motorbike_fleet_management',
+        'website',
+    ],
     'data': [
         'security/rental_security.xml',
         'security/ir.model.access.csv',

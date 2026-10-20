@@ -32,6 +32,7 @@
                                 <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                                 <input type="hidden" name="start_utc" t-att-value="form_values.get('start_utc')"/>
                                 <input type="hidden" name="end_utc" t-att-value="form_values.get('end_utc')"/>
+                                <input type="hidden" name="vehicle_page" t-att-value="current_vehicle_page"/>
 
                                 <div class="col-12">
                                     <div class="card border-0 shadow-sm">
@@ -68,8 +69,8 @@
                                         <h3 class="h6 fw-bold">Chưa có xe trống trong thời gian này</h3>
                                         <p class="text-muted mb-0">Thử đổi thời gian nhận/trả xe rồi bấm “Tìm xe”.</p>
                                     </div>
-                                    <div t-if="vehicles" class="row g-3">
-                                        <div t-foreach="vehicles" t-as="choice" class="col-md-6">
+                                    <div t-if="vehicles" class="row g-3" id="rental_vehicle_list" t-att-data-page-size="vehicles_per_page">
+                                        <div t-foreach="vehicles" t-as="choice" class="col-md-6" t-att-data-rental-card-index="choice_index + 1">
                                             <div class="card vehicle-card h-100 overflow-hidden border-light shadow-sm">
                                                 <img class="card-img-top vehicle-card-image"
                                                      t-att-src="choice['image_url']"
@@ -120,6 +121,29 @@
                                                 </div>
                                             </div>
                                         </div>
+                                    </div>
+                                    <div t-if="vehicle_page_count > 1" id="rental_vehicle_pagination" class="d-none d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mt-3">
+                                        <p class="small text-muted mb-0">
+                                            Hiển thị <span id="rental_vehicle_page_start"><t t-esc="vehicle_page_start"/></span>–<span id="rental_vehicle_page_end"><t t-esc="vehicle_page_end"/></span> / <t t-esc="vehicle_count"/> dòng xe
+                                        </p>
+                                        <nav aria-label="Trang danh sách xe">
+                                            <ul class="pagination pagination-sm mb-0">
+                                                <li class="page-item">
+                                                    <button type="button" class="page-link" data-rental-page-prev="1" aria-label="Trang trước">Trước</button>
+                                                </li>
+                                                <li t-foreach="range(vehicle_page_count)" t-as="page_index"
+                                                    t-att-class="'page-item active' if page_index == current_vehicle_page else 'page-item'">
+                                                    <button type="button" class="page-link"
+                                                            t-att-data-rental-page="page_index + 1"
+                                                            t-att-aria-current="'page' if page_index == current_vehicle_page else None">
+                                                        <t t-esc="page_index + 1"/>
+                                                    </button>
+                                                </li>
+                                                <li class="page-item">
+                                                    <button type="button" class="page-link" data-rental-page-next="1" aria-label="Trang tiếp theo">Sau</button>
+                                                </li>
+                                            </ul>
+                                        </nav>
                                     </div>
                                     <p t-if="vehicles" class="form-text mt-2">
                                         Xe sẽ được kiểm tra lại theo thời gian thuê khi bạn gửi yêu cầu.
@@ -192,6 +216,76 @@
                     var form = document.querySelector('form[action="/thue-xe"]');
                     var start = document.getElementById('rental_start');
                     var end = document.getElementById('rental_end');
+                    var vehicleList = document.getElementById('rental_vehicle_list');
+                    var pagination = document.getElementById('rental_vehicle_pagination');
+
+                    if (vehicleList &amp;&amp; pagination) {
+                        var cards = Array.from(
+                            vehicleList.querySelectorAll('[data-rental-card-index]')
+                        );
+                        var pageSize = Number(vehicleList.dataset.pageSize);
+                        var pageCount = Math.ceil(cards.length / pageSize);
+                        var pageInput = form.querySelector('input[name="vehicle_page"]');
+                        var pageStart = document.getElementById('rental_vehicle_page_start');
+                        var pageEnd = document.getElementById('rental_vehicle_page_end');
+                        var pageButtons = Array.from(
+                            pagination.querySelectorAll('[data-rental-page]')
+                        );
+                        var previousButton = pagination.querySelector(
+                            '[data-rental-page-prev]'
+                        );
+                        var nextButton = pagination.querySelector(
+                            '[data-rental-page-next]'
+                        );
+                        var currentPage = Math.min(
+                            Math.max(Number(pageInput.value) || 0, 0),
+                            pageCount - 1
+                        );
+
+                        function showVehiclePage(page) {
+                            currentPage = page;
+                            pageInput.value = String(page);
+                            cards.forEach(function (card, index) {
+                                card.classList.toggle(
+                                    'd-none',
+                                    Math.floor(index / pageSize) !== page
+                                );
+                            });
+                            pageButtons.forEach(function (button) {
+                                var isCurrent = Number(button.dataset.rentalPage) - 1 === page;
+                                button.parentElement.classList.toggle('active', isCurrent);
+                                if (isCurrent) {
+                                    button.setAttribute('aria-current', 'page');
+                                } else {
+                                    button.removeAttribute('aria-current');
+                                }
+                            });
+                            previousButton.disabled = page === 0;
+                            nextButton.disabled = page === pageCount - 1;
+                            pageStart.textContent = String(page * pageSize + 1);
+                            pageEnd.textContent = String(
+                                Math.min((page + 1) * pageSize, cards.length)
+                            );
+                        }
+
+                        pageButtons.forEach(function (button) {
+                            button.addEventListener('click', function () {
+                                showVehiclePage(Number(button.dataset.rentalPage) - 1);
+                            });
+                        });
+                        previousButton.addEventListener('click', function () {
+                            if (currentPage > 0) {
+                                showVehiclePage(currentPage - 1);
+                            }
+                        });
+                        nextButton.addEventListener('click', function () {
+                            if (currentPage &lt; pageCount - 1) {
+                                showVehiclePage(currentPage + 1);
+                            }
+                        });
+                        pagination.classList.remove('d-none');
+                        showVehiclePage(currentPage);
+                    }
 
                     function toLocalValue(value) {
                         var date = new Date(value.replace(' ', 'T') + 'Z');

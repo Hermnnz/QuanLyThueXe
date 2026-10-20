@@ -26,10 +26,16 @@ class TestRentalWebsite(HttpCase):
         vehicle = self.env['fleet.vehicle'].create({
             'model_id': model.id,
             'license_plate': '29-WEB01',
+            'is_electric_motorbike': True,
+            'operational_status': 'available',
+            'technical_ready': True,
         })
         self.env['fleet.vehicle'].create({
             'model_id': model.id,
             'license_plate': '29-WEB02',
+            'is_electric_motorbike': True,
+            'operational_status': 'available',
+            'technical_ready': True,
         })
 
         response = self.url_open('/thue-xe')
@@ -42,6 +48,92 @@ class TestRentalWebsite(HttpCase):
         self.assertIn('max="2"', response.text)
         self.assertIn('Tổng xe tồn:', response.text)
         self.assertIn('evo.jpg', response.text)
+
+    def test_availability_only_counts_fleet_ready_vehicles(self):
+        brand = self.env['fleet.vehicle.model.brand'].create({
+            'name': 'Fleet Readiness Website Test Brand',
+        })
+        model = self.env['fleet.vehicle.model'].create({
+            'name': 'Fleet Readiness Website Test Model',
+            'brand_id': brand.id,
+            'vehicle_type': 'bike',
+        })
+        rental_type = self.env['rental.vehicle.type'].create({
+            'name': 'Fleet Readiness Website Test Price',
+            'model_id': model.id,
+            'currency_id': self.env.company.currency_id.id,
+            'daily_rate': 250000,
+        })
+        self.env['fleet.vehicle'].create([
+            {
+                'model_id': model.id,
+                'license_plate': '29-READY01',
+                'is_electric_motorbike': True,
+                'operational_status': 'available',
+                'technical_ready': True,
+            },
+            {
+                'model_id': model.id,
+                'license_plate': '29-READY02',
+                'is_electric_motorbike': True,
+                'operational_status': 'pending_inspection',
+                'technical_ready': False,
+            },
+            {
+                'model_id': model.id,
+                'license_plate': '29-READY03',
+                'is_electric_motorbike': True,
+                'operational_status': 'maintenance',
+                'technical_ready': False,
+            },
+            {
+                'model_id': model.id,
+                'license_plate': '29-READY04',
+                'is_electric_motorbike': True,
+                'operational_status': 'available',
+                'technical_ready': True,
+                'rental_blocked': True,
+                'block_reason': 'Website availability test',
+            },
+        ])
+
+        response = self.url_open('/thue-xe')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertRegex(
+            response.text,
+            (
+                rf'<input(?=[^>]*id="quantity_{rental_type.id}")'
+                rf'(?=[^>]*max="1")[^>]*>'
+            ),
+        )
+
+    def test_all_rental_prices_are_listed_across_pages(self):
+        brand = self.env['fleet.vehicle.model.brand'].create({
+            'name': 'Paged Website Test Brand',
+        })
+        rental_types = self.env['rental.vehicle.type']
+        for index in range(13):
+            model = self.env['fleet.vehicle.model'].create({
+                'name': f'Paged Website Test Model {index}',
+                'brand_id': brand.id,
+                'vehicle_type': 'bike',
+            })
+            rental_types |= self.env['rental.vehicle.type'].create({
+                'name': f'Paged Website Test Price {index}',
+                'model_id': model.id,
+                'currency_id': self.env.company.currency_id.id,
+                'daily_rate': 250000 + index,
+            })
+
+        response = self.url_open('/thue-xe')
+
+        self.assertEqual(response.status_code, 200)
+        for rental_type in rental_types:
+            self.assertIn(rental_type.name, response.text)
+        self.assertIn('data-rental-page="2"', response.text)
+        self.assertIn('data-rental-page="1"', response.text)
+        self.assertIn('name="quantity_%s"' % rental_types[-1].id, response.text)
 
     def test_public_booking_creates_one_line_per_selected_vehicle(self):
         brand = self.env['fleet.vehicle.model.brand'].create({
@@ -59,8 +151,20 @@ class TestRentalWebsite(HttpCase):
             'daily_rate': 250000,
         })
         self.env['fleet.vehicle'].create([
-            {'model_id': model.id, 'license_plate': '29-MULTI01'},
-            {'model_id': model.id, 'license_plate': '29-MULTI02'},
+            {
+                'model_id': model.id,
+                'license_plate': '29-MULTI01',
+                'is_electric_motorbike': True,
+                'operational_status': 'available',
+                'technical_ready': True,
+            },
+            {
+                'model_id': model.id,
+                'license_plate': '29-MULTI02',
+                'is_electric_motorbike': True,
+                'operational_status': 'available',
+                'technical_ready': True,
+            },
         ])
         page = self.url_open('/thue-xe')
         csrf_token = re.search(
