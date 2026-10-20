@@ -33,7 +33,11 @@ class RentalDeliveryReceipt(models.Model):
     qty_phone_holder = fields.Integer(string='Giá đỡ điện thoại', default=1, required=True)
     qty_charger = fields.Integer(string='Bộ sạc xe', default=1, required=True)
 
-    user_id = fields.Many2one('res.users', string='Nhân viên giao xe', default=lambda self: self.env.user)
+    user_id = fields.Many2one(
+        'res.users', 
+        string='Nhân viên giao xe', 
+        default=lambda self: self.env.user if self.env.user.name not in ('Administrator', 'admin', 'Admin') else False
+    )
     company_id = fields.Many2one('res.company', string='Công ty', default=lambda self: self.env.company)
 
     state = fields.Selection([
@@ -53,9 +57,21 @@ class RentalDeliveryReceipt(models.Model):
             if not vals.get('customer_phone') and vals.get('customer_id'):
                 partner = self.env['res.partner'].browse(vals['customer_id'])
                 vals['customer_phone'] = partner.phone or partner.mobile or ''
-        return super(RentalDeliveryReceipt, self).create(vals_list)
+        receipts = super(RentalDeliveryReceipt, self).create(vals_list)
+        for receipt in receipts:
+            if receipt.ticket_id:
+                receipt.ticket_id._sync_contract_in_progress()
+        return receipts
 
     def action_print_receipt(self):
         """In lại biên lai giao xe dạng PDF"""
         self.ensure_one()
+        for veh in self.vehicle_ids:
+            if not veh.delivery_visual_note or veh.delivery_visual_note in (
+                'Ngoại quan của xe không có vấn đề',
+                'Xe vận hành tốt, ngoại quan bình thường, không trầy xước phát sinh.'
+            ):
+                veh_condition = veh._get_vehicle_exterior_condition(veh.vehicle_id) if veh.vehicle_id else False
+                if veh_condition and veh_condition != 'Ngoại quan của xe không có vấn đề':
+                    veh.sudo().write({'delivery_visual_note': veh_condition})
         return self.env.ref('motorbike_rental_operation.action_report_delivery_receipt').report_action(self)

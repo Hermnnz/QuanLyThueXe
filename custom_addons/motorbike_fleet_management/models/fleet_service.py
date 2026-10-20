@@ -9,6 +9,8 @@ class FleetVehicleLogServices(models.Model):
 
     is_electric_motorbike = fields.Boolean(related='vehicle_id.is_electric_motorbike')
     vehicle_code = fields.Char(related='vehicle_id.vehicle_code', string='Mã phương tiện', readonly=True)
+    customer_name = fields.Char(string='Khách hàng')
+    customer_phone = fields.Char(string='Số điện thoại khách hàng')
     service_type_id = fields.Many2one(default=lambda self: self.env.ref(
         'motorbike_fleet_management.service_type_electric_maintenance', raise_if_not_found=False))
     technician_id = fields.Many2one('res.partner', string='Kỹ thuật viên')
@@ -63,6 +65,15 @@ class FleetVehicleLogServices(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for values in vals_list:
+            if 'customer_id' in values and not values.get('customer_name'):
+                cid = values.get('customer_id')
+                if isinstance(cid, int):
+                    partner = self.env['res.partner'].browse(cid)
+                    values['customer_name'] = partner.name
+                    if not values.get('customer_phone') and (partner.phone or partner.mobile):
+                        values['customer_phone'] = partner.phone or partner.mobile
+                elif isinstance(cid, str):
+                    values['customer_name'] = cid
             vehicle = self.env['fleet.vehicle'].browse(
                 values.get('vehicle_id') or self.env.context.get('default_vehicle_id'))
             if vehicle.is_electric_motorbike:
@@ -102,6 +113,15 @@ class FleetVehicleLogServices(models.Model):
 
     def write(self, vals):
         self.check_access('write')
+        if 'customer_id' in vals and not vals.get('customer_name'):
+            cid = vals.get('customer_id')
+            if isinstance(cid, int):
+                partner = self.env['res.partner'].browse(cid)
+                vals['customer_name'] = partner.name
+                if not vals.get('customer_phone') and (partner.phone or partner.mobile):
+                    vals['customer_phone'] = partner.phone or partner.mobile
+            elif isinstance(cid, str):
+                vals['customer_name'] = cid
         target = self.env['fleet.vehicle'].browse(vals.get('vehicle_id'))
         electric = self.filtered(lambda s: s.is_electric_motorbike or target.is_electric_motorbike)
         if electric:

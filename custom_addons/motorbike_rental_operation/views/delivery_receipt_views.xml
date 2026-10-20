@@ -10,7 +10,7 @@
         <field name="name">rental.delivery.receipt.list</field>
         <field name="model">rental.delivery.receipt</field>
         <field name="arch" type="xml">
-            <list string="Biên Lai Giao Xe" create="0">
+            <list string="Biên Lai Giao Xe" create="0" class="o_rental_receipt_list_table">
                 <field name="name" width="130px"/>
                 <field name="delivery_date" width="140px"/>
                 <field name="delivery_time" width="110px"/>

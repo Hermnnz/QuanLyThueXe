@@ -12,18 +12,18 @@
 
         <!-- Sequence for Sự cố &amp; Hư hỏng -->
         <record id="seq_rental_incident_log" model="ir.sequence">
-            <field name="name">Mã Ghi nhận Sự cố</field>
+            <field name="name">Mã sự cố</field>
             <field name="code">rental.operation.incident.log</field>
             <field name="prefix">INC-</field>
             <field name="padding">5</field>
             <field name="company_id" eval="False"/>
         </record>
 
-        <!-- Sequence for Bảng giá Phụ phí &amp; Bồi thường -->
+        <!-- Sequence for Bảng giá Sự cố (Mã sự cố tự động) -->
         <record id="seq_motorbike_rental_price_catalog" model="ir.sequence">
-            <field name="name">Mã Bảng giá Phụ phí &amp; Bồi thường</field>
-            <field name="code">motorbike.rental.price.catalog</field>
-            <field name="prefix">PRC-</field>
+            <field name="name">Mã sự cố Bảng giá</field>
+            <field name="code">motorbike.rental.price.catalog.incident</field>
+            <field name="prefix">SC-</field>
             <field name="padding">4</field>
             <field name="company_id" eval="False"/>
         </record>

@@ -34,8 +34,8 @@ class RentalOperationTicketVehicle(models.Model):
     vehicle_price = fields.Monetary(string='Giá tiền xe', default=0.0, currency_field='currency_id')
 
     # Thông tin vận chuyển - Mặc định lấy từ địa điểm chung của hợp đồng/phiếu
-    delivery_location = fields.Char(string='Vị trí giao xe', default='Tại cửa hàng')
-    return_location = fields.Char(string='Vị trí thu hồi xe', default='Tại cửa hàng')
+    delivery_location = fields.Char(string='Vị trí giao', default='Tại cửa hàng')
+    return_location = fields.Char(string='Vị trí thu hồi', default='Tại cửa hàng')
     delivery_time = fields.Char(string='Giờ giao xe', default=False, help='Thời gian dự kiến giao xe (VD: 08:30)')
 
     # Đánh dấu người dùng đã chỉnh riêng địa điểm / thời gian (không bị ghi đè khi đổi giá trị chung)
@@ -81,26 +81,89 @@ class RentalOperationTicketVehicle(models.Model):
     # Tình trạng ngoại quan lúc giao xe
     delivery_visual_note = fields.Text(
         string='Ngoại quan khi giao',
-        default='Xe vận hành tốt, ngoại quan bình thường, không trầy xước phát sinh.'
+        default='Ngoại quan của xe không có vấn đề'
     )
 
     @api.model
     def _get_vehicle_exterior_condition(self, vehicle):
         """
-        Lấy thông tin ngoại quan xe từ module Quản lý xe của bạn Bắc.
-        TODO (Bắc): Khi bạn Bắc cập nhật trường ngoại quan trên model fleet.vehicle
-        (ví dụ: exterior_condition hoặc visual_notes), hãy mở comment đoạn code bên dưới:
+        Lấy thông tin ngoại quan xe từ trường description trên fleet.vehicle (tab 'Mô tả tình trạng').
+        Nếu không có giá trị gì, mặc định là: 'Ngoại quan của xe không có vấn đề'
         """
-        # if vehicle and hasattr(vehicle, 'exterior_condition'):
-        #     return vehicle.exterior_condition or 'Xe vận hành tốt, ngoại quan bình thường'
-        # if vehicle and hasattr(vehicle, 'visual_notes'):
-        #     return vehicle.visual_notes or 'Xe vận hành tốt, ngoại quan bình thường'
-        return 'Xe vận hành tốt, ngoại quan bình thường, không trầy xước phát sinh.'
+        default_val = 'Ngoại quan của xe không có vấn đề'
+        if not vehicle:
+            return default_val
+
+        if isinstance(vehicle, int):
+            vehicle = self.env['fleet.vehicle'].browse(vehicle)
+        if not vehicle.exists():
+            return default_val
+
+        v_sudo = vehicle.sudo()
+        note = False
+        for field_name in ('description', 'exterior_condition', 'visual_notes'):
+            if hasattr(v_sudo, field_name):
+                raw_val = getattr(v_sudo, field_name)
+                if raw_val:
+                    if isinstance(raw_val, str) and ('<' in raw_val and '>' in raw_val):
+                        from odoo.tools import html2plaintext
+                        cleaned = html2plaintext(raw_val).strip()
+                    else:
+                        cleaned = str(raw_val).strip()
+                    if cleaned:
+                        note = cleaned
+                        break
+        return note or default_val
+
+    def _get_display_visual_note(self):
+        """Lấy tình trạng ngoại quan chuẩn xác nhất để hiển thị và xuất báo cáo PDF"""
+        self.ensure_one()
+        note = (self.delivery_visual_note or '').strip()
+        # Nếu đã có ghi chú cụ thể khác các câu mặc định
+        if note and note not in (
+            'Ngoại quan của xe không có vấn đề',
+            'Xe vận hành tốt, ngoại quan bình thường, không trầy xước phát sinh.'
+        ):
+            return note
+
+        # Nếu chưa có hoặc chỉ là câu mặc định, ưu tiên lấy từ 'Mô tả tình trạng' của fleet.vehicle
+        if self.vehicle_id:
+            veh_cond = self._get_vehicle_exterior_condition(self.vehicle_id)
+            if veh_cond and veh_cond != 'Ngoại quan của xe không có vấn đề':
+                return veh_cond
+
+        return note or 'Ngoại quan của xe không có vấn đề'
+
+    @api.onchange('vehicle_id')
+    def _onchange_vehicle_id_exterior(self):
+        if self.vehicle_id:
+            veh_note = self._get_vehicle_exterior_condition(self.vehicle_id)
+            if not self.delivery_visual_note or self.delivery_visual_note in (
+                'Xe vận hành tốt, ngoại quan bình thường, không trầy xước phát sinh.',
+                'Ngoại quan của xe không có vấn đề'
+            ) or (veh_note and veh_note != 'Ngoại quan của xe không có vấn đề'):
+                self.delivery_visual_note = veh_note
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('vehicle_id'):
+                vehicle = self.env['fleet.vehicle'].browse(vals['vehicle_id'])
+                veh_condition = self._get_vehicle_exterior_condition(vehicle)
+                note_in_vals = (vals.get('delivery_visual_note') or '').strip()
+                if not note_in_vals or note_in_vals in (
+                    'Ngoại quan của xe không có vấn đề',
+                    'Xe vận hành tốt, ngoại quan bình thường, không trầy xước phát sinh.'
+                ):
+                    vals['delivery_visual_note'] = veh_condition
+                elif veh_condition and veh_condition != 'Ngoại quan của xe không có vấn đề' and note_in_vals == 'Ngoại quan của xe không có vấn đề':
+                    vals['delivery_visual_note'] = veh_condition
+        return super(RentalOperationTicketVehicle, self).create(vals_list)
 
     # Lịch trình & Thời gian thực tế (cho phép chỉnh sửa)
-    date_checkout = fields.Datetime(string='Ngày Giao Xe (Dự kiến)')
+    date_checkout = fields.Datetime(string='Thời gian giao dự kiến')
     actual_delivery_date = fields.Datetime(string='Thời gian giao thực tế')
-    date_checkin = fields.Datetime(string='Ngày Thu Hồi Xe (Dự kiến)')
+    date_checkin = fields.Datetime(string='Thời gian thu hồi dự kiến')
     actual_return_date = fields.Datetime(string='Thời gian thu hồi thực tế')
 
     status = fields.Selection([
@@ -131,6 +194,26 @@ class RentalOperationTicketVehicle(models.Model):
             if rec.vehicle_id:
                 rec.vehicle_id.write({'operational_status': 'renting'})
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super(RentalOperationTicketVehicle, self).create(vals_list)
+        for rec in records:
+            if rec.status == 'renting':
+                rec._sync_contract_in_progress()
+                if rec.vehicle_id:
+                    rec.vehicle_id.write({'operational_status': 'renting'})
+        return records
+
+    def _sync_contract_in_progress(self):
+        """Khi có xe trong bản ghi giao xe được giao ('renting'), chuyển hợp đồng sang Đang thuê ('in_progress')"""
+        for rec in self:
+            contract = rec.ticket_id.contract_id if rec.ticket_id else False
+            if contract and contract.state not in ('in_progress', 'done', 'cancelled'):
+                if contract.state == 'draft':
+                    contract.action_confirm()
+                if contract.state == 'confirmed':
+                    contract.write({'state': 'in_progress'})
+
     def action_confirm_delivery(self):
         """Xác nhận đã bàn giao xe thành công cho khách - Xe bên Bắc ở trạng thái Đang cho thuê (renting)"""
         for rec in self:
@@ -148,8 +231,7 @@ class RentalOperationTicketVehicle(models.Model):
             rec.write(vals)
             if rec.ticket_id and not rec.ticket_id.actual_delivery_date:
                 rec.ticket_id.actual_delivery_date = fields.Datetime.now()
-            if rec.ticket_id and rec.ticket_id.contract_id and rec.ticket_id.contract_id.state == 'confirmed':
-                rec.ticket_id.contract_id.write({'state': 'in_progress'})
+            rec._sync_contract_in_progress()
             if rec.vehicle_id:
                 rec.vehicle_id.write({'operational_status': 'renting'})
 
@@ -173,11 +255,6 @@ class RentalOperationTicketVehicle(models.Model):
                 if all_returned:
                     if not rec.ticket_id.actual_return_date:
                         rec.ticket_id.actual_return_date = fields.Datetime.now()
-                    if rec.ticket_id.contract_id and rec.ticket_id.contract_id.state not in ('done', 'cancelled'):
-                        if rec.ticket_id.contract_id.state == 'confirmed':
-                            rec.ticket_id.contract_id.write({'state': 'in_progress'})
-                        if rec.ticket_id.contract_id.state == 'in_progress':
-                            rec.ticket_id.contract_id.write({'state': 'done'})
             if rec.vehicle_id:
                 rec.vehicle_id.write({
                     'operational_status': 'pending_inspection',
@@ -212,6 +289,9 @@ class RentalOperationTicketVehicle(models.Model):
                             'operational_status': 'pending_inspection',
                             'technical_ready': False,
                         })
+                # Khi xe ở trạng thái đã giao xe ('renting'), hợp đồng chuyển sang trạng thái Đang thuê ('in_progress')
+                if vals['status'] == 'renting':
+                    rec._sync_contract_in_progress()
         return res
 
     def action_reset_waiting(self):

@@ -217,7 +217,15 @@ class RentalDeliveryReceiptWizard(models.TransientModel):
             vlines = getattr(self, f'receipt_{i}_vehicle_ids')
             for vline in vlines:
                 if vline.vehicle_detail_id:
-                    note = (vline.delivery_visual_note or '').strip() or 'Xe vận hành tốt, ngoại quan bình thường, không trầy xước phát sinh.'
+                    note = (vline.delivery_visual_note or '').strip()
+                    if not note or note in (
+                        'Ngoại quan của xe không có vấn đề',
+                        'Xe vận hành tốt, ngoại quan bình thường, không trầy xước phát sinh.'
+                    ):
+                        veh_cond = vline.vehicle_detail_id._get_vehicle_exterior_condition(vline.vehicle_id)
+                        if veh_cond and veh_cond != 'Ngoại quan của xe không có vấn đề':
+                            note = veh_cond
+                    note = note or 'Ngoại quan của xe không có vấn đề'
                     vline.vehicle_detail_id.write({'delivery_visual_note': note})
 
         created_receipts = self.env['rental.delivery.receipt']
@@ -256,7 +264,7 @@ class RentalDeliveryReceiptWizard(models.TransientModel):
             receipt = self.env['rental.delivery.receipt'].create(receipt_vals)
             created_receipts |= receipt
 
-            grp_vehicles.write({
+            veh_vals = {
                 'delivery_receipt_id': receipt.id,
                 'delivery_receipt_issued': True,
                 'receipt_printed_at': fields.Datetime.now(),
@@ -265,7 +273,14 @@ class RentalDeliveryReceiptWizard(models.TransientModel):
                 'qty_phone_holder': q_phone_holder,
                 'qty_charger': q_charger,
                 'is_selected': False,
-            })
+                'status': 'renting',
+            }
+            if any(not v.actual_delivery_date for v in grp_vehicles):
+                veh_vals['actual_delivery_date'] = fields.Datetime.now()
+            grp_vehicles.write(veh_vals)
+            if self.ticket_id and not self.ticket_id.actual_delivery_date:
+                self.ticket_id.actual_delivery_date = fields.Datetime.now()
+            grp_vehicles._sync_contract_in_progress()
 
         if not created_receipts:
             raise UserError('Không có biên lai nào được tạo!')
@@ -282,7 +297,15 @@ class RentalDeliveryReceiptWizard(models.TransientModel):
 
         for vline in self.vehicle_line_ids:
             if vline.vehicle_detail_id:
-                note = (vline.delivery_visual_note or '').strip() or 'Xe vận hành tốt, ngoại quan bình thường, không trầy xước phát sinh.'
+                note = (vline.delivery_visual_note or '').strip()
+                if not note or note in (
+                    'Ngoại quan của xe không có vấn đề',
+                    'Xe vận hành tốt, ngoại quan bình thường, không trầy xước phát sinh.'
+                ):
+                    veh_cond = vline.vehicle_detail_id._get_vehicle_exterior_condition(vline.vehicle_id)
+                    if veh_cond and veh_cond != 'Ngoại quan của xe không có vấn đề':
+                        note = veh_cond
+                note = note or 'Ngoại quan của xe không có vấn đề'
                 vline.vehicle_detail_id.write({'delivery_visual_note': note})
 
         created_receipts = self.env['rental.delivery.receipt']
@@ -306,7 +329,7 @@ class RentalDeliveryReceiptWizard(models.TransientModel):
             receipt = self.env['rental.delivery.receipt'].create(receipt_vals)
             created_receipts |= receipt
 
-            grp_vehicles.write({
+            veh_vals = {
                 'delivery_receipt_id': receipt.id,
                 'delivery_receipt_issued': True,
                 'receipt_printed_at': fields.Datetime.now(),
@@ -315,7 +338,14 @@ class RentalDeliveryReceiptWizard(models.TransientModel):
                 'qty_phone_holder': max(0, grp.qty_phone_holder),
                 'qty_charger': max(0, grp.qty_charger),
                 'is_selected': False,
-            })
+                'status': 'renting',
+            }
+            if any(not v.actual_delivery_date for v in grp_vehicles):
+                veh_vals['actual_delivery_date'] = fields.Datetime.now()
+            grp_vehicles.write(veh_vals)
+            if self.ticket_id and not self.ticket_id.actual_delivery_date:
+                self.ticket_id.actual_delivery_date = fields.Datetime.now()
+            grp_vehicles._sync_contract_in_progress()
 
         if not created_receipts:
             raise UserError('Không có biên lai nào được tạo!')
@@ -364,5 +394,5 @@ class RentalDeliveryReceiptWizardVehicle(models.TransientModel):
     delivery_visual_note = fields.Text(
         string='Tình trạng ngoại quan ban đầu',
         required=True,
-        default='Xe vận hành tốt, ngoại quan bình thường, không trầy xước phát sinh.'
+        default='Ngoại quan của xe không có vấn đề'
     )

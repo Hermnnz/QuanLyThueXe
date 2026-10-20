@@ -5,22 +5,22 @@ class MotorbikeRentalPriceCatalog(models.Model):
     _name = "motorbike.rental.price.catalog"
     _description = "Bảng giá Phụ phí & Bồi thường Sự cố"
 
+    incident_code = fields.Char(string="Mã sự cố", required=True, copy=False, readonly=True, default="Mới")
     name = fields.Char(string="Tên khoản giá/sự cố", required=True)
-    code = fields.Char(string="Mã bảng giá", required=True, copy=False, readonly=True, default="Mới")
+    code = fields.Char(string="Ký hiệu", copy=True, help="Ký hiệu viết tắt (VD: BT-MU-BH, DV-GIAO-XE)")
 
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
-            if not vals.get('code') or vals.get('code') == 'Mới':
-                vals['code'] = self.env['ir.sequence'].next_by_code('motorbike.rental.price.catalog') or 'Mới'
+            if not vals.get('incident_code') or vals.get('incident_code') == 'Mới':
+                vals['incident_code'] = self.env['ir.sequence'].next_by_code('motorbike.rental.price.catalog.incident') or 'Mới'
         return super(MotorbikeRentalPriceCatalog, self).create(vals_list)
 
     def _compute_display_name(self):
         for rec in self:
-            if rec.code and rec.code != 'Mới':
-                rec.display_name = f"[{rec.code}] {rec.name}"
-            else:
-                rec.display_name = rec.name
+            inc_str = f"[{rec.incident_code}] " if rec.incident_code and rec.incident_code != 'Mới' else ""
+            sym_str = f"({rec.code}) " if rec.code else ""
+            rec.display_name = f"{inc_str}{sym_str}{rec.name}"
 
     
     category = fields.Selection([

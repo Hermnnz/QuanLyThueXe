@@ -26,13 +26,8 @@
       </xpath>
       <xpath expr="//field[@name='vehicle_id']" position="after">
         <field name="vehicle_code" readonly="1" invisible="not is_electric_motorbike and not context.get('motorbike_only')"/>
-        <div class="o_form_label" invisible="not is_electric_motorbike and not context.get('motorbike_only')">Khách hàng</div>
-        <div name="rental_customer_placeholder" class="text-muted" invisible="not is_electric_motorbike and not context.get('motorbike_only')"
-             title="Chỉ hiển thị giao diện; chưa liên kết khách hàng từ sự cố hoặc hợp đồng.">Chưa liên kết</div>
-        <div class="o_form_label" invisible="not is_electric_motorbike and not context.get('motorbike_only')">Số điện thoại khách hàng</div>
-        <div name="rental_customer_phone_placeholder" class="text-muted"
-             invisible="not is_electric_motorbike and not context.get('motorbike_only')"
-             title="Chỉ hiển thị giao diện; chưa lấy số điện thoại khách hàng.">Chưa liên kết</div>
+        <field name="customer_name" invisible="not is_electric_motorbike and not context.get('motorbike_only')"/>
+        <field name="customer_phone" widget="phone" invisible="not is_electric_motorbike and not context.get('motorbike_only')"/>
       </xpath>
       <xpath expr="//field[@name='service_type_id']" position="attributes">
         <attribute name="string">Loại dịch vụ</attribute>
@@ -89,6 +84,8 @@
     <field name="arch" type="xml">
       <search>
         <field name="vehicle_id"/>
+        <field name="customer_name"/>
+        <field name="customer_phone"/>
         <field name="description"/>
         <field name="maintenance_type"/>
         <field name="actual_start" string="Ngày bắt đầu"/>
@@ -118,6 +115,8 @@
       <list default_order="id desc">
         <field name="id" string="ID phiếu" readonly="1"/>
         <field name="vehicle_id"/>
+        <field name="customer_name" optional="show"/>
+        <field name="customer_phone" optional="show"/>
         <field name="maintenance_type"/>
         <field name="actual_start" string="Ngày bắt đầu"/>
         <field name="actual_end" string="Ngày kết thúc"/>
