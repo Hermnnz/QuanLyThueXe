@@ -1,6 +1,6 @@
 {
     'name': 'Cho thuê xe máy',
-    'version': '18.0.1.0.6',
+    'version': '18.0.1.0.9',
     'summary': 'Quản lý khách hàng và hợp đồng thuê xe máy',
     'category': 'Services/Rental',
     'license': 'LGPL-3',

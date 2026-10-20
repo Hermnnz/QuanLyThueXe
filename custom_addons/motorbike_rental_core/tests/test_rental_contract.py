@@ -1,3 +1,5 @@
+from psycopg2 import IntegrityError
+
 from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
@@ -88,6 +90,19 @@ class TestRentalContract(TransactionCase):
         )
 
         self.assertEqual(contract.rental_days, 2)
+
+    def test_rental_duration_has_no_minimum_or_maximum(self):
+        short_contract = self._create_contract(
+            start_date='2026-10-01 08:00:00',
+            end_date='2026-10-01 08:01:00',
+        )
+        long_contract = self._create_contract(
+            start_date='2026-10-01 08:00:00',
+            end_date='2027-10-02 08:00:00',
+        )
+
+        self.assertEqual(short_contract.rental_days, 1)
+        self.assertEqual(long_contract.rental_days, 366)
 
     def test_state_machine_actions(self):
         contract = self._create_contract()
@@ -184,14 +199,10 @@ class TestRentalContract(TransactionCase):
         self.assertEqual(contract.line_ids.daily_rate, 100)
 
     def test_rejects_invalid_rental_period_and_negative_deposit(self):
-        with self.assertRaises(ValidationError), self.cr.savepoint():
+        with self.assertRaises(IntegrityError), self.cr.savepoint():
             self._create_contract(
-                min_rental_days=4,
-            )
-
-        with self.assertRaises(ValidationError), self.cr.savepoint():
-            self._create_contract(
-                max_rental_days=2,
+                start_date='2026-10-02 08:00:00',
+                end_date='2026-10-01 08:00:00',
             )
 
         with self.assertRaises(ValidationError), self.cr.savepoint():

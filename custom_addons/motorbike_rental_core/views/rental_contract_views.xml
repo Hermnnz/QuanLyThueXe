@@ -52,8 +52,6 @@
                             <field name="customer_id" readonly="state != 'draft'"/>
                             <field name="start_date" readonly="state != 'draft'"/>
                             <field name="end_date" readonly="state != 'draft'"/>
-                            <field name="min_rental_days" readonly="state != 'draft'"/>
-                            <field name="max_rental_days" readonly="state != 'draft'"/>
                         </group>
                         <group string="Chi phí">
                             <field name="currency_id" invisible="1"/>

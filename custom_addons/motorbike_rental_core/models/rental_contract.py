@@ -14,11 +14,6 @@ class RentalContract(models.Model):
             'Ngày kết thúc phải sau ngày bắt đầu.',
         ),
         (
-            'valid_rental_day_limits',
-            'CHECK(min_rental_days >= 1 AND (max_rental_days = 0 OR max_rental_days >= min_rental_days))',
-            'Giới hạn ngày thuê không hợp lệ.',
-        ),
-        (
             'nonnegative_rental_deposit',
             'CHECK(deposit_amount >= 0)',
             'Tiền đặt cọc không được âm.',
@@ -44,14 +39,6 @@ class RentalContract(models.Model):
     )
     deposit_amount = fields.Monetary(
         string='Tiền đặt cọc', required=True, default=0, currency_field='currency_id'
-    )
-    min_rental_days = fields.Integer(
-        string='Số ngày thuê tối thiểu', required=True, default=1
-    )
-    max_rental_days = fields.Integer(
-        string='Số ngày thuê tối đa',
-        default=0,
-        help='Để 0 nếu không giới hạn số ngày thuê.',
     )
     line_ids = fields.One2many(
         'rental.contract.line', 'contract_id', string='Xe thuê', copy=True
@@ -149,8 +136,7 @@ class RentalContract(models.Model):
         return super().unlink()
 
     @api.constrains(
-        'start_date', 'end_date', 'min_rental_days', 'max_rental_days',
-        'deposit_amount', 'state', 'line_ids'
+        'start_date', 'end_date', 'deposit_amount', 'state', 'line_ids'
     )
     def _check_rental_period(self):
         for contract in self:
@@ -158,23 +144,8 @@ class RentalContract(models.Model):
                 raise ValidationError(_('Tiền đặt cọc không được âm.'))
             if not contract.start_date or not contract.end_date:
                 continue
-            if contract.min_rental_days < 1:
-                raise ValidationError(_('Số ngày thuê tối thiểu phải từ 1 trở lên.'))
-            if contract.max_rental_days and contract.max_rental_days < contract.min_rental_days:
-                raise ValidationError(
-                    _('Số ngày thuê tối đa phải lớn hơn hoặc bằng số ngày tối thiểu.')
-                )
             if contract.end_date <= contract.start_date:
                 raise ValidationError(_('Ngày kết thúc phải sau ngày bắt đầu.'))
-            days = contract.rental_days
-            if days < contract.min_rental_days:
-                raise ValidationError(
-                    _('Thời hạn thuê phải ít nhất %s ngày.') % contract.min_rental_days
-                )
-            if contract.max_rental_days and days > contract.max_rental_days:
-                raise ValidationError(
-                    _('Thời hạn thuê không được vượt quá %s ngày.') % contract.max_rental_days
-                )
             if contract.state in ('confirmed', 'in_progress'):
                 if not contract.line_ids:
                     raise ValidationError(_('Hợp đồng phải có ít nhất một xe để xác nhận.'))
