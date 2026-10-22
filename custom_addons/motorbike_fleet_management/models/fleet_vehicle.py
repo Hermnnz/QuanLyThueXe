@@ -75,6 +75,12 @@ class FleetVehicle(models.Model):
         if vals.get('license_plate'):
             vals['license_plate'] = vals['license_plate'].strip().upper()
         electric = self.filtered('is_electric_motorbike')
+        if 'odometer' in vals and electric:
+            new_odo = vals['odometer']
+            if new_odo is not None and not isinstance(new_odo, bool) and isinstance(new_odo, (int, float)):
+                for vehicle in electric:
+                    if new_odo < vehicle.odometer:
+                        raise ValidationError('Không được điều chỉnh lùi số ODO hiện tại của xe.')
         if vals.get('operational_status') == 'inactive':
             vals['active'] = False
         if vals.get('active') is False and electric:

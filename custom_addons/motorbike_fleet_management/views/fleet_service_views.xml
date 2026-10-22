@@ -5,6 +5,9 @@
     <field name="model">fleet.vehicle.log.services</field>
     <field name="inherit_id" ref="fleet.fleet_vehicle_log_services_view_form"/>
     <field name="arch" type="xml">
+      <xpath expr="//form" position="attributes">
+        <attribute name="delete">false</attribute>
+      </xpath>
       <xpath expr="//field[@name='purchaser_id']" position="attributes">
         <attribute name="invisible">is_electric_motorbike or context.get('motorbike_only')</attribute>
       </xpath>
@@ -112,7 +115,7 @@
     <field name="name">service_list_motorbike</field>
     <field name="model">fleet.vehicle.log.services</field>
     <field name="arch" type="xml">
-      <list default_order="id desc">
+      <list default_order="id desc" delete="false">
         <field name="id" string="ID phiếu" readonly="1"/>
         <field name="vehicle_id"/>
         <field name="customer_name" optional="show"/>

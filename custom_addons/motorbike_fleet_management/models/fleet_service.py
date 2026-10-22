@@ -65,8 +65,8 @@ class FleetVehicleLogServices(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for values in vals_list:
-            if 'customer_id' in values and not values.get('customer_name'):
-                cid = values.get('customer_id')
+            cid = values.pop('customer_id', None)
+            if cid and not values.get('customer_name'):
                 if isinstance(cid, int):
                     partner = self.env['res.partner'].browse(cid)
                     values['customer_name'] = partner.name
@@ -113,8 +113,8 @@ class FleetVehicleLogServices(models.Model):
 
     def write(self, vals):
         self.check_access('write')
-        if 'customer_id' in vals and not vals.get('customer_name'):
-            cid = vals.get('customer_id')
+        cid = vals.pop('customer_id', None)
+        if cid and not vals.get('customer_name'):
             if isinstance(cid, int):
                 partner = self.env['res.partner'].browse(cid)
                 vals['customer_name'] = partner.name
@@ -126,12 +126,9 @@ class FleetVehicleLogServices(models.Model):
         electric = self.filtered(lambda s: s.is_electric_motorbike or target.is_electric_motorbike)
         if electric:
             self._validate_cost_input(vals)
-        protected = {'vehicle_id', 'description', 'date', 'amount', 'cost', 'result',
-                     'maintenance_type', 'next_service_date', 'blocks_rental',
-                     'actual_start', 'actual_end'}
-        for service in electric.filtered(lambda s: s.state in ('done', 'cancelled')):
-            if any(key in vals and vals[key] != service[key] for key in protected):
-                raise UserError('Hồ sơ đã kết thúc không được sửa nội dung nghiệp vụ; dùng ghi chú để bổ sung thông tin.')
+        for service in self:
+            if service.state in ('done', 'cancelled') and set(vals) - {'notes', 'active'}:
+                raise UserError('Hồ sơ đã kết thúc chỉ được bổ sung ghi chú.')
         running = electric.filtered(lambda s: s.state == 'running')
         if running and any(key in vals for key in ('vehicle_id', 'blocks_rental', 'active')):
             raise UserError('Hoàn tất hoặc hủy bảo dưỡng đang chạy trước khi đổi xe, chặn thuê hoặc lưu trữ.')
@@ -174,21 +171,8 @@ class FleetVehicleLogServices(models.Model):
         return True
 
     def unlink(self):
-        if self.filtered(lambda s: s.is_electric_motorbike and s.state == 'running'):
-            raise UserError('Không xóa bảo dưỡng đang thực hiện; hãy hoàn tất hoặc hủy trước.')
-        milestones = {service.vehicle_id.id: service.vehicle_id.next_service_date
-                      for service in self.filtered(lambda s: s.is_electric_motorbike
-                          and s.state == 'done' and s.next_service_date
-                          and s.vehicle_id.next_service_date == s.next_service_date)}
-        vehicles = self.env['fleet.vehicle'].browse(list(milestones))
-        vehicles.check_access('write')
-        result = super().unlink()
-        for vehicle in vehicles:
-            latest = self.with_context(active_test=False).search([
-                ('vehicle_id', '=', vehicle.id), ('state', '=', 'done'),
-                ('next_service_date', '!=', False)], order='date desc, id desc', limit=1)
-            vehicle.next_service_date = latest.next_service_date if latest else False
-        return result
+        # Giữ hồ sơ bảo dưỡng ở mọi trạng thái để bảo toàn lịch sử.
+        raise UserError('Không được xóa hồ sơ bảo dưỡng; hãy hủy hoặc lưu trữ nếu cần.')
 
     def action_start(self):
         return self.write({'state': 'running'})
