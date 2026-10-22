@@ -3,6 +3,9 @@ from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
 
+_VEHICLE_AVAILABILITY_LOCK_NAMESPACE = 0x52434F4E
+
+
 class RentalContract(models.Model):
     _name = 'rental.contract'
     _description = 'Hợp đồng thuê xe'
@@ -98,17 +101,24 @@ class RentalContract(models.Model):
     def write(self, vals):
         if vals.get('deposit_amount', 0) < 0:
             raise ValidationError(_('Tiền đặt cọc không được âm.'))
-        if set(vals) - {'state'}:
+        if set(vals) - {'state', 'notes'}:
             locked_contract = self.filtered(lambda contract: contract.state != 'draft')
             if locked_contract:
                 raise UserError(
                     _('Không thể chỉnh sửa hợp đồng sau khi đã xác nhận hoặc kết thúc.')
                 )
         if 'state' in vals:
+            if vals['state'] == 'cancelled' and self._contracts_with_started_delivery():
+                raise UserError(
+                    _(
+                        'Không thể hủy hợp đồng sau khi đã bắt đầu giao xe. '
+                        'Vui lòng thu hồi xe và hoàn tất hợp đồng theo quy trình hóa đơn.'
+                    )
+                )
             transitions = {
                 'draft': {'confirmed', 'cancelled'},
                 'confirmed': {'in_progress', 'cancelled'},
-                'in_progress': {'done', 'cancelled'},
+                'in_progress': {'done'},
                 'done': set(),
                 'cancelled': set(),
             }
@@ -127,6 +137,20 @@ class RentalContract(models.Model):
                         }
                     )
         return super().write(vals)
+
+    def _contracts_with_started_delivery(self):
+        started_contracts = self.filtered(
+            lambda contract: contract.state == 'in_progress'
+        )
+        if self and 'rental.operation.ticket.vehicle' in self.env.registry:
+            delivery_lines = self.env['rental.operation.ticket.vehicle'].sudo().search(
+                [
+                    ('ticket_id.contract_id', 'in', self.ids),
+                    ('status', 'in', ['delivering', 'renting', 'returned']),
+                ]
+            )
+            started_contracts |= delivery_lines.mapped('ticket_id.contract_id')
+        return started_contracts
 
     def unlink(self):
         if self.filtered(lambda contract: contract.state != 'draft'):
@@ -153,9 +177,14 @@ class RentalContract(models.Model):
 
     def _check_vehicle_availability(self):
         self.ensure_one()
-        vehicle_ids = self.line_ids.mapped('vehicle_id').ids
+        vehicle_ids = sorted(set(self.line_ids.mapped('vehicle_id').ids))
         if not vehicle_ids:
             return
+        for vehicle_id in vehicle_ids:
+            self.env.cr.execute(
+                'SELECT pg_advisory_xact_lock(%s, %s)',
+                (_VEHICLE_AVAILABILITY_LOCK_NAMESPACE, vehicle_id),
+            )
         conflict = self.search(
             [
                 ('id', '!=', self.id),
@@ -178,6 +207,32 @@ class RentalContract(models.Model):
             raise ValidationError(
                 _('Xe %s đã được giữ trong hợp đồng %s ở thời gian này.')
                 % (vehicle_name, conflict.name)
+            )
+        with self.env.registry.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT contract.name, vehicle.license_plate, vehicle.id
+                  FROM rental_contract AS contract
+                  JOIN rental_contract_line AS line
+                    ON line.contract_id = contract.id
+                  JOIN fleet_vehicle AS vehicle
+                    ON vehicle.id = line.vehicle_id
+                 WHERE contract.id != %s
+                   AND contract.state IN ('confirmed', 'in_progress')
+                   AND contract.start_date < %s
+                   AND contract.end_date > %s
+                   AND line.vehicle_id = ANY(%s)
+                 LIMIT 1
+                """,
+                (self.id, self.end_date, self.start_date, vehicle_ids),
+            )
+            fresh_conflict = cursor.fetchone()
+        if fresh_conflict:
+            contract_name, license_plate, vehicle_id = fresh_conflict
+            vehicle_name = license_plate or str(vehicle_id)
+            raise ValidationError(
+                _('Xe %s đã được giữ trong hợp đồng %s ở thời gian này.')
+                % (vehicle_name, contract_name)
             )
 
     def action_confirm(self):

@@ -2,6 +2,7 @@ from psycopg2 import IntegrityError
 
 from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
+from ..models.rental_contract import _VEHICLE_AVAILABILITY_LOCK_NAMESPACE
 
 
 @tagged('post_install', '-at_install')
@@ -144,6 +145,42 @@ class TestRentalContract(TransactionCase):
         confirmed_contract.action_cancel()
         self.assertEqual(confirmed_contract.state, 'cancelled')
 
+        in_progress_contract = self._create_contract(
+            start_date='2026-10-10 08:00:00',
+            end_date='2026-10-13 08:00:00',
+        )
+        self._add_vehicle(in_progress_contract, self.vehicle1)
+        in_progress_contract.action_confirm()
+        in_progress_contract.action_start()
+        with self.assertRaises(UserError), self.cr.savepoint():
+            in_progress_contract.action_cancel()
+        with self.assertRaises(UserError), self.cr.savepoint():
+            in_progress_contract.write({'state': 'cancelled'})
+        self.assertEqual(in_progress_contract.state, 'in_progress')
+
+        if 'rental.operation.ticket' in self.env.registry:
+            delivered_contract = self._create_contract(
+                start_date='2026-10-20 08:00:00',
+                end_date='2026-10-23 08:00:00',
+            )
+            self._add_vehicle(delivered_contract, self.vehicle1)
+            delivered_contract.action_confirm()
+            ticket = self.env['rental.operation.ticket'].create({
+                'contract_id': delivered_contract.id,
+            })
+            delivery_line = ticket.vehicle_detail_ids
+            self.cr.execute(
+                """
+                UPDATE rental_operation_ticket_vehicle
+                   SET status = 'renting'
+                 WHERE id = %s
+                """,
+                (delivery_line.id,),
+            )
+            with self.assertRaises(UserError), self.cr.savepoint():
+                delivered_contract.action_cancel()
+            self.assertEqual(delivered_contract.state, 'confirmed')
+
     def test_rejects_overlapping_vehicle_reservation(self):
         first_contract = self._create_contract()
         self._add_vehicle(first_contract, self.vehicle1)
@@ -182,8 +219,10 @@ class TestRentalContract(TransactionCase):
         line = self._add_vehicle(contract, self.vehicle1)
         contract.action_confirm()
 
+        contract.write({'notes': 'Customer requested a call before delivery'})
+        self.assertEqual(contract.notes, 'Customer requested a call before delivery')
         with self.assertRaises(UserError), self.cr.savepoint():
-            contract.write({'notes': 'Changed after confirmation'})
+            contract.write({'start_date': '2026-10-02 08:00:00'})
         with self.assertRaises(UserError), self.cr.savepoint():
             line.write({'daily_rate': 200})
         with self.assertRaises(UserError), self.cr.savepoint():
@@ -195,6 +234,8 @@ class TestRentalContract(TransactionCase):
 
         contract.action_start()
         self.assertEqual(contract.state, 'in_progress')
+        contract.write({'notes': 'Updated during rental'})
+        self.assertEqual(contract.notes, 'Updated during rental')
         self.assertEqual(len(contract.line_ids), 1)
         self.assertEqual(contract.line_ids.daily_rate, 100)
 
@@ -252,3 +293,15 @@ class TestRentalContract(TransactionCase):
         adjacent_contract.action_confirm()
 
         self.assertEqual(adjacent_contract.state, 'confirmed')
+
+    def test_vehicle_availability_is_locked_until_transaction_ends(self):
+        contract = self._create_contract()
+        self._add_vehicle(contract, self.vehicle1)
+        contract.action_confirm()
+
+        with self.env.registry.cursor() as concurrent_cr:
+            concurrent_cr.execute(
+                'SELECT pg_try_advisory_xact_lock(%s, %s)',
+                (_VEHICLE_AVAILABILITY_LOCK_NAMESPACE, self.vehicle1.id),
+            )
+            self.assertFalse(concurrent_cr.fetchone()[0])

@@ -72,7 +72,7 @@
                         </field>
                     </group>
                     <group>
-                        <field name="notes" placeholder="Ghi chú cho hợp đồng..." readonly="state != 'draft'"/>
+                        <field name="notes" placeholder="Ghi chú cho hợp đồng..."/>
                     </group>
                 </sheet>
             </form>
