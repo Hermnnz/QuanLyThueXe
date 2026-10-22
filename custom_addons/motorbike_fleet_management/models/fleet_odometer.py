@@ -1,7 +1,7 @@
 import math
 
 from odoo import api, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import ValidationError, UserError
 
 
 class FleetVehicleOdometer(models.Model):
@@ -21,3 +21,9 @@ class FleetVehicleOdometer(models.Model):
                    (other.date > log.date and other.value < log.value)
                    for other in others if other.date):
                 raise ValidationError('ODO phải không giảm theo ngày ghi nhận.')
+
+    def unlink(self):
+        electric = self.filtered(lambda r: r.vehicle_id.is_electric_motorbike)
+        if electric:
+            raise UserError('Lịch sử ODO là dữ liệu kiểm toán kỹ thuật; không được phép xóa.')
+        return super().unlink()

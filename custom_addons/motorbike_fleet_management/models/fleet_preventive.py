@@ -113,7 +113,7 @@ class FleetVehiclePreventive(models.Model):
         for vehicle in self:
             if not math.isfinite(vehicle.service_reference_odo) or vehicle.service_reference_odo < 0:
                 raise ValidationError('ODO mốc ban đầu phải hữu hạn và không âm.')
-            if vehicle.service_reference_date and vehicle.service_reference_odo > vehicle.odometer:
+            if vehicle.service_reference_odo > vehicle.odometer:
                 raise ValidationError('ODO mốc ban đầu không được lớn hơn ODO hiện tại.')
             if vehicle.service_reference_date and vehicle.service_reference_date > fields.Date.context_today(vehicle):
                 raise ValidationError('Ngày mốc ban đầu không được trong tương lai.')
