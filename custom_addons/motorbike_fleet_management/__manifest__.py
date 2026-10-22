@@ -20,6 +20,10 @@
         'views/fleet_actions.xml',
         'views/fleet_menu.xml',
     ],
+    'demo': [
+        'data/vehicle_demo.xml',
+        'data/service_demo.xml',
+    ],
     'assets': {'web.assets_backend': ['motorbike_fleet_management/static/src/scss/fleet_kanban.scss']},
     'installable': True,
     'application': True,
