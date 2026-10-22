@@ -50,18 +50,29 @@ class RentalDeliveryReceipt(models.Model):
         for vals in vals_list:
             if not vals.get('name') or vals.get('name') == 'Mới':
                 vals['name'] = self.env['ir.sequence'].next_by_code('rental.delivery.receipt') or 'BLGX'
-            if not vals.get('customer_id') and vals.get('ticket_id'):
+            if vals.get('ticket_id'):
                 ticket = self.env['rental.operation.ticket'].browse(vals['ticket_id'])
-                if ticket.customer_id:
+                if ticket.state == 'contract_cancelled':
+                    raise UserError(_('Phiếu vận hành đã ở trạng thái "Hợp đồng bị hủy" và đã bị khóa, không thể tạo biên lai giao xe!'))
+                if not vals.get('customer_id') and ticket.customer_id:
                     vals['customer_id'] = ticket.customer_id.id
             if not vals.get('customer_phone') and vals.get('customer_id'):
                 partner = self.env['res.partner'].browse(vals['customer_id'])
                 vals['customer_phone'] = partner.phone or partner.mobile or ''
         receipts = super(RentalDeliveryReceipt, self).create(vals_list)
-        for receipt in receipts:
-            if receipt.ticket_id:
-                receipt.ticket_id._sync_contract_in_progress()
         return receipts
+
+    def write(self, vals):
+        for rec in self:
+            if rec.ticket_id and rec.ticket_id.state == 'contract_cancelled':
+                raise UserError(_('Phiếu vận hành đã ở trạng thái "Hợp đồng bị hủy" và đã bị khóa, không thể chỉnh sửa biên lai!'))
+        return super(RentalDeliveryReceipt, self).write(vals)
+
+    def unlink(self):
+        for rec in self:
+            if rec.ticket_id and rec.ticket_id.state == 'contract_cancelled':
+                raise UserError(_('Phiếu vận hành đã ở trạng thái "Hợp đồng bị hủy" và đã bị khóa, không thể xóa biên lai!'))
+        return super(RentalDeliveryReceipt, self).unlink()
 
     def action_print_receipt(self):
         """In lại biên lai giao xe dạng PDF"""

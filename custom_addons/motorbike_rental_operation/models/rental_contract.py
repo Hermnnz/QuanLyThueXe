@@ -19,6 +19,13 @@ class RentalContract(models.Model):
                     })
         return super(RentalContract, self).action_done()
 
+    def action_cancel(self):
+        res = super(RentalContract, self).action_cancel() if hasattr(super(RentalContract, self), 'action_cancel') else True
+        for contract in self:
+            tickets = self.env['rental.operation.ticket'].search([('contract_id', '=', contract.id)])
+            tickets.action_contract_cancelled()
+        return res
+
     def write(self, vals):
         if vals.get('state') == 'done':
             for contract in self:
@@ -31,4 +38,9 @@ class RentalContract(models.Model):
                             'contract': contract.name,
                             'vehicles': vehicle_names,
                         })
-        return super(RentalContract, self).write(vals)
+        res = super(RentalContract, self).write(vals)
+        if vals.get('state') == 'cancelled':
+            for contract in self:
+                tickets = self.env['rental.operation.ticket'].search([('contract_id', '=', contract.id)])
+                tickets.action_contract_cancelled()
+        return res

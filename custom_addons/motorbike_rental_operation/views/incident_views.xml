@@ -20,7 +20,7 @@
                 <field name="unit" width="80px"/>
                 <field name="fault_party" width="150px"/>
                 <field name="needs_repair_display" string="Cần sửa chữa?" width="150px"/>
-                <field name="service_id" optional="hide" string="Phiếu sửa chữa (Fleet)" width="160px"/>
+                <field name="service_id" column_invisible="1"/>
                 <field name="damage_description" width="280px"/>
                 <field name="date_reported" width="175px"/>
             </list>

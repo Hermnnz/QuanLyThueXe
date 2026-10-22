@@ -11,6 +11,11 @@ class RentalIncidentLog(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
+            ticket_id = vals.get('ticket_id')
+            if ticket_id:
+                ticket = self.env['rental.operation.ticket'].browse(ticket_id)
+                if ticket.state == 'contract_cancelled':
+                    raise UserError(_('Phiếu vận hành đã ở trạng thái "Hợp đồng bị hủy" và đã bị khóa, không thể tạo hoặc liên kết sự cố!'))
             if not vals.get('name') or vals.get('name') == 'Mới':
                 vals['name'] = self.env['ir.sequence'].next_by_code('rental.operation.incident.log')
             if vals.get('price_catalog_id') and not vals.get('unit_price'):
@@ -37,6 +42,13 @@ class RentalIncidentLog(models.Model):
         return records
 
     def write(self, vals):
+        for rec in self:
+            if rec.ticket_id and rec.ticket_id.state == 'contract_cancelled':
+                raise UserError(_('Phiếu vận hành đã ở trạng thái "Hợp đồng bị hủy" và đã bị khóa, không thể chỉnh sửa sự cố!'))
+        if 'ticket_id' in vals and vals['ticket_id']:
+            new_ticket = self.env['rental.operation.ticket'].browse(vals['ticket_id'])
+            if new_ticket.state == 'contract_cancelled':
+                raise UserError(_('Không thể liên kết sự cố tới phiếu vận hành ở trạng thái "Hợp đồng bị hủy"!'))
         if not self.env.context.get('skip_needs_repair_inverse'):
             if 'needs_repair_display' in vals and 'needs_repair' not in vals:
                 vals['needs_repair'] = (vals['needs_repair_display'] == 'yes')
@@ -45,7 +57,12 @@ class RentalIncidentLog(models.Model):
         res = super(RentalIncidentLog, self).write(vals)
         return res
 
-    ticket_id = fields.Many2one('rental.operation.ticket', string='Thuộc Phiếu Vận Hành', ondelete='cascade')
+    ticket_id = fields.Many2one(
+        'rental.operation.ticket', 
+        string='Thuộc Phiếu Vận Hành', 
+        ondelete='cascade',
+        domain="[('state', '!=', 'contract_cancelled')]"
+    )
     
     # Ô tick chọn phục vụ thao tác hàng loạt
     is_selected = fields.Boolean(string='Chọn', default=False)
@@ -217,13 +234,6 @@ class RentalIncidentLog(models.Model):
                 if service_type:
                     service_vals['service_type_id'] = service_type.id
 
-                # Đảm bảo cờ xe máy điện để hiển thị trên menu Bảo dưỡng & Sửa chữa của Fleet
-                if hasattr(rec.vehicle_id, 'is_electric_motorbike') and not rec.vehicle_id.is_electric_motorbike:
-                    try:
-                        rec.vehicle_id.sudo().write({'is_electric_motorbike': True})
-                    except Exception:
-                        pass
-
                 service = Service.create(service_vals)
                 rec.sudo().with_context(skip_sync_fleet=True, skip_needs_repair_inverse=True).write({'service_id': service.id})
                 rec.service_id = service
@@ -291,8 +301,10 @@ class RentalIncidentLog(models.Model):
             })
 
     def unlink(self):
-        """Không cho phép xóa sự cố đã được đồng bộ sang Fleet; icon đã bị ẩn nên không cần thông báo."""
-        # Nếu có bản ghi đã đồng bộ, bỏ qua việc xóa (không thực hiện gì)
+        """Không cho phép xóa sự cố khi phiếu đã khóa hoặc đã được đồng bộ sang Fleet"""
+        for rec in self:
+            if rec.ticket_id and rec.ticket_id.state == 'contract_cancelled':
+                raise UserError(_('Phiếu vận hành đã ở trạng thái "Hợp đồng bị hủy" và đã bị khóa, không thể xóa sự cố!'))
         records_to_unlink = self.filtered(lambda r: not r.service_id)
         return super(RentalIncidentLog, records_to_unlink).unlink()
 

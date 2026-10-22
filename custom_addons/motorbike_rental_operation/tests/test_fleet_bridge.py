@@ -130,13 +130,6 @@ class TestFleetRentalBridge(TransactionCase):
         operation.action_confirm_delivery()
         self.assertEqual(contract.state, 'in_progress')
 
-    def test_contract_moves_to_in_progress_when_vehicle_delivered_from_draft(self):
-        contract = self.contract()
-        self.assertEqual(contract.state, 'draft')
-        operation = self.operation(contract)
-        operation.action_confirm_delivery()
-        self.assertEqual(contract.state, 'in_progress')
-
     def test_contract_moves_to_in_progress_when_one_of_multiple_vehicles_delivered(self):
         model = self.env['fleet.vehicle.model'].search([], limit=1)
         veh2 = self.env['fleet.vehicle'].create({
@@ -245,7 +238,7 @@ class TestFleetRentalBridge(TransactionCase):
         incident_unsynced.unlink()
 
     def test_contract_filter_same_customer_vehicle_time_overlap(self):
-        # Hợp đồng 1 đã tạo phiếu giao xe: từ 01/11 đến 05/11
+        # Hợp đồng 1 đã tạo phiếu giao xe
         contract1 = self.env['rental.contract'].create({
             'customer_id': self.customer.id,
             'start_date': '2026-11-01 08:00:00',
@@ -262,7 +255,7 @@ class TestFleetRentalBridge(TransactionCase):
             })],
         })
 
-        # Hợp đồng 2: Cùng khách hàng, cùng xe NHƯNG TRÙNG THỜI GIAN (03/11 đến 07/11)
+        # Hợp đồng 2: Cùng khách hàng, cùng xe trùng thời gian nhưng chưa có phiếu giao xe
         contract_overlap = self.env['rental.contract'].create({
             'customer_id': self.customer.id,
             'start_date': '2026-11-03 08:00:00',
@@ -271,7 +264,7 @@ class TestFleetRentalBridge(TransactionCase):
         })
         contract_overlap.action_confirm()
 
-        # Hợp đồng 3: Cùng khách hàng, cùng xe NHƯNG KHÁC THỜI GIAN (10/11 đến 15/11)
+        # Hợp đồng 3: Cùng khách hàng, cùng xe khác thời gian
         contract_diff_time = self.env['rental.contract'].create({
             'customer_id': self.customer.id,
             'start_date': '2026-11-10 08:00:00',
@@ -280,13 +273,14 @@ class TestFleetRentalBridge(TransactionCase):
         })
         contract_diff_time.action_confirm()
 
-        # Kiểm tra danh sách hợp đồng khả dụng khi tạo phiếu mới
+        # Kiểm tra danh sách hợp đồng khả dụng khi tạo phiếu mới:
         new_ticket = self.env['rental.operation.ticket'].new()
         new_ticket._compute_available_contract_ids()
 
-        # Trùng cả thời gian -> KHÔNG cho hiển thị
-        self.assertNotIn(contract_overlap.id, new_ticket.available_contract_ids.ids)
-        # Khác thời gian -> ĐƯỢC PHÉP hiển thị
+        # Hợp đồng 1 đã có phiếu -> KHÔNG cho hiển thị
+        self.assertNotIn(contract1.id, new_ticket.available_contract_ids.ids)
+        # Hợp đồng 2 & 3 chưa có phiếu và đã confirmed -> ĐỀU ĐƯỢC PHÉP hiển thị (đã bỏ tiêu chí 3)
+        self.assertIn(contract_overlap.id, new_ticket.available_contract_ids.ids)
         self.assertIn(contract_diff_time.id, new_ticket.available_contract_ids.ids)
 
     def test_vehicle_condition_from_fleet_description(self):
@@ -322,3 +316,99 @@ class TestFleetRentalBridge(TransactionCase):
         })
         receipt.action_print_receipt()
         self.assertEqual(ticket.vehicle_detail_ids[0].delivery_visual_note, 'Xước nhẹ yếm trước, phanh tốt')
+
+    def test_ticket_prevent_unlink(self):
+        """Kiểm tra ngăn chặn việc xóa phiếu vận hành"""
+        contract = self.contract()
+        contract.action_confirm()
+        ticket = self.env['rental.operation.ticket'].create({
+            'contract_id': contract.id,
+            'vehicle_detail_ids': [(0, 0, {
+                'vehicle_id': self.vehicle.id,
+                'vehicle_price': 100000,
+            })]
+        })
+
+        # Ngăn chặn việc xóa phiếu vận hành
+        with self.assertRaises(UserError):
+            ticket.unlink()
+
+    def test_ticket_contract_cancelled_and_locks(self):
+        """Kiểm tra khi Hợp đồng bị hủy:
+        - Phiếu vận hành chuyển trạng thái 'contract_cancelled'
+        - Không được chỉnh sửa gì ở phiếu giao xe (phiếu và chi tiết xe)
+        - Không được tạo hoặc liên kết sự cố tới phiếu này
+        """
+        contract = self.contract()
+        contract.action_confirm()
+        ticket = self.env['rental.operation.ticket'].create({
+            'contract_id': contract.id,
+            'vehicle_detail_ids': [(0, 0, {'vehicle_id': self.vehicle.id})],
+        })
+        veh_detail = ticket.vehicle_detail_ids[0]
+
+        # Bắt đầu giao xe để xe chuyển sang renting
+        veh_detail.action_start_delivery()
+        self.assertEqual(veh_detail.status, 'delivering')
+        self.assertEqual(self.vehicle.operational_status, 'renting')
+
+        # Hủy hợp đồng
+        if hasattr(contract, 'action_cancel'):
+            contract.action_cancel()
+        else:
+            contract.write({'state': 'cancelled'})
+
+        # 1. Phiếu chuyển sang 'contract_cancelled'
+        self.assertEqual(ticket.state, 'contract_cancelled')
+
+        # 2. Không cho phép chỉnh sửa phiếu
+        with self.assertRaises(UserError):
+            ticket.write({'quick_delivery_location': 'Hà Nội'})
+
+        # 3. Không cho phép xóa phiếu
+        with self.assertRaises(UserError):
+            ticket.unlink()
+
+        # 4. Không cho phép chỉnh sửa xe con
+        with self.assertRaises(UserError):
+            veh_detail.write({'delivery_location': 'Đà Nẵng'})
+
+        # 5. Không cho phép xóa xe con
+        with self.assertRaises(UserError):
+            veh_detail.unlink()
+
+        # 6. Không cho phép thêm xe con mới
+        with self.assertRaises(UserError):
+            self.env['rental.operation.ticket.vehicle'].create({
+                'ticket_id': ticket.id,
+                'vehicle_id': self.vehicle.id,
+            })
+
+        # 7. Không cho phép thực hiện action giao xe
+        with self.assertRaises(UserError):
+            veh_detail.action_confirm_delivery()
+        with self.assertRaises(UserError):
+            ticket.action_bulk_start_delivery()
+
+        # 8. Sự cố không được gọi/liên kết tới mã bản ghi phiếu này
+        catalog = self.env['motorbike.rental.price.catalog'].create({
+            'name': 'Hỏng còi',
+            'catalog_type': 'damage',
+            'unit_price': 30000,
+        })
+        with self.assertRaises(UserError):
+            self.env['rental.operation.incident.log'].create({
+                'ticket_id': ticket.id,
+                'vehicle_id': self.vehicle.id,
+                'price_catalog_id': catalog.id,
+            })
+
+        # Tạo sự cố không có ticket_id, sau đó thử gắn ticket_id cũng phải bị chặn
+        incident_independent = self.env['rental.operation.incident.log'].create({
+            'vehicle_id': self.vehicle.id,
+            'price_catalog_id': catalog.id,
+        })
+        with self.assertRaises(UserError):
+            incident_independent.write({'ticket_id': ticket.id})
+
+

@@ -273,14 +273,8 @@ class RentalDeliveryReceiptWizard(models.TransientModel):
                 'qty_phone_holder': q_phone_holder,
                 'qty_charger': q_charger,
                 'is_selected': False,
-                'status': 'renting',
             }
-            if any(not v.actual_delivery_date for v in grp_vehicles):
-                veh_vals['actual_delivery_date'] = fields.Datetime.now()
             grp_vehicles.write(veh_vals)
-            if self.ticket_id and not self.ticket_id.actual_delivery_date:
-                self.ticket_id.actual_delivery_date = fields.Datetime.now()
-            grp_vehicles._sync_contract_in_progress()
 
         if not created_receipts:
             raise UserError('Không có biên lai nào được tạo!')
@@ -338,14 +332,8 @@ class RentalDeliveryReceiptWizard(models.TransientModel):
                 'qty_phone_holder': max(0, grp.qty_phone_holder),
                 'qty_charger': max(0, grp.qty_charger),
                 'is_selected': False,
-                'status': 'renting',
             }
-            if any(not v.actual_delivery_date for v in grp_vehicles):
-                veh_vals['actual_delivery_date'] = fields.Datetime.now()
             grp_vehicles.write(veh_vals)
-            if self.ticket_id and not self.ticket_id.actual_delivery_date:
-                self.ticket_id.actual_delivery_date = fields.Datetime.now()
-            grp_vehicles._sync_contract_in_progress()
 
         if not created_receipts:
             raise UserError('Không có biên lai nào được tạo!')

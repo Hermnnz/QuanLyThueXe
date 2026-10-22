@@ -10,7 +10,7 @@
         <field name="name">rental.operation.ticket.list</field>
         <field name="model">rental.operation.ticket</field>
         <field name="arch" type="xml">
-            <list string="Phiếu Vận Hành (Giao/Thu Hồi Xe)" class="o_rental_ticket_list_table">
+            <list string="Phiếu Vận Hành (Giao/Thu Hồi Xe)" class="o_rental_ticket_list_table" delete="0">
                 <field name="currency_id" column_invisible="1"/>
                 <field name="name" width="130px"/>
                 <field name="contract_id" width="160px"/>
@@ -27,7 +27,8 @@
                 <field name="state" widget="badge" 
                        decoration-info="state == 'waiting'" 
                        decoration-warning="state == 'in_progress'" 
-                       decoration-success="state == 'done'" width="130px"/>
+                       decoration-success="state == 'done'" 
+                       decoration-danger="state == 'contract_cancelled'" width="150px"/>
             </list>
         </field>
     </record>
@@ -36,7 +37,7 @@
         <field name="name">rental.operation.ticket.form</field>
         <field name="model">rental.operation.ticket</field>
         <field name="arch" type="xml">
-            <form string="Phiếu Vận Hành">
+            <form string="Phiếu Vận Hành" delete="0">
                 <header>
                     <field name="state" widget="statusbar" statusbar_visible="waiting,in_progress,done"/>
                 </header>
@@ -97,71 +98,71 @@
                     </group>
                     <notebook>
                         <page string="Tất cả xe bàn giao" name="vehicles">
-                            <div class="mb-3 d-flex flex-wrap align-items-center gap-2" invisible="state == 'done' or contract_state == 'done'">
-                                <button name="action_select_all_vehicles" type="object" string="Chọn tất cả" class="btn btn-secondary btn-sm" invisible="state == 'done' or contract_state == 'done'"/>
-                                <button name="action_deselect_all_vehicles" type="object" string="Bỏ chọn" class="btn btn-secondary btn-sm" invisible="state == 'done' or contract_state == 'done'"/>
-                                <button name="action_bulk_update_schedule" type="object" string="Cập nhật địa điểm / thời gian" class="btn btn-outline-primary btn-sm ms-4" invisible="state == 'done' or contract_state == 'done' or not has_selected_vehicles"/>
-                                <button name="action_bulk_start_delivery" type="object" string="Bắt đầu giao xe" class="btn btn-primary btn-sm" invisible="state == 'done' or contract_state == 'done' or not has_selected_vehicles"/>
-                                <button name="action_bulk_confirm_delivery" type="object" string="Xác nhận đã giao" class="btn btn-warning btn-sm" invisible="state == 'done' or contract_state == 'done' or not has_selected_vehicles"/>
-                                <button name="action_bulk_confirm_return" type="object" string="Xác nhận thu hồi" class="btn btn-success btn-sm" invisible="state == 'done' or contract_state == 'done' or not has_selected_vehicles"/>
-                                <button name="action_open_delivery_receipt_wizard" type="object" string="Xuất biên lai giao xe" class="btn btn-info btn-sm text-white ms-auto" icon="fa-print" invisible="state == 'done' or contract_state == 'done'"/>
+                            <div class="mb-3 d-flex flex-wrap align-items-center gap-2" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done'">
+                                <button name="action_select_all_vehicles" type="object" string="Chọn tất cả" class="btn btn-secondary btn-sm" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done'"/>
+                                <button name="action_deselect_all_vehicles" type="object" string="Bỏ chọn" class="btn btn-secondary btn-sm" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done'"/>
+                                <button name="action_bulk_update_schedule" type="object" string="Cập nhật địa điểm / thời gian" class="btn btn-outline-primary btn-sm ms-4" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done' or not has_selected_vehicles"/>
+                                <button name="action_bulk_start_delivery" type="object" string="Bắt đầu giao xe" class="btn btn-primary btn-sm" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done' or not has_selected_vehicles"/>
+                                <button name="action_bulk_confirm_delivery" type="object" string="Xác nhận đã giao" class="btn btn-warning btn-sm" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done' or not has_selected_vehicles"/>
+                                <button name="action_bulk_confirm_return" type="object" string="Xác nhận thu hồi" class="btn btn-success btn-sm" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done' or not has_selected_vehicles"/>
+                                <button name="action_open_delivery_receipt_wizard" type="object" string="Xuất biên lai giao xe" class="btn btn-info btn-sm text-white ms-auto" icon="fa-print" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done'"/>
                             </div>
-                            <field name="vehicle_detail_ids" context="{'default_date_checkout': expected_checkout, 'default_date_checkin': expected_checkin, 'default_delivery_location': 'Tại cửa hàng', 'default_return_location': 'Tại cửa hàng'}">
+                            <field name="vehicle_detail_ids" readonly="state in ('done', 'contract_cancelled')" context="{'default_date_checkout': expected_checkout, 'default_date_checkin': expected_checkin, 'default_delivery_location': 'Tại cửa hàng', 'default_return_location': 'Tại cửa hàng'}">
                                 <list create="0" delete="0" editable="bottom">
-                                    <field name="currency_id" column_invisible="1"/>
-                                    <field name="is_selected" string="Chọn" width="45px" class="o_ticket_select_checkbox" readonly="parent.state == 'done' or parent.contract_state == 'done'"/>
-                                    <field name="vehicle_id" readonly="1" force_save="1" width="180px"/>
-                                    <field name="delivery_receipt_id" column_invisible="1"/>
-                                    <field name="date_checkout" string="Thời gian giao dự kiến" readonly="1" force_save="1" width="175px"/>
-                                    <field name="actual_delivery_date" string="Thời gian giao thực tế" optional="show" width="175px"/>
-                                    <field name="delivery_location" string="Vị trí giao" optional="show" readonly="status in ('renting', 'returned')" width="200px"/>
-                                    <field name="date_checkin" string="Thời gian thu hồi dự kiến" readonly="1" force_save="1" width="175px"/>
-                                    <field name="actual_return_date" string="Thời gian thu hồi thực tế" optional="show" width="175px"/>
-                                    <field name="return_location" string="Vị trí thu hồi" optional="show" readonly="status == 'returned'" width="200px"/>
-                                    <field name="qty_helmet" optional="hide" readonly="1" string="Mũ bảo hiểm" width="130px"/>
-                                    <field name="qty_raincoat" optional="hide" readonly="1" string="Áo mưa" width="120px"/>
-                                    <field name="qty_phone_holder" optional="hide" readonly="1" string="Giá đỡ điện thoại" width="160px"/>
-                                    <field name="qty_charger" optional="hide" readonly="1" string="Bộ sạc xe" width="130px"/>
-                                    <field name="delivery_visual_note" optional="show" readonly="1" string="Tình trạng ngoại quan" width="240px"/>
-                                    <field name="status" widget="badge" readonly="1" force_save="1"
-                                           decoration-info="status == 'waiting'" 
-                                           decoration-primary="status == 'delivering'" 
-                                           decoration-warning="status == 'renting'" 
-                                           decoration-success="status == 'returned'" 
-                                           class="text-start text-left" width="140px"/>
-                                </list>
-                                <form delete="0">
-                                    <sheet>
-                                        <field name="currency_id" invisible="1"/>
-                                        <group>
-                                            <group string="Thông tin chung">
-                                                <field name="is_selected"/>
-                                                <field name="vehicle_id" readonly="1" force_save="1"/>
-                                                <field name="status" readonly="1"/>
-                                            </group>
-                                            <group string="Lịch trình &amp; Vị trí Giao xe">
-                                                <field name="date_checkout" string="Thời gian giao dự kiến" readonly="1" force_save="1"/>
-                                                <field name="actual_delivery_date" string="Thời gian giao thực tế"/>
-                                                <field name="delivery_location" string="Vị trí giao" readonly="status in ('renting', 'returned')"/>
-                                            </group>
-                                        </group>
-                                        <group string="Lịch trình &amp; Vị trí Thu hồi Xe">
-                                            <field name="date_checkin" string="Thời gian thu hồi dự kiến" readonly="1" force_save="1"/>
-                                            <field name="actual_return_date" string="Thời gian thu hồi thực tế"/>
-                                            <field name="return_location" string="Vị trí thu hồi" readonly="status == 'returned'"/>
-                                        </group>
-                                        <group string="Phụ kiện bàn giao">
-                                            <field name="delivery_receipt_id" invisible="1"/>
-                                            <field name="receipt_printed_at" invisible="1"/>
-                                            <field name="qty_helmet"/>
-                                            <field name="qty_raincoat"/>
-                                            <field name="qty_phone_holder"/>
-                                            <field name="qty_charger"/>
-                                            <field name="delivery_visual_note"/>
-                                        </group>
-                                    </sheet>
-                                </form>
-                            </field>
+                                     <field name="currency_id" column_invisible="1"/>
+                                     <field name="is_selected" string="Chọn" width="45px" class="o_ticket_select_checkbox" readonly="parent.state in ('done', 'contract_cancelled') or parent.contract_state == 'done'"/>
+                                     <field name="vehicle_id" readonly="1" force_save="1" width="180px"/>
+                                     <field name="delivery_receipt_id" column_invisible="1"/>
+                                     <field name="date_checkout" string="Thời gian giao dự kiến" readonly="1" force_save="1" width="175px"/>
+                                     <field name="actual_delivery_date" string="Thời gian giao thực tế" optional="show" readonly="parent.state in ('done', 'contract_cancelled')" width="175px"/>
+                                     <field name="delivery_location" string="Vị trí giao" optional="show" readonly="status in ('renting', 'returned') or parent.state in ('done', 'contract_cancelled')" width="200px"/>
+                                     <field name="date_checkin" string="Thời gian thu hồi dự kiến" readonly="1" force_save="1" width="175px"/>
+                                     <field name="actual_return_date" string="Thời gian thu hồi thực tế" optional="show" readonly="parent.state in ('done', 'contract_cancelled')" width="175px"/>
+                                     <field name="return_location" string="Vị trí thu hồi" optional="show" readonly="status == 'returned' or parent.state in ('done', 'contract_cancelled')" width="200px"/>
+                                     <field name="qty_helmet" optional="hide" readonly="1" string="Mũ bảo hiểm" width="130px"/>
+                                     <field name="qty_raincoat" optional="hide" readonly="1" string="Áo mưa" width="120px"/>
+                                     <field name="qty_phone_holder" optional="hide" readonly="1" string="Giá đỡ điện thoại" width="160px"/>
+                                     <field name="qty_charger" optional="hide" readonly="1" string="Bộ sạc xe" width="130px"/>
+                                     <field name="delivery_visual_note" optional="show" readonly="1" string="Tình trạng ngoại quan" width="240px"/>
+                                     <field name="status" widget="badge" readonly="1" force_save="1"
+                                            decoration-info="status == 'waiting'" 
+                                            decoration-primary="status == 'delivering'" 
+                                            decoration-warning="status == 'renting'" 
+                                            decoration-success="status == 'returned'" 
+                                            class="text-start text-left" width="140px"/>
+                                 </list>
+                                 <form delete="0">
+                                     <sheet>
+                                         <field name="currency_id" invisible="1"/>
+                                         <group>
+                                             <group string="Thông tin chung">
+                                                 <field name="is_selected" readonly="parent.state in ('done', 'contract_cancelled')"/>
+                                                 <field name="vehicle_id" readonly="1" force_save="1"/>
+                                                 <field name="status" readonly="1"/>
+                                             </group>
+                                             <group string="Lịch trình &amp; Vị trí Giao xe">
+                                                 <field name="date_checkout" string="Thời gian giao dự kiến" readonly="1" force_save="1"/>
+                                                 <field name="actual_delivery_date" string="Thời gian giao thực tế" readonly="parent.state in ('done', 'contract_cancelled')"/>
+                                                 <field name="delivery_location" string="Vị trí giao" readonly="status in ('renting', 'returned') or parent.state in ('done', 'contract_cancelled')"/>
+                                             </group>
+                                         </group>
+                                         <group string="Lịch trình &amp; Vị trí Thu hồi Xe">
+                                             <field name="date_checkin" string="Thời gian thu hồi dự kiến" readonly="1" force_save="1"/>
+                                             <field name="actual_return_date" string="Thời gian thu hồi thực tế" readonly="parent.state in ('done', 'contract_cancelled')"/>
+                                             <field name="return_location" string="Vị trí thu hồi" readonly="status == 'returned' or parent.state in ('done', 'contract_cancelled')"/>
+                                         </group>
+                                         <group string="Phụ kiện bàn giao">
+                                             <field name="delivery_receipt_id" invisible="1"/>
+                                             <field name="receipt_printed_at" invisible="1"/>
+                                             <field name="qty_helmet" readonly="parent.state in ('done', 'contract_cancelled')"/>
+                                             <field name="qty_raincoat" readonly="parent.state in ('done', 'contract_cancelled')"/>
+                                             <field name="qty_phone_holder" readonly="parent.state in ('done', 'contract_cancelled')"/>
+                                             <field name="qty_charger" readonly="parent.state in ('done', 'contract_cancelled')"/>
+                                             <field name="delivery_visual_note" readonly="parent.state in ('done', 'contract_cancelled')"/>
+                                         </group>
+                                     </sheet>
+                                 </form>
+                             </field>
                         </page>
                         <page string="Phân loại theo trạng thái" name="status_split">
                             <group string="1. Danh sách Xe chờ giao (Chưa vận chuyển)" invisible="waiting_count == 0">
@@ -266,11 +267,11 @@
                             </group>
                         </page>
                         <page string="Sự cố &amp; Hư hỏng" name="incidents">
-                            <div class="mb-2">
+                            <div class="mb-2" invisible="state in ('done', 'contract_cancelled')">
                                 <button name="action_bulk_sync_incidents_to_fleet" type="object" string="Đồng bộ dữ liệu" class="btn btn-sm btn-primary" icon="fa-refresh"/>
                             </div>
-                            <field name="incident_ids" context="{'default_ticket_id': id}">
-                                <list editable="bottom">
+                            <field name="incident_ids" readonly="state in ('done', 'contract_cancelled')" context="{'default_ticket_id': id}">
+                                <list editable="bottom" delete="0">
                                     <field name="currency_id" column_invisible="1"/>
                                     <field name="available_vehicle_ids" column_invisible="1"/>
                                     <field name="name" readonly="1" force_save="1" width="120px"/>
@@ -280,9 +281,9 @@
                                     <field name="unit" width="80px" readonly="1" force_save="1"/>
                                     <field name="fault_party" width="130px"/>
                                     <field name="needs_repair_display" string="Cần sửa chữa?" width="140px"/>
-                                    <field name="service_id" optional="hide" string="Phiếu sửa chữa (Fleet)" readonly="1" width="160px"/>
+                                    <field name="service_id" column_invisible="1"/>
                                     <field name="damage_description" width="240px"/>
-                                    <field name="date_reported" optional="show" width="160px"/>
+                                    <field name="date_reported" width="160px"/>
                                 </list>
                                 <form>
                                     <header>
@@ -356,6 +357,7 @@
                 <filter string="Chưa thực hiện" name="waiting" domain="[('state','=','waiting')]"/>
                 <filter string="Đang thực hiện" name="in_progress" domain="[('state','=','in_progress')]"/>
                 <filter string="Hoàn tất" name="done" domain="[('state','=','done')]"/>
+                <filter string="Hợp đồng bị hủy" name="contract_cancelled" domain="[('state','=','contract_cancelled')]"/>
                 <group expand="0" string="Nhóm theo">
                     <filter string="Khách hàng" name="group_by_customer" context="{'group_by':'customer_id'}"/>
                     <filter string="Trạng thái" name="group_by_state" context="{'group_by':'state'}"/>
@@ -368,7 +370,7 @@
         <field name="name">rental.operation.ticket.kanban</field>
         <field name="model">rental.operation.ticket</field>
         <field name="arch" type="xml">
-            <kanban default_group_by="state" class="o_kanban_small_column">
+            <kanban default_group_by="state" class="o_kanban_small_column" delete="0">
                 <field name="id"/>
                 <field name="name"/>
                 <field name="rental_order_ref"/>

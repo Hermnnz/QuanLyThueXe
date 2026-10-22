@@ -42,19 +42,25 @@ class RentalVehicleScheduleWizard(models.TransientModel):
         if not self.vehicle_ids:
             raise UserError('Không có xe nào được chọn để cập nhật!')
 
-        vals = {}
-        if self.delivery_location:
-            vals['delivery_location'] = self.delivery_location
-            vals['is_custom_delivery_location'] = True
-        if self.delivery_time:
-            vals['delivery_time'] = self.delivery_time
-            vals['is_custom_delivery_time'] = True
-        if self.return_location:
-            vals['return_location'] = self.return_location
-            vals['is_custom_return_location'] = True
+        for veh in self.vehicle_ids:
+            veh_vals = {}
+            # Xe chưa giao mới được sửa thông tin giao xe (địa điểm & giờ giao)
+            if veh.status in ('waiting', 'delivering'):
+                if self.delivery_location and self.delivery_location != veh.delivery_location:
+                    veh_vals['delivery_location'] = self.delivery_location
+                    veh_vals['is_custom_delivery_location'] = True
+                if self.delivery_time and self.delivery_time != veh.delivery_time:
+                    veh_vals['delivery_time'] = self.delivery_time
+                    veh_vals['is_custom_delivery_time'] = True
 
-        if vals:
-            self.vehicle_ids.write(vals)
+            # Xe chưa thu hồi (chờ giao, đang giao hoặc đang thuê) được phép sửa địa điểm thu hồi
+            if veh.status != 'returned':
+                if self.return_location and self.return_location != veh.return_location:
+                    veh_vals['return_location'] = self.return_location
+                    veh_vals['is_custom_return_location'] = True
+
+            if veh_vals:
+                veh.write(veh_vals)
 
         # Bỏ tick chọn sau khi cập nhật thành công
         self.vehicle_ids.write({'is_selected': False})
