@@ -101,7 +101,11 @@ class RentalContract(models.Model):
     def write(self, vals):
         if vals.get('deposit_amount', 0) < 0:
             raise ValidationError(_('Tiền đặt cọc không được âm.'))
-        if set(vals) - {'state', 'notes'}:
+        # Ghi chú được sửa sau khi ký; Finance được cập nhật trạng thái quyết toán.
+        # Cả hai trường hợp đều không cho sửa lại hợp đồng đã hủy.
+        if self.filtered(lambda contract: contract.state == 'cancelled') and vals:
+            raise UserError(_('Không thể chỉnh sửa hợp đồng đã hủy.'))
+        if set(vals) - {'state', 'notes', 'settlement_status'}:
             locked_contract = self.filtered(lambda contract: contract.state != 'draft')
             if locked_contract:
                 raise UserError(

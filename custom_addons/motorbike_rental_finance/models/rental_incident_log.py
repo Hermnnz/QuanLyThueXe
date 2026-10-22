@@ -99,6 +99,14 @@ class RentalIncidentLog(models.Model):
         # Phải kiểm tra ở phía trên trước khi gọi để không lưu số tiền bị cấm.
         result = super().write(vals)
 
+        if "fault_party" in vals:  # Chỉ xử lý khi người vận hành đổi bên chịu lỗi.
+            for incident in self:  # Một lần lưu có thể sửa nhiều sự cố.
+                charge = incident.charge_id  # Lấy phụ phí đang liên kết với sự cố.
+                if incident.fault_party != "customer" and charge and charge.state != "cancelled":  # Lỗi công ty có phí chưa hủy.
+                    if charge.state != "draft" or charge.invoice_id:  # Phí đã chốt không được tự đổi thành 0đ.
+                        raise UserError("Phụ phí đã chốt, không thể đổi bên chịu lỗi.")  # Lỗi sẽ hoàn tác cả thay đổi bên chịu lỗi.
+                    charge.action_cancel()  # Hủy phí nháp; khoản khách bị trừ từ sự cố này trở thành 0đ.
+
         # Python tách từng cặp đã lưu thành hai biến:
         # charge là khoản phụ phí; new_amount là số tiền phạt mới.
         for charge, new_amount in charges_to_update:
@@ -112,6 +120,24 @@ class RentalIncidentLog(models.Model):
 
             # Không cần tự gán charge.amount.
             # Đây là trường compute: Odoo tự tính lại khi quantity/unit_price đổi.
+
+        if {"quantity", "unit_price", "price_catalog_id"} & vals.keys():  # Nếu lần lưu có đổi số lượng, đơn giá hoặc bảng giá.
+            for incident in self:  # Xử lý lần lượt từng sự cố đang được lưu.
+                charge = incident.charge_id  # Lấy phụ phí Finance đã tạo cho sự cố này.
+                if not charge or charge.state == "cancelled":  # Không có phí hoặc phí đã hủy thì bỏ qua.
+                    continue  # Chuyển sang sự cố tiếp theo.
+
+                amount = incident.penalty_amount  # Lấy tiền phạt mới mà Operations vừa tính lại.
+                if incident.currency_id.is_zero(amount - charge.amount):  # So sánh hai số tiền theo cách làm tròn của đồng tiền.
+                    continue  # Tiền không đổi nên không cần sửa phụ phí.
+
+                if charge.state != "draft" or charge.invoice_id:  # Phí đã chốt hoặc đã gắn hóa đơn thì không cho đổi.
+                    raise UserError("Phụ phí đã chốt, không thể đổi tiền phạt.")  # Báo lỗi và dừng lần lưu.
+
+                if incident.currency_id.is_zero(amount):  # Nếu tiền phạt mới bằng 0.
+                    charge.action_cancel()  # Hủy phụ phí nháp nhưng giữ lại phiếu để xem lịch sử.
+                else:  # Nếu vẫn còn tiền cần thu.
+                    charge.write({"quantity": 1.0, "unit_price": amount})  # Cập nhật phụ phí bằng đúng tiền phạt mới.
 
         # Giữ cơ chế đồng bộ trạng thái đang có.
         # Chỉ chạy khi lần lưu này có thay đổi trạng thái sự cố.

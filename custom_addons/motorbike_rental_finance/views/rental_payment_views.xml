@@ -27,10 +27,12 @@
 
             <form string="Thanh toán">
                 <header>
-                    <button name="action_confirm" string="Xác nhận" type="object" class="oe_highlight" invisible="state != 'draft'"/>
-                    <button name="action_cancel" string="Hủy bỏ" type="object" invisible="state not in ('draft', 'confirmed')"/>
+                    <!-- Hai phiếu thu trước chỉ chốt từ ô xác nhận trên hợp đồng; phiếu hoàn cọc vẫn xác nhận tại đây. -->
+                    <button name="action_confirm" string="Xác nhận" type="object" class="oe_highlight" invisible="state != 'draft' or (contract_id and transaction_type in ('deposit', 'rental_payment'))"/>
+                    <button name="action_cancel" string="Hủy bỏ" type="object" invisible="state != 'draft'"/>
                     <button name="action_draft" string="Về bản nháp" type="object" invisible="state != 'cancelled'"/>
-                    <field name="state" widget="statusbar" statusbar_visible="draft,confirmed"/>
+                    <!-- Trạng thái chỉ hiển thị; nhân viên đổi trạng thái bằng nút nghiệp vụ có kiểm tra điều kiện. -->
+                    <field name="state" widget="statusbar" statusbar_visible="draft,confirmed" readonly="1"/>
                 </header>
                 <sheet>
                     <group string="Thông tin giao dịch">
