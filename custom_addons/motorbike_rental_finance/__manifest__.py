@@ -25,8 +25,7 @@
         "views/account_move_views.xml",
         "views/finance_actions.xml",
         "views/finance_menu.xml",
-        "data/finance_demo.xml",
-        # Nạp sau dữ liệu mẫu để bộ cấp số tiếp nối cả mã mẫu và mã đã có trong database.
+        # Bộ cấp số cho các phiếu thanh toán.
         "data/rental_payment_sequence.xml",
     ],
 
