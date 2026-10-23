@@ -14,11 +14,23 @@
       <field name="active" eval="True" />
     </record>
 
+    <!-- ========================================================================= -->
+    <!-- 2. DANH MỤC 18 DÒNG XE MÁY ĐIỆN CHUẨN (MODELS)                            -->
+    <!-- 10 dòng VinFast + 8 dòng Dat Bike, loại phương tiện chuẩn "bike"           -->
+    <!-- ========================================================================= -->
+
     <!-- ========================================== -->
-    <!-- 2. DANH MỤC DÒNG XE MÁY ĐIỆN (MODELS)      -->
+    <!-- 2.1 VINFAST (10 DÒNG XE)                   -->
     <!-- ========================================== -->
     <record id="model_vinfast_evo200" model="fleet.vehicle.model">
       <field name="name">Evo200</field>
+      <field name="brand_id" ref="brand_vinfast" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+
+    <record id="model_vinfast_evo200_lite" model="fleet.vehicle.model">
+      <field name="name">Evo200 Lite</field>
       <field name="brand_id" ref="brand_vinfast" />
       <field name="vehicle_type">bike</field>
       <field name="active" eval="True" />
@@ -38,6 +50,65 @@
       <field name="active" eval="True" />
     </record>
 
+    <record id="model_vinfast_vento_s" model="fleet.vehicle.model">
+      <field name="name">Vento S</field>
+      <field name="brand_id" ref="brand_vinfast" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+
+    <record id="model_vinfast_theon_s" model="fleet.vehicle.model">
+      <field name="name">Theon S</field>
+      <field name="brand_id" ref="brand_vinfast" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+
+    <record id="model_vinfast_ludo" model="fleet.vehicle.model">
+      <field name="name">Ludo</field>
+      <field name="brand_id" ref="brand_vinfast" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+
+    <record id="model_vinfast_impes" model="fleet.vehicle.model">
+      <field name="name">Impes</field>
+      <field name="brand_id" ref="brand_vinfast" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+
+    <record id="model_vinfast_klara_a2" model="fleet.vehicle.model">
+      <field name="name">Klara A2</field>
+      <field name="brand_id" ref="brand_vinfast" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+
+    <record id="model_vinfast_feliz" model="fleet.vehicle.model">
+      <field name="name">Feliz</field>
+      <field name="brand_id" ref="brand_vinfast" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+
+    <!-- ========================================== -->
+    <!-- 2.2 DAT BIKE (8 DÒNG XE)                  -->
+    <!-- ========================================== -->
+    <record id="model_datbike_weaver" model="fleet.vehicle.model">
+      <field name="name">Weaver</field>
+      <field name="brand_id" ref="brand_datbike" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+
+    <record id="model_datbike_weaver_200" model="fleet.vehicle.model">
+      <field name="name">Weaver 200</field>
+      <field name="brand_id" ref="brand_datbike" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+
     <record id="model_datbike_weaver_pp" model="fleet.vehicle.model">
       <field name="name">Weaver++</field>
       <field name="brand_id" ref="brand_datbike" />
@@ -52,13 +123,41 @@
       <field name="active" eval="True" />
     </record>
 
+    <record id="model_datbike_quantum_s1" model="fleet.vehicle.model">
+      <field name="name">Quantum S1</field>
+      <field name="brand_id" ref="brand_datbike" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+
+    <record id="model_datbike_quantum_s2" model="fleet.vehicle.model">
+      <field name="name">Quantum S2</field>
+      <field name="brand_id" ref="brand_datbike" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+
+    <record id="model_datbike_quantum_s3" model="fleet.vehicle.model">
+      <field name="name">Quantum S3</field>
+      <field name="brand_id" ref="brand_datbike" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+
+    <record id="model_datbike_era" model="fleet.vehicle.model">
+      <field name="name">ERA</field>
+      <field name="brand_id" ref="brand_datbike" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+
     <!-- ========================================================================= -->
-    <!-- 3. DANH SÁCH XE MÁY ĐIỆN CHO THUÊ (FLEET)                                  -->
-    <!-- Lưu ý: Không gán cứng vehicle_code để Odoo sequence tự sinh theo DB máy nạp -->
-    <!-- Sử dụng dải biển số xe điện chuyên biệt 59-MD1 để tránh trùng lặp          -->
+    <!-- 3. DANH SÁCH 20 XE MÁY ĐIỆN CHO THUÊ (FLEET)                              -->
+    <!-- Biển số xe điện chuẩn TP.HCM: 59-MD1 068.11 đến 59-MD1 068.30              -->
+    <!-- Mã xe tự sinh ir.sequence chống trùng lặp, đầy đủ mốc bảo dưỡng cơ sở      -->
     <!-- ========================================================================= -->
 
-    <!-- Xe 01: VinFast Evo200 - Sẵn sàng (Trạng thái chuẩn) -->
+    <!-- Xe 01: VinFast Evo200 - Sẵn sàng -->
     <record id="demo_vehicle_evo_01" model="fleet.vehicle">
       <field name="model_id" ref="model_vinfast_evo200" />
       <field name="license_plate">59-MD1 068.11</field>
@@ -259,6 +358,206 @@
       <field name="service_reference_date">2026-03-15</field>
       <field name="service_reference_odo">0.0</field>
       <field name="description">Tình trạng hoàn hảo, đủ 2 chìa khóa cơ, thẻ từ thông minh và sạc chính hãng.</field>
+    </record>
+
+    <!-- Xe 11: Dat Bike Quantum S1 - Sẵn sàng -->
+    <record id="demo_vehicle_11" model="fleet.vehicle">
+      <field name="model_id" ref="model_datbike_quantum_s1" />
+      <field name="license_plate">59-MD1 068.21</field>
+      <field name="is_electric_motorbike" eval="True" />
+      <field name="fuel_type">electric</field>
+      <field name="color">Xám titan</field>
+      <field name="acquisition_date">2026-02-01</field>
+      <field name="odometer">1750.0</field>
+      <field name="operational_status">available</field>
+      <field name="technical_ready" eval="True" />
+      <field name="service_interval_km">2500</field>
+      <field name="service_interval_months">3</field>
+      <field name="service_warning_km">200</field>
+      <field name="service_warning_days">7</field>
+      <field name="service_reference_date">2026-02-01</field>
+      <field name="service_reference_odo">0.0</field>
+      <field name="description">Phiên bản Quantum S-Series cao cấp, pin 285 km/lần sạc, sẵn sàng cho thuê dài hạn.</field>
+    </record>
+
+    <!-- Xe 12: VinFast Klara A2 - Sẵn sàng -->
+    <record id="demo_vehicle_12" model="fleet.vehicle">
+      <field name="model_id" ref="model_vinfast_klara_a2" />
+      <field name="license_plate">59-MD1 068.22</field>
+      <field name="is_electric_motorbike" eval="True" />
+      <field name="fuel_type">electric</field>
+      <field name="color">Đỏ tươi</field>
+      <field name="acquisition_date">2025-11-01</field>
+      <field name="odometer">2800.0</field>
+      <field name="operational_status">available</field>
+      <field name="technical_ready" eval="True" />
+      <field name="service_interval_km">2000</field>
+      <field name="service_interval_months">3</field>
+      <field name="service_warning_km">200</field>
+      <field name="service_warning_days">7</field>
+      <field name="service_reference_date">2025-11-01</field>
+      <field name="service_reference_odo">0.0</field>
+      <field name="description">Klara A2 thiết kế nữ tính, ắc quy chì thế hệ mới, phanh an toàn, vận hành êm ái.</field>
+    </record>
+
+    <!-- Xe 13: Dat Bike Quantum S2 - Sẵn sàng -->
+    <record id="demo_vehicle_13" model="fleet.vehicle">
+      <field name="model_id" ref="model_datbike_quantum_s2" />
+      <field name="license_plate">59-MD1 068.23</field>
+      <field name="is_electric_motorbike" eval="True" />
+      <field name="fuel_type">electric</field>
+      <field name="color">Trắng ngọc</field>
+      <field name="acquisition_date">2026-03-20</field>
+      <field name="odometer">520.0</field>
+      <field name="operational_status">available</field>
+      <field name="technical_ready" eval="True" />
+      <field name="service_interval_km">2500</field>
+      <field name="service_interval_months">3</field>
+      <field name="service_warning_km">200</field>
+      <field name="service_warning_days">7</field>
+      <field name="service_reference_date">2026-03-20</field>
+      <field name="service_reference_odo">0.0</field>
+      <field name="description">Bản Quantum S2 tầm giá hợp lý, công suất 6000W mạnh mẽ, xe mới lướt.</field>
+    </record>
+
+    <!-- Xe 14: VinFast Ludo - Chờ kiểm tra (Khách vừa trả xe) -->
+    <record id="demo_vehicle_14" model="fleet.vehicle">
+      <field name="model_id" ref="model_vinfast_ludo" />
+      <field name="license_plate">59-MD1 068.24</field>
+      <field name="is_electric_motorbike" eval="True" />
+      <field name="fuel_type">electric</field>
+      <field name="color">Xanh dương</field>
+      <field name="acquisition_date">2025-09-15</field>
+      <field name="odometer">3450.0</field>
+      <field name="operational_status">pending_inspection</field>
+      <field name="technical_ready" eval="False" />
+      <field name="service_interval_km">2000</field>
+      <field name="service_interval_months">3</field>
+      <field name="service_warning_km">200</field>
+      <field name="service_warning_days">7</field>
+      <field name="service_reference_date">2025-09-15</field>
+      <field name="service_reference_odo">0.0</field>
+      <field name="description">Xe điện mini tiện lợi, vừa xong chuyến thuê du lịch, chờ vệ sinh và sạc đầy pin.</field>
+    </record>
+
+    <!-- Xe 15: VinFast Impes - Bảo dưỡng (Đang sửa chữa) -->
+    <record id="demo_vehicle_15" model="fleet.vehicle">
+      <field name="model_id" ref="model_vinfast_impes" />
+      <field name="license_plate">59-MD1 068.25</field>
+      <field name="is_electric_motorbike" eval="True" />
+      <field name="fuel_type">electric</field>
+      <field name="color">Xám lông chuột</field>
+      <field name="acquisition_date">2025-07-20</field>
+      <field name="odometer">5100.0</field>
+      <field name="operational_status">maintenance</field>
+      <field name="technical_ready" eval="False" />
+      <field name="service_interval_km">2000</field>
+      <field name="service_interval_months">3</field>
+      <field name="service_warning_km">200</field>
+      <field name="service_warning_days">7</field>
+      <field name="service_reference_date">2025-07-20</field>
+      <field name="service_reference_odo">0.0</field>
+      <field name="description">Đang thay thế giảm xóc sau Mono-shock và cân chỉnh lại tay lái.</field>
+    </record>
+
+    <!-- Xe 16: Dat Bike Weaver - Sẵn sàng -->
+    <record id="demo_vehicle_16" model="fleet.vehicle">
+      <field name="model_id" ref="model_datbike_weaver" />
+      <field name="license_plate">59-MD1 068.26</field>
+      <field name="is_electric_motorbike" eval="True" />
+      <field name="fuel_type">electric</field>
+      <field name="color">Cam nguyên bản</field>
+      <field name="acquisition_date">2025-06-10</field>
+      <field name="odometer">6800.0</field>
+      <field name="operational_status">available</field>
+      <field name="technical_ready" eval="True" />
+      <field name="service_interval_km">2500</field>
+      <field name="service_interval_months">3</field>
+      <field name="service_warning_km">200</field>
+      <field name="service_warning_days">7</field>
+      <field name="service_reference_date">2025-06-10</field>
+      <field name="service_reference_odo">0.0</field>
+      <field name="description">Dòng Weaver đời đầu cá tính, xe được bảo dưỡng kỹ càng, máy bốc phanh tốt.</field>
+    </record>
+
+    <!-- Xe 17: VinFast Feliz - Sẵn sàng -->
+    <record id="demo_vehicle_17" model="fleet.vehicle">
+      <field name="model_id" ref="model_vinfast_feliz" />
+      <field name="license_plate">59-MD1 068.27</field>
+      <field name="is_electric_motorbike" eval="True" />
+      <field name="fuel_type">electric</field>
+      <field name="color">Đen mờ</field>
+      <field name="acquisition_date">2025-10-05</field>
+      <field name="odometer">3900.0</field>
+      <field name="operational_status">available</field>
+      <field name="technical_ready" eval="True" />
+      <field name="service_interval_km">2000</field>
+      <field name="service_interval_months">3</field>
+      <field name="service_warning_km">200</field>
+      <field name="service_warning_days">7</field>
+      <field name="service_reference_date">2025-10-05</field>
+      <field name="service_reference_odo">0.0</field>
+      <field name="description">Phiên bản Feliz tiêu chuẩn, chạy đầm chắc, đèn LED sáng rõ, đủ 2 chìa khóa.</field>
+    </record>
+
+    <!-- Xe 18: Dat Bike Quantum S3 - Sẵn sàng (Gần đến hạn ODO bảo dưỡng) -->
+    <record id="demo_vehicle_18" model="fleet.vehicle">
+      <field name="model_id" ref="model_datbike_quantum_s3" />
+      <field name="license_plate">59-MD1 068.28</field>
+      <field name="is_electric_motorbike" eval="True" />
+      <field name="fuel_type">electric</field>
+      <field name="color">Xám bạc</field>
+      <field name="acquisition_date">2026-03-25</field>
+      <field name="odometer">2380.0</field>
+      <field name="operational_status">available</field>
+      <field name="technical_ready" eval="True" />
+      <field name="service_interval_km">2500</field>
+      <field name="service_interval_months">3</field>
+      <field name="service_warning_km">200</field>
+      <field name="service_warning_days">7</field>
+      <field name="service_reference_date">2026-03-25</field>
+      <field name="service_reference_odo">0.0</field>
+      <field name="description">Bản Quantum S3 pin 200 km, xe đạt 2.380 km, sắp đến hạn bảo dưỡng định kỳ 2.500 km.</field>
+    </record>
+
+    <!-- Xe 19: Dat Bike ERA - Sẵn sàng -->
+    <record id="demo_vehicle_19" model="fleet.vehicle">
+      <field name="model_id" ref="model_datbike_era" />
+      <field name="license_plate">59-MD1 068.29</field>
+      <field name="is_electric_motorbike" eval="True" />
+      <field name="fuel_type">electric</field>
+      <field name="color">Xanh bóng đêm</field>
+      <field name="acquisition_date">2026-04-01</field>
+      <field name="odometer">310.0</field>
+      <field name="operational_status">available</field>
+      <field name="technical_ready" eval="True" />
+      <field name="service_interval_km">2500</field>
+      <field name="service_interval_months">3</field>
+      <field name="service_warning_km">200</field>
+      <field name="service_warning_days">7</field>
+      <field name="service_reference_date">2026-04-01</field>
+      <field name="service_reference_odo">0.0</field>
+      <field name="description">Dòng xe máy điện thế hệ mới Dat Bike ERA, thiết kế khí động học, xe chạy lướt êm ru.</field>
+    </record>
+
+    <!-- Xe 20: VinFast Evo200 - Sẵn sàng -->
+    <record id="demo_vehicle_20" model="fleet.vehicle">
+      <field name="model_id" ref="model_vinfast_evo200" />
+      <field name="license_plate">59-MD1 068.30</field>
+      <field name="is_electric_motorbike" eval="True" />
+      <field name="fuel_type">electric</field>
+      <field name="color">Xanh lam</field>
+      <field name="acquisition_date">2026-03-10</field>
+      <field name="odometer">950.0</field>
+      <field name="operational_status">available</field>
+      <field name="technical_ready" eval="True" />
+      <field name="service_interval_km">2000</field>
+      <field name="service_interval_months">3</field>
+      <field name="service_warning_km">200</field>
+      <field name="service_warning_days">7</field>
+      <field name="service_reference_date">2026-03-10</field>
+      <field name="service_reference_odo">0.0</field>
+      <field name="description">Xe trang bị đầy đủ sạc thông minh tại nhà, lốp không săm bám đường, xe sẵn sàng giao.</field>
     </record>
 
   </data>

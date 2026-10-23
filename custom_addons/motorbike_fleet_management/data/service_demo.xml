@@ -2,14 +2,14 @@
 <odoo>
   <data noupdate="1">
     <!-- ========================================================================= -->
-    <!-- PHIẾU DỊCH VỤ & BẢO DƯỠNG MẪU (FLEET SERVICE LOGS)                         -->
-    <!-- Đồng bộ 100% với danh mục xe máy điện tại vehicle_demo.xml                -->
+    <!-- 20 PHIẾU DỊCH VỤ & BẢO DƯỠNG MẪU (FLEET SERVICE LOGS)                     -->
+    <!-- Đồng bộ 100% với 20 xe máy điện tại vehicle_demo.xml                      -->
     <!-- Đa dạng trạng thái: done (Hoàn thành), running (Đang làm), new (Mới tạo),  -->
     <!-- cancelled (Đã hủy) và đầy đủ loại hình: preventive, corrective, emergency -->
     <!-- ========================================================================= -->
 
-    <!-- Phiếu 01: Bảo dưỡng định kỳ 1.000 km - ĐÃ HOÀN THÀNH -->
-    <record id="demo_service_01_done" model="fleet.vehicle.log.services">
+    <!-- Phiếu 01: Xe 01 (Evo200) - Bảo dưỡng định kỳ 1.000 km - ĐÃ HOÀN THÀNH -->
+    <record id="demo_service_01" model="fleet.vehicle.log.services">
       <field name="vehicle_id" ref="demo_vehicle_evo_01" />
       <field name="service_type_id" ref="service_type_electric_maintenance" />
       <field name="maintenance_type">preventive</field>
@@ -24,8 +24,8 @@
       <field name="result">Đã hoàn thành bảo dưỡng mốc 1.000 km. Điện áp pin và độ dày má phanh đều đạt tiêu chuẩn an toàn bàn giao.</field>
     </record>
 
-    <!-- Phiếu 02: Sửa chữa thay má phanh & kiểm tra sạc - ĐANG THỰC HIỆN (Khớp xe XE00007 đang maintenance) -->
-    <record id="demo_service_02_running" model="fleet.vehicle.log.services">
+    <!-- Phiếu 02: Xe 07 (Feliz S) - Sửa chữa thay má phanh & kiểm tra sạc - ĐANG THỰC HIỆN -->
+    <record id="demo_service_02" model="fleet.vehicle.log.services">
       <field name="vehicle_id" ref="demo_vehicle_feliz_07" />
       <field name="service_type_id" ref="service_type_electric_maintenance" />
       <field name="maintenance_type">corrective</field>
@@ -36,8 +36,8 @@
       <field name="description">Khắc phục phanh sau kêu ken két: thay má phanh gốm mới, tra mỡ cổ phốt và vệ sinh jack cắm sạc pin.</field>
     </record>
 
-    <!-- Phiếu 03: Đặt lịch bảo dưỡng định kỳ mốc 2.500 km - MỚI TẠO (Dự phòng cho xe XE00003 sắp tới hạn) -->
-    <record id="demo_service_03_new" model="fleet.vehicle.log.services">
+    <!-- Phiếu 03: Xe 03 (Weaver++) - Đặt lịch bảo dưỡng dự phòng mốc 2.500 km - MỚI TẠO -->
+    <record id="demo_service_03" model="fleet.vehicle.log.services">
       <field name="vehicle_id" ref="demo_vehicle_weaver_03" />
       <field name="service_type_id" ref="service_type_electric_maintenance" />
       <field name="maintenance_type">preventive</field>
@@ -47,8 +47,8 @@
       <field name="description">Đặt lịch bảo dưỡng dự phòng mốc 2.500 km: kiểm tra độ chùng xích tải Dat Bike, cân vành và kiểm tra cell pin.</field>
     </record>
 
-    <!-- Phiếu 04: Thay lốp định kỳ sau thời gian khai thác - ĐÃ HOÀN THÀNH -->
-    <record id="demo_service_04_done" model="fleet.vehicle.log.services">
+    <!-- Phiếu 04: Xe 06 (Evo200 Lite) - Thay lốp định kỳ sau thời gian khai thác - ĐÃ HOÀN THÀNH -->
+    <record id="demo_service_04" model="fleet.vehicle.log.services">
       <field name="vehicle_id" ref="demo_vehicle_evo_06" />
       <field name="service_type_id" ref="service_type_electric_maintenance" />
       <field name="maintenance_type">corrective</field>
@@ -63,8 +63,8 @@
       <field name="result">Đã thay lốp mới, áp suất trước 2.0 bar, sau 2.3 bar. Vận hành thử trên đường êm ái, phanh bám đường tốt.</field>
     </record>
 
-    <!-- Phiếu 05: Kiểm tra nguồn sạc trạm ngoài - ĐÃ HỦY (Do sự cố trạm điện, xe không lỗi) -->
-    <record id="demo_service_05_cancelled" model="fleet.vehicle.log.services">
+    <!-- Phiếu 05: Xe 04 (Klara S) - Kiểm tra trạm sạc ngoài - ĐÃ HỦY -->
+    <record id="demo_service_05" model="fleet.vehicle.log.services">
       <field name="vehicle_id" ref="demo_vehicle_klara_04" />
       <field name="service_type_id" ref="service_type_electric_maintenance" />
       <field name="maintenance_type">emergency</field>
@@ -72,6 +72,214 @@
       <field name="date">2026-04-05</field>
       <field name="amount">0.0</field>
       <field name="description">Khách báo xe sạc chậm tại trạm ngoài; kỹ thuật viên kiểm tra nguồn điện trạm yếu, bộ sạc và pin xe hoạt động bình thường nên hủy phiếu sửa chữa.</field>
+    </record>
+
+    <!-- Phiếu 06: Xe 12 (Klara A2) - Bảo dưỡng định kỳ 2.000 km - ĐÃ HOÀN THÀNH -->
+    <record id="demo_service_06" model="fleet.vehicle.log.services">
+      <field name="vehicle_id" ref="demo_vehicle_12" />
+      <field name="service_type_id" ref="service_type_electric_maintenance" />
+      <field name="maintenance_type">preventive</field>
+      <field name="state">done</field>
+      <field name="date">2026-02-15</field>
+      <field name="actual_start">2026-02-15 09:00:00</field>
+      <field name="actual_end">2026-02-15 11:00:00</field>
+      <field name="service_odometer">2000.0</field>
+      <field name="service_odometer_recorded" eval="True" />
+      <field name="amount">180000.0</field>
+      <field name="description">Bảo dưỡng định kỳ mốc 2.000 km: kiểm tra ắc quy, siết các ốc liên kết khung sườn và tra mỡ chén cổ.</field>
+      <field name="result">Đã hoàn thành bảo dưỡng mốc 2.000 km, xe vận hành chắc chắn, không có tiếng kêu lạ ở cổ lái.</field>
+    </record>
+
+    <!-- Phiếu 07: Xe 15 (Impes) - Thay thế giảm xóc sau - ĐANG THỰC HIỆN -->
+    <record id="demo_service_07" model="fleet.vehicle.log.services">
+      <field name="vehicle_id" ref="demo_vehicle_15" />
+      <field name="service_type_id" ref="service_type_electric_maintenance" />
+      <field name="maintenance_type">corrective</field>
+      <field name="state">running</field>
+      <field name="date">2026-04-19</field>
+      <field name="actual_start">2026-04-19 10:00:00</field>
+      <field name="amount">450000.0</field>
+      <field name="description">Thay thế phuộc nhún Mono-shock sau bị xì dầu, cân chỉnh lại góc đặt bánh sau và kiểm tra xích tải.</field>
+    </record>
+
+    <!-- Phiếu 08: Xe 16 (Weaver) - Bảo dưỡng định kỳ mốc 5.000 km - ĐÃ HOÀN THÀNH -->
+    <record id="demo_service_08" model="fleet.vehicle.log.services">
+      <field name="vehicle_id" ref="demo_vehicle_16" />
+      <field name="service_type_id" ref="service_type_electric_maintenance" />
+      <field name="maintenance_type">preventive</field>
+      <field name="state">done</field>
+      <field name="date">2026-01-25</field>
+      <field name="actual_start">2026-01-25 13:30:00</field>
+      <field name="actual_end">2026-01-25 16:00:00</field>
+      <field name="service_odometer">5000.0</field>
+      <field name="service_odometer_recorded" eval="True" />
+      <field name="amount">220000.0</field>
+      <field name="description">Bảo dưỡng định kỳ mốc 5.000 km: vệ sinh và tra mỡ bạc đạn bánh trước/sau, kiểm tra xích tải Dat Bike và căn chỉnh phanh.</field>
+      <field name="result">Xích tải đã được tăng chuẩn độ chùng, bạc đạn êm ru, kiểm tra chạy thử đạt yêu cầu bàn giao.</field>
+    </record>
+
+    <!-- Phiếu 09: Xe 18 (Quantum S3) - Đặt lịch bảo dưỡng dự phòng mốc 2.500 km - MỚI TẠO -->
+    <record id="demo_service_09" model="fleet.vehicle.log.services">
+      <field name="vehicle_id" ref="demo_vehicle_18" />
+      <field name="service_type_id" ref="service_type_electric_maintenance" />
+      <field name="maintenance_type">preventive</field>
+      <field name="state">new</field>
+      <field name="date">2026-04-21</field>
+      <field name="amount">200000.0</field>
+      <field name="description">Lên lịch bảo dưỡng mốc 2.500 km (xe hiện đạt 2.380 km): kiểm tra má phanh, áp suất lốp và cập nhật firmware ECU.</field>
+    </record>
+
+    <!-- Phiếu 10: Xe 17 (Feliz) - Cân chỉnh tay phanh và thay bóng đèn demi - ĐÃ HOÀN THÀNH -->
+    <record id="demo_service_10" model="fleet.vehicle.log.services">
+      <field name="vehicle_id" ref="demo_vehicle_17" />
+      <field name="service_type_id" ref="service_type_electric_maintenance" />
+      <field name="maintenance_type">corrective</field>
+      <field name="state">done</field>
+      <field name="date">2026-03-05</field>
+      <field name="actual_start">2026-03-05 15:00:00</field>
+      <field name="actual_end">2026-03-05 16:30:00</field>
+      <field name="service_odometer">3000.0</field>
+      <field name="service_odometer_recorded" eval="True" />
+      <field name="amount">160000.0</field>
+      <field name="description">Thay bóng đèn định vị demi LED bên phải bị chập chờn, cân chỉnh lại hành trình tự do của tay phanh trái.</field>
+      <field name="result">Đèn demi sáng đều, tay phanh có độ rơ chuẩn an toàn, các chức năng điện hoạt động hoàn hảo.</field>
+    </record>
+
+    <!-- Phiếu 11: Xe 09 (Weaver 200) - Kiểm tra kỹ thuật trước lưu kho - ĐÃ HOÀN THÀNH -->
+    <record id="demo_service_11" model="fleet.vehicle.log.services">
+      <field name="vehicle_id" ref="demo_vehicle_weaver_09" />
+      <field name="service_type_id" ref="service_type_electric_maintenance" />
+      <field name="maintenance_type">preventive</field>
+      <field name="state">done</field>
+      <field name="date">2025-12-28</field>
+      <field name="actual_start">2025-12-28 08:30:00</field>
+      <field name="actual_end">2025-12-28 11:30:00</field>
+      <field name="service_odometer">15000.0</field>
+      <field name="service_odometer_recorded" eval="True" />
+      <field name="amount">350000.0</field>
+      <field name="description">Kiểm tra toàn diện mốc 15.000 km: kiểm tra cell pin, xả pin về mức an toàn 50% để lưu kho bảo quản lâu dài.</field>
+      <field name="result">Pin đã được đưa về điện áp lưu trữ tiêu chuẩn, ngắt công tắc nguồn phụ, xe đủ điều kiện chuyển vào kho lưu trữ.</field>
+    </record>
+
+    <!-- Phiếu 12: Xe 14 (Ludo) - Vệ sinh và kiểm tra phanh sau thu hồi - ĐANG THỰC HIỆN -->
+    <record id="demo_service_12" model="fleet.vehicle.log.services">
+      <field name="vehicle_id" ref="demo_vehicle_14" />
+      <field name="service_type_id" ref="service_type_electric_maintenance" />
+      <field name="maintenance_type">preventive</field>
+      <field name="state">running</field>
+      <field name="date">2026-04-20</field>
+      <field name="actual_start">2026-04-20 14:00:00</field>
+      <field name="amount">120000.0</field>
+      <field name="description">Xe vừa kết thúc hợp đồng thuê: vệ sinh cụm phanh cơ, kiểm tra dây ga và xịt dưỡng bóng dàn áo.</field>
+    </record>
+
+    <!-- Phiếu 13: Xe 10 (Feliz S) - Bảo dưỡng mốc 1.000 km - ĐÃ HOÀN THÀNH -->
+    <record id="demo_service_13" model="fleet.vehicle.log.services">
+      <field name="vehicle_id" ref="demo_vehicle_feliz_10" />
+      <field name="service_type_id" ref="service_type_electric_maintenance" />
+      <field name="maintenance_type">preventive</field>
+      <field name="state">done</field>
+      <field name="date">2026-04-02</field>
+      <field name="actual_start">2026-04-02 09:30:00</field>
+      <field name="actual_end">2026-04-02 11:30:00</field>
+      <field name="service_odometer">1000.0</field>
+      <field name="service_odometer_recorded" eval="True" />
+      <field name="amount">200000.0</field>
+      <field name="description">Bảo dưỡng định kỳ mốc 1.000 km: kiểm tra dầu phanh DOT4, cập nhật phần mềm ECU và siết ốc liên kết.</field>
+      <field name="result">Dầu phanh đủ mức max, độ rơ tay thắng đạt chuẩn, xe vận hành rất tốt.</field>
+    </record>
+
+    <!-- Phiếu 14: Xe 11 (Quantum S1) - Hẹn siết ốc gương và cân chỉnh tay lái - MỚI TẠO -->
+    <record id="demo_service_14" model="fleet.vehicle.log.services">
+      <field name="vehicle_id" ref="demo_vehicle_11" />
+      <field name="service_type_id" ref="service_type_electric_maintenance" />
+      <field name="maintenance_type">corrective</field>
+      <field name="state">new</field>
+      <field name="date">2026-04-22</field>
+      <field name="amount">150000.0</field>
+      <field name="description">Khách báo gương chiếu hậu phải hơi lỏng ren: đặt lịch hẹn kỹ thuật viên siết ốc chống xoay và căn chỉnh góc nhìn.</field>
+    </record>
+
+    <!-- Phiếu 15: Xe 13 (Quantum S2) - Khách dời lịch hẹn - ĐÃ HỦY -->
+    <record id="demo_service_15" model="fleet.vehicle.log.services">
+      <field name="vehicle_id" ref="demo_vehicle_13" />
+      <field name="service_type_id" ref="service_type_electric_maintenance" />
+      <field name="maintenance_type">preventive</field>
+      <field name="state">cancelled</field>
+      <field name="date">2026-04-10</field>
+      <field name="amount">0.0</field>
+      <field name="description">Khách hẹn kiểm tra định kỳ 500 km nhưng bận công tác đột xuất nên xin hủy phiếu để đặt lại tuần sau.</field>
+    </record>
+
+    <!-- Phiếu 16: Xe 02 (Feliz S) - Kiểm tra kỹ thuật mốc 500 km đầu - ĐÃ HOÀN THÀNH -->
+    <record id="demo_service_16" model="fleet.vehicle.log.services">
+      <field name="vehicle_id" ref="demo_vehicle_feliz_02" />
+      <field name="service_type_id" ref="service_type_electric_maintenance" />
+      <field name="maintenance_type">preventive</field>
+      <field name="state">done</field>
+      <field name="date">2026-03-10</field>
+      <field name="actual_start">2026-03-10 10:00:00</field>
+      <field name="actual_end">2026-03-10 11:30:00</field>
+      <field name="service_odometer">500.0</field>
+      <field name="service_odometer_recorded" eval="True" />
+      <field name="amount">100000.0</field>
+      <field name="description">Kiểm tra kỹ thuật sau 500 km chạy rà: siết lại các bu-lông trục bánh, kiểm tra độ chụm bánh trước và áp suất lốp.</field>
+      <field name="result">Các mối ghép ren đã được siết đúng lực siết Nm của nhà sản xuất, xe sẵn sàng cho thuê tour dài ngày.</field>
+    </record>
+
+    <!-- Phiếu 17: Xe 08 (Evo200) - Kiểm tra hệ thống điện trong đợt kiểm kê - ĐANG THỰC HIỆN -->
+    <record id="demo_service_17" model="fleet.vehicle.log.services">
+      <field name="vehicle_id" ref="demo_vehicle_evo_08" />
+      <field name="service_type_id" ref="service_type_electric_maintenance" />
+      <field name="maintenance_type">preventive</field>
+      <field name="state">running</field>
+      <field name="date">2026-04-21</field>
+      <field name="actual_start">2026-04-21 08:30:00</field>
+      <field name="amount">180000.0</field>
+      <field name="description">Kiểm tra định kỳ trong đợt kiểm kê tài sản: kiểm tra pin LFP, đo độ sụt áp và kiểm tra cảm biến chân chống điện.</field>
+    </record>
+
+    <!-- Phiếu 18: Xe 05 (Quantum) - Kiểm tra ban đầu mốc 300 km - ĐÃ HOÀN THÀNH -->
+    <record id="demo_service_18" model="fleet.vehicle.log.services">
+      <field name="vehicle_id" ref="demo_vehicle_quantum_05" />
+      <field name="service_type_id" ref="service_type_electric_maintenance" />
+      <field name="maintenance_type">preventive</field>
+      <field name="state">done</field>
+      <field name="date">2026-04-15</field>
+      <field name="actual_start">2026-04-15 14:00:00</field>
+      <field name="actual_end">2026-04-15 15:30:00</field>
+      <field name="service_odometer">300.0</field>
+      <field name="service_odometer_recorded" eval="True" />
+      <field name="amount">100000.0</field>
+      <field name="description">Kiểm tra tổng quát lần đầu mốc 300 km sau khi xuất xưởng Dat Bike: kiểm tra hành trình phanh và mức dầu phanh.</field>
+      <field name="result">Dầu phanh trong, độ rơ tay thắng đạt chuẩn, các mối nối dây điện an toàn tuyệt đối.</field>
+    </record>
+
+    <!-- Phiếu 19: Xe 20 (Evo200) - Vệ sinh má phanh và tra dầu dây ga - ĐÃ HOÀN THÀNH -->
+    <record id="demo_service_19" model="fleet.vehicle.log.services">
+      <field name="vehicle_id" ref="demo_vehicle_20" />
+      <field name="service_type_id" ref="service_type_electric_maintenance" />
+      <field name="maintenance_type">preventive</field>
+      <field name="state">done</field>
+      <field name="date">2026-04-08</field>
+      <field name="actual_start">2026-04-08 10:00:00</field>
+      <field name="actual_end">2026-04-08 11:30:00</field>
+      <field name="service_odometer">800.0</field>
+      <field name="service_odometer_recorded" eval="True" />
+      <field name="amount">120000.0</field>
+      <field name="description">Bảo dưỡng nhanh: thổi bụi heo dầu phanh trước/sau, xịt dầu dưỡng trơn dây ga mượt mà.</field>
+      <field name="result">Phanh không còn tiếng rít bụi, tay ga nhẹ nhạy, chạy thử nghiệm êm ái.</field>
+    </record>
+
+    <!-- Phiếu 20: Xe 19 (ERA) - Đặt lịch bảo dưỡng 500 km đầu tiên - MỚI TẠO -->
+    <record id="demo_service_20" model="fleet.vehicle.log.services">
+      <field name="vehicle_id" ref="demo_vehicle_19" />
+      <field name="service_type_id" ref="service_type_electric_maintenance" />
+      <field name="maintenance_type">preventive</field>
+      <field name="state">new</field>
+      <field name="date">2026-04-23</field>
+      <field name="amount">100000.0</field>
+      <field name="description">Lên lịch hẹn kiểm tra định kỳ 500 km chạy rà đầu tiên cho xe mới Dat Bike ERA: kiểm tra siết ốc và độ bám lốp.</field>
     </record>
 
   </data>
