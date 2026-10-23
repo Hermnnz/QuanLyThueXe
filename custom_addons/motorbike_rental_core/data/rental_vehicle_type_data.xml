@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="rental_vehicle_type_vinfast_evo200" model="rental.vehicle.type">
+            <field name="name">VinFast Evo200</field>
+            <field name="model_id" ref="motorbike_fleet_management.model_vinfast_evo200"/>
+            <field name="currency_id" ref="base.VND"/>
+            <field name="daily_rate">150000</field>
+        </record>
+        <record id="rental_vehicle_type_vinfast_evo200_lite" model="rental.vehicle.type">
+            <field name="name">VinFast Evo200 Lite</field>
+            <field name="model_id" ref="motorbike_fleet_management.model_vinfast_evo200_lite"/>
+            <field name="currency_id" ref="base.VND"/>
+            <field name="daily_rate">120000</field>
+        </record>
+        <record id="rental_vehicle_type_vinfast_feliz_s" model="rental.vehicle.type">
+            <field name="name">VinFast Feliz S</field>
+            <field name="model_id" ref="motorbike_fleet_management.model_vinfast_feliz_s"/>
+            <field name="currency_id" ref="base.VND"/>
+            <field name="daily_rate">200000</field>
+        </record>
+        <record id="rental_vehicle_type_vinfast_klara_s" model="rental.vehicle.type">
+            <field name="name">VinFast Klara S (2022)</field>
+            <field name="model_id" ref="motorbike_fleet_management.model_vinfast_klara_s"/>
+            <field name="currency_id" ref="base.VND"/>
+            <field name="daily_rate">200000</field>
+        </record>
+        <record id="rental_vehicle_type_vinfast_vento_s" model="rental.vehicle.type">
+            <field name="name">VinFast Vento S</field>
+            <field name="model_id" ref="motorbike_fleet_management.model_vinfast_vento_s"/>
+            <field name="currency_id" ref="base.VND"/>
+            <field name="daily_rate">250000</field>
+        </record>
+        <record id="rental_vehicle_type_vinfast_theon_s" model="rental.vehicle.type">
+            <field name="name">VinFast Theon S</field>
+            <field name="model_id" ref="motorbike_fleet_management.model_vinfast_theon_s"/>
+            <field name="currency_id" ref="base.VND"/>
+            <field name="daily_rate">300000</field>
+        </record>
+        <record id="rental_vehicle_type_vinfast_ludo" model="rental.vehicle.type">
+            <field name="name">VinFast Ludo</field>
+            <field name="model_id" ref="motorbike_fleet_management.model_vinfast_ludo"/>
+            <field name="currency_id" ref="base.VND"/>
+            <field name="daily_rate">120000</field>
+        </record>
+        <record id="rental_vehicle_type_vinfast_impes" model="rental.vehicle.type">
+            <field name="name">VinFast Impes</field>
+            <field name="model_id" ref="motorbike_fleet_management.model_vinfast_impes"/>
+            <field name="currency_id" ref="base.VND"/>
+            <field name="daily_rate">120000</field>
+        </record>
+        <record id="rental_vehicle_type_vinfast_klara_a2" model="rental.vehicle.type">
+            <field name="name">VinFast Klara A2</field>
+            <field name="model_id" ref="motorbike_fleet_management.model_vinfast_klara_a2"/>
+            <field name="currency_id" ref="base.VND"/>
+            <field name="daily_rate">150000</field>
+        </record>
+        <record id="rental_vehicle_type_vinfast_feliz" model="rental.vehicle.type">
+            <field name="name">VinFast Feliz</field>
+            <field name="model_id" ref="motorbike_fleet_management.model_vinfast_feliz"/>
+            <field name="currency_id" ref="base.VND"/>
+            <field name="daily_rate">180000</field>
+        </record>
+        <record id="rental_vehicle_type_datbike_weaver" model="rental.vehicle.type">
+            <field name="name">Dat Bike Weaver</field>
+            <field name="model_id" ref="motorbike_fleet_management.model_datbike_weaver"/>
+            <field name="currency_id" ref="base.VND"/>
+            <field name="daily_rate">220000</field>
+        </record>
+        <record id="rental_vehicle_type_datbike_weaver_200" model="rental.vehicle.type">
+            <field name="name">Dat Bike Weaver 200</field>
+            <field name="model_id" ref="motorbike_fleet_management.model_datbike_weaver_200"/>
+            <field name="currency_id" ref="base.VND"/>
+            <field name="daily_rate">240000</field>
+        </record>
+        <record id="rental_vehicle_type_datbike_quantum" model="rental.vehicle.type">
+            <field name="name">Dat Bike Quantum</field>
+            <field name="model_id" ref="motorbike_fleet_management.model_datbike_quantum"/>
+            <field name="currency_id" ref="base.VND"/>
+            <field name="daily_rate">300000</field>
+        </record>
+        <record id="rental_vehicle_type_datbike_quantum_s1" model="rental.vehicle.type">
+            <field name="name">Dat Bike Quantum S1</field>
+            <field name="model_id" ref="motorbike_fleet_management.model_datbike_quantum_s1"/>
+            <field name="currency_id" ref="base.VND"/>
+            <field name="daily_rate">320000</field>
+        </record>
+        <record id="rental_vehicle_type_datbike_quantum_s2" model="rental.vehicle.type">
+            <field name="name">Dat Bike Quantum S2</field>
+            <field name="model_id" ref="motorbike_fleet_management.model_datbike_quantum_s2"/>
+            <field name="currency_id" ref="base.VND"/>
+            <field name="daily_rate">350000</field>
+        </record>
+        <record id="rental_vehicle_type_datbike_quantum_s3" model="rental.vehicle.type">
+            <field name="name">Dat Bike Quantum S3</field>
+            <field name="model_id" ref="motorbike_fleet_management.model_datbike_quantum_s3"/>
+            <field name="currency_id" ref="base.VND"/>
+            <field name="daily_rate">380000</field>
+        </record>
+        <record id="rental_vehicle_type_datbike_era" model="rental.vehicle.type">
+            <field name="name">Dat Bike ERA</field>
+            <field name="model_id" ref="motorbike_fleet_management.model_datbike_era"/>
+            <field name="currency_id" ref="base.VND"/>
+            <field name="daily_rate">280000</field>
+        </record>
+        <record id="rental_vehicle_type_datbike_weaver_pp" model="rental.vehicle.type">
+            <field name="name">Dat Bike Weaver++</field>
+            <field name="model_id" ref="motorbike_fleet_management.model_datbike_weaver_pp"/>
+            <field name="currency_id" ref="base.VND"/>
+            <field name="daily_rate">250000</field>
+        </record>
+    </data>
+</odoo>

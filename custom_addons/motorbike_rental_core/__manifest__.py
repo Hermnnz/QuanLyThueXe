@@ -1,6 +1,6 @@
 {
     'name': 'Cho thuê xe máy',
-    'version': '18.0.1.0.9',
+    'version': '18.0.1.0.12',
     'summary': 'Quản lý khách hàng và hợp đồng thuê xe máy',
     'category': 'Services/Rental',
     'license': 'LGPL-3',
@@ -15,12 +15,14 @@
         'security/rental_security.xml',
         'security/ir.model.access.csv',
         'data/rental_sequence_data.xml',
+        'data/rental_vehicle_type_data.xml',
         'views/rental_vehicle_views.xml',
         'views/rental_contract_views.xml',
         'views/res_partner_views.xml',
         'views/website_contact_removal.xml',
         'views/website_rental_templates.xml',
     ],
+    'post_init_hook': 'post_init_hook',
     'installable': True,
     'application': True,
 }

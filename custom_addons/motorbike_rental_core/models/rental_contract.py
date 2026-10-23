@@ -38,7 +38,7 @@ class RentalContract(models.Model):
     rental_days = fields.Integer(string='Số ngày thuê', compute='_compute_rental_days', store=True)
     currency_id = fields.Many2one(
         'res.currency', string='Tiền tệ', required=True,
-        default=lambda self: self.env.company.currency_id,
+        default=lambda self: self.env.ref('base.VND'),
     )
     deposit_amount = fields.Monetary(
         string='Tiền đặt cọc', required=True, default=0, currency_field='currency_id'
