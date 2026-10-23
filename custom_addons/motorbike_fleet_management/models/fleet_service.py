@@ -171,6 +171,9 @@ class FleetVehicleLogServices(models.Model):
         return True
 
     def unlink(self):
+        # Tập rỗng không có hồ sơ nào để xóa; cho phép Odoo tiếp tục xử lý hóa đơn.
+        if not self:
+            return True
         # Giữ hồ sơ bảo dưỡng ở mọi trạng thái để bảo toàn lịch sử.
         raise UserError('Không được xóa hồ sơ bảo dưỡng; hãy hủy hoặc lưu trữ nếu cần.')
 

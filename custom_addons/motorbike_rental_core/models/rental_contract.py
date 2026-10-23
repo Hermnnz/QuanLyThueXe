@@ -243,6 +243,13 @@ class RentalContract(models.Model):
         for contract in self:
             if contract.state != 'draft':
                 raise UserError(_('Chỉ hợp đồng nháp mới có thể được xác nhận.'))
+            # Kiểm tra lại từng xe ngay lúc ký vì tình trạng Fleet có thể đã đổi sau khi chọn xe.
+            for vehicle in contract.line_ids.mapped('vehicle_id'):
+                # Fleet kiểm tra kỹ thuật, khóa thuê và lịch bảo dưỡng trong thời gian hợp đồng.
+                fleet_ok = vehicle.check_fleet_availability(contract.start_date, contract.end_date)[0]['fleet_ok']
+                # Chỉ xe đang sẵn sàng và đạt mọi điều kiện Fleet mới được đưa vào hợp đồng đã ký.
+                if vehicle.operational_status != 'available' or not fleet_ok:
+                    raise UserError(_('Xe %s chưa đủ điều kiện để ký hợp đồng.') % vehicle.display_name)
             contract.state = 'confirmed'
 
     def action_start(self):
