@@ -19,8 +19,6 @@
         'views/fleet_service_views.xml',
         'views/fleet_actions.xml',
         'views/fleet_menu.xml',
-    ],
-    'demo': [
         'data/vehicle_demo.xml',
         'data/service_demo.xml',
     ],
