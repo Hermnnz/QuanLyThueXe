@@ -14,11 +14,23 @@
       <field name="active" eval="True" />
     </record>
 
+    <!-- ========================================================================= -->
+    <!-- 2. DANH MỤC 18 DÒNG XE MÁY ĐIỆN CHUẨN (MODELS)                            -->
+    <!-- 10 dòng VinFast + 8 dòng Dat Bike, loại phương tiện chuẩn "bike"           -->
+    <!-- ========================================================================= -->
+
     <!-- ========================================== -->
-    <!-- 2. DANH MỤC DÒNG XE MÁY ĐIỆN (MODELS)      -->
+    <!-- 2.1 VINFAST (10 DÒNG XE)                   -->
     <!-- ========================================== -->
     <record id="model_vinfast_evo200" model="fleet.vehicle.model">
       <field name="name">Evo200</field>
+      <field name="brand_id" ref="brand_vinfast" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+
+    <record id="model_vinfast_evo200_lite" model="fleet.vehicle.model">
+      <field name="name">Evo200 Lite</field>
       <field name="brand_id" ref="brand_vinfast" />
       <field name="vehicle_type">bike</field>
       <field name="active" eval="True" />
@@ -38,6 +50,65 @@
       <field name="active" eval="True" />
     </record>
 
+    <record id="model_vinfast_vento_s" model="fleet.vehicle.model">
+      <field name="name">Vento S</field>
+      <field name="brand_id" ref="brand_vinfast" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+
+    <record id="model_vinfast_theon_s" model="fleet.vehicle.model">
+      <field name="name">Theon S</field>
+      <field name="brand_id" ref="brand_vinfast" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+
+    <record id="model_vinfast_ludo" model="fleet.vehicle.model">
+      <field name="name">Ludo</field>
+      <field name="brand_id" ref="brand_vinfast" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+
+    <record id="model_vinfast_impes" model="fleet.vehicle.model">
+      <field name="name">Impes</field>
+      <field name="brand_id" ref="brand_vinfast" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+
+    <record id="model_vinfast_klara_a2" model="fleet.vehicle.model">
+      <field name="name">Klara A2</field>
+      <field name="brand_id" ref="brand_vinfast" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+
+    <record id="model_vinfast_feliz" model="fleet.vehicle.model">
+      <field name="name">Feliz</field>
+      <field name="brand_id" ref="brand_vinfast" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+
+    <!-- ========================================== -->
+    <!-- 2.2 DAT BIKE (8 DÒNG XE)                  -->
+    <!-- ========================================== -->
+    <record id="model_datbike_weaver" model="fleet.vehicle.model">
+      <field name="name">Weaver</field>
+      <field name="brand_id" ref="brand_datbike" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+
+    <record id="model_datbike_weaver_200" model="fleet.vehicle.model">
+      <field name="name">Weaver 200</field>
+      <field name="brand_id" ref="brand_datbike" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+
     <record id="model_datbike_weaver_pp" model="fleet.vehicle.model">
       <field name="name">Weaver++</field>
       <field name="brand_id" ref="brand_datbike" />
@@ -47,6 +118,34 @@
 
     <record id="model_datbike_quantum" model="fleet.vehicle.model">
       <field name="name">Quantum</field>
+      <field name="brand_id" ref="brand_datbike" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+
+    <record id="model_datbike_quantum_s1" model="fleet.vehicle.model">
+      <field name="name">Quantum S1</field>
+      <field name="brand_id" ref="brand_datbike" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+
+    <record id="model_datbike_quantum_s2" model="fleet.vehicle.model">
+      <field name="name">Quantum S2</field>
+      <field name="brand_id" ref="brand_datbike" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+
+    <record id="model_datbike_quantum_s3" model="fleet.vehicle.model">
+      <field name="name">Quantum S3</field>
+      <field name="brand_id" ref="brand_datbike" />
+      <field name="vehicle_type">bike</field>
+      <field name="active" eval="True" />
+    </record>
+
+    <record id="model_datbike_era" model="fleet.vehicle.model">
+      <field name="name">ERA</field>
       <field name="brand_id" ref="brand_datbike" />
       <field name="vehicle_type">bike</field>
       <field name="active" eval="True" />
