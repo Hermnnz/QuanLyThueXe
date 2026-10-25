@@ -13,6 +13,8 @@
         'data/vehicle_sequence.xml',
         'data/service_alert_cron.xml',
         'data/service_activity_type.xml',
+        'data/vehicle_demo.xml',
+        'data/service_demo.xml',
         'views/fleet_role_views.xml',
         'views/fleet_vehicle_views.xml',
         'views/fleet_catalog_views.xml',

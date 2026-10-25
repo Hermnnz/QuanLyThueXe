@@ -9,6 +9,9 @@ from odoo.exceptions import UserError, ValidationError
 # Người dùng không thể tự truyền đúng đối tượng này từ giao diện để tạo phiếu thu/hoàn.
 _INVOICE_SETTLEMENT = object()
 
+# Dấu riêng cho lúc ký hợp đồng: nút Xác nhận trên hợp đồng mới được chốt hai phiếu thu ban đầu.
+_CONTRACT_CONFIRM = object()
+
 
     # 2. Khai báo Class và các thuộc tính Model ( _name , _description ...)
 class MotorbikeRentalPayment(models.Model):
@@ -124,22 +127,53 @@ class MotorbikeRentalPayment(models.Model):
                 if count > 1:  # Có phiếu cọc thứ hai thì báo lỗi, Odoo hoàn tác lần lưu.
                     raise ValidationError("Mỗi hợp đồng chỉ được có một phiếu cọc.")
 
+    # Odoo chạy kiểm tra này khi tạo phiếu hoặc đổi hợp đồng/loại giao dịch.
+    @api.constrains("contract_id", "transaction_type")
+    def _check_single_rental_payment(self):  # Mỗi hợp đồng chỉ có một phiếu thu tiền thuê, kể cả phiếu đã hủy.
+        for payment in self:  # Xét từng phiếu vừa được tạo hoặc sửa.
+            if payment.contract_id and payment.transaction_type == "rental_payment":  # Chỉ xét tiền thuê có hợp đồng.
+                # sudo cho phép đếm cả phiếu nhân viên hiện tại không được quyền xem.
+                count = self.sudo().search_count([
+                    ("contract_id", "=", payment.contract_id.id),  # Cùng hợp đồng với phiếu đang xét.
+                    ("transaction_type", "=", "rental_payment"),  # Chỉ đếm phiếu thu tiền thuê.
+                ])
+                if count > 1:  # Phiếu thứ hai sẽ làm thu trùng tiền thuê.
+                    raise ValidationError("Mỗi hợp đồng chỉ được có một phiếu thu tiền thuê.")
+
     # constrains chạy khi tạo phiếu hoặc thay đổi loại giao dịch/trạng thái.
     @api.constrains("transaction_type", "state")
-    def _check_invoice_settlement(self):  # Chỉ cho luồng hóa đơn ghi nhận phiếu thu thêm/hoàn tiền.
+    def _check_invoice_settlement(self):  # Chỉ cho hóa đơn quyết toán tiền, trừ phiếu hoàn cọc trước khi giao xe.
         for payment in self:  # Kiểm tra từng phiếu đang được lưu.
             if payment.transaction_type in ("refund", "additional_payment"):
+                if payment.transaction_type == "refund" and payment.contract_id.state == "confirmed":  # Hợp đồng đã ký nhưng chưa giao có thể hoàn cọc để hủy.
+                    payment.contract_id._check_cancel_before_delivery()  # Không cho dùng ngoại lệ này nếu xe đã bắt đầu giao.
+                    continue  # Phiếu hoàn cọc này không cần đi qua hóa đơn cuối kỳ.
                 # context chứa thông tin truyền riêng cho thao tác đang chạy.
                 # is not kiểm tra có đúng đối tượng nhận diện của luồng hóa đơn hay không.
                 if self.env.context.get("_invoice_settlement") is not _INVOICE_SETTLEMENT:
                     raise UserError("Hãy xác nhận thu/hoàn tiền trên hóa đơn cuối hợp đồng.")
 
-    def write(self, vals):  # Chặn chuyển phiếu vào hợp đồng hoàn tất, khóa cọc/tiền thuê đã xác nhận từ khi ký và khóa mọi phiếu đã xác nhận khi hoàn tất.
+    def write(self, vals):  # Kiểm tra khi sửa phiếu tiền: chặn mở phiếu của hợp đồng đã hủy và giữ nguyên các khoản đã chốt.
         # write là hàm Odoo gọi khi lưu thay đổi vào bản ghi đã tồn tại.
         # self là các phiếu tiền đang được sửa, có thể gồm nhiều phiếu.
         #
         # vals là dictionary: tập các cặp tên trường và giá trị mới.
         # Ví dụ {"amount": 500000} nghĩa là muốn đổi số tiền thành 500.000.
+
+        if vals.get("state") == "cancelled" and any(payment.state == "confirmed" for payment in self):  # Có phiếu đã ghi nhận thu tiền.
+            raise UserError("Phiếu đã xác nhận thu không được hủy trực tiếp.")  # Giữ nguyên khoản tiền đã thu.
+
+        if vals.get("state") == "confirmed" and self.env.context.get("_contract_confirm") is not _CONTRACT_CONFIRM:  # Không có dấu nội bộ từ nút Ký hợp đồng.
+            for payment in self:  # Kiểm tra từng phiếu đang được xác nhận.
+                if payment.contract_id and payment.transaction_type in ("deposit", "rental_payment"):  # Chỉ khóa hai khoản thu trước của hợp đồng.
+                    raise UserError("Hãy tích đã nhận đủ cọc và tiền thuê, rồi xác nhận trên hợp đồng.")  # Tránh chốt lẻ từng phiếu trong Finance.
+
+        # Hai nút "Về bản nháp" và "Xác nhận" đều đổi trường state qua hàm write này.
+        # get lấy trạng thái mới nếu lần lưu có gửi state; in kiểm tra nó có phải nháp/đã xác nhận.
+        if vals.get("state") in ("draft", "confirmed"):
+            for payment in self:  # Một lần lưu có thể xử lý nhiều phiếu, nên phải kiểm tra từng phiếu.
+                if payment.contract_id.state == "cancelled":  # Hợp đồng đã hủy thì không được ghi nhận thu tiền nữa.
+                    raise UserError("Hợp đồng đã hủy, không thể mở lại hoặc xác nhận phiếu tiền.")
 
         # Chỉ kiểm tra khi dữ liệu lưu có chọn hợp đồng đích.
         if vals.get("contract_id"):
@@ -153,12 +187,12 @@ class MotorbikeRentalPayment(models.Model):
 
         for payment in self:  # Lần lượt kiểm tra từng phiếu đang được sửa.
 
-            # Khóa mọi phiếu đã xác nhận khi hợp đồng hoàn tất (done).
+            # Khóa mọi phiếu đã xác nhận khi hợp đồng hoàn tất (done) hoặc đã hủy (cancelled).
             # Với cọc/tiền thuê, khóa sớm hơn: ngay khi hợp đồng đã ký (confirmed)
             # hoặc đang thuê (in_progress), vì các phiếu này chứng minh đã thu đủ tiền để ký.
             # or nghĩa là "hoặc", and nghĩa là "và"; in kiểm tra giá trị có trong nhóm hay không.
             locked_contract = (
-                payment.contract_id.state == "done"
+                payment.contract_id.state in ("done", "cancelled")  # Phiếu hoàn cọc sau hủy cũng là lịch sử tiền đã chốt.
                 or (
                     payment.contract_id.state in ("confirmed", "in_progress")
                     and payment.transaction_type in ("deposit", "rental_payment")
@@ -180,6 +214,10 @@ class MotorbikeRentalPayment(models.Model):
                 "transaction_type": payment.transaction_type,  # Loại giao dịch: cọc/thuê/hoàn/thu thêm.
                 "currency_id": payment.currency_id.id,  # Đồng tiền; đổi đồng tiền cũng làm sai ý nghĩa số tiền.
                 "state": payment.state,  # Khóa trạng thái để không hủy hoặc đưa phiếu về nháp.
+                "payment_date": fields.Date.to_string(payment.payment_date),  # Khóa ngày thu/hoàn đã ghi nhận.
+                "payment_method": payment.payment_method,  # Khóa phương thức khách đã trả hoặc được hoàn tiền.
+                "reference": payment.reference or False,  # Khóa mã tham chiếu của giao dịch.
+                "invoice_id": payment.invoice_id.id or False,  # Khóa hóa đơn liên kết với phiếu tiền.
             }
 
             # items() lấy từng cặp tên trường và giá trị trong dictionary.
@@ -192,17 +230,17 @@ class MotorbikeRentalPayment(models.Model):
                 # Gửi lại cùng một giá trị thì không bị coi là sửa.
                 if field_name in vals and vals[field_name] != current_value:
                     # raise phát sinh lỗi có chủ đích; dừng trước khi Odoo ghi thay đổi.
-                    raise UserError(
-                        "Phiếu tiền đã được chốt theo hợp đồng, "
-                        "không được đổi số tiền, khách hàng, hợp đồng, "
-                        "loại giao dịch, đồng tiền hoặc trạng thái. "
-                        "Bạn vẫn có thể chỉnh sửa ghi chú."
-                    )
+                    raise UserError("Phiếu tiền đã chốt; chỉ được sửa ghi chú.")  # Báo ngắn gọn quy tắc áp dụng cho mọi trường đã khóa.
 
         # super() gọi hàm lưu dữ liệu sẵn có của Odoo.
         # Chỉ chạy tới đây khi không có thay đổi bị cấm ở tất cả phiếu đang sửa.
         # Trường note (ghi chú) không nằm trong danh sách khóa nên vẫn lưu được.
         return super().write(vals)
+
+    def unlink(self):  # Chặn xóa phiếu đã xác nhận để không mất dấu vết tiền thuê, cọc và khoản hoàn.
+        if self.filtered(lambda payment: payment.state == "confirmed"):  # Trong tập sắp xóa có ít nhất một phiếu đã chốt.
+            raise UserError("Phiếu tiền đã xác nhận không được xóa; bạn vẫn có thể sửa ghi chú.")  # Dừng trước khi xóa bất kỳ phiếu nào.
+        return super().unlink()  # Chỉ phiếu chưa xác nhận mới đi qua quy tắc xóa sẵn có của Odoo.
 
     # 5. Các hàm tính toán ( @api.depends , @api.onchange )
 
@@ -237,10 +275,10 @@ class MotorbikeRentalPayment(models.Model):
             self.amount = contract.total_amount  # Thu toàn bộ tiền thuê ghi trên hợp đồng.
 
         elif self.transaction_type == "refund":  # refund là giao dịch hoàn tiền cho khách.
-            # settlement_balance là số dư: âm nghĩa là đang giữ dư tiền của khách và cần hoàn.
-            # Dấu trừ phía trước đảo số âm thành số dương để ghi số tiền trên phiếu.
-            # max(a, b) lấy số lớn hơn: nếu không cần hoàn thì kết quả là 0, không tạo số tiền âm.
-            self.amount = max(-contract.settlement_balance, 0.0)
+            if contract.state == "confirmed":  # Đã ký nhưng chưa giao xe: chỉ hoàn khoản cọc ghi trên hợp đồng.
+                self.amount = contract.deposit_amount  # Giữ toàn bộ tiền thuê đã nhận; không hoàn tiền thuê.
+            else:  # Đang thuê: tiền cần hoàn do hóa đơn và các khoản phụ phí quyết định.
+                self.amount = max(-contract.settlement_balance, 0.0)  # Đổi số dư âm thành số tiền hoàn dương.
 
         elif self.transaction_type == "additional_payment":  # additional_payment là giao dịch thu thêm.
             # Số dư dương là khách còn thiếu tiền; số dư âm nghĩa là không có khoản cần thu thêm.
@@ -251,9 +289,25 @@ class MotorbikeRentalPayment(models.Model):
 
     # 6. Các hàm Action / Nghiệp vụ (nút bấm button)
     
-    def action_confirm(self):
-        for record in self:
-            record.state = 'confirmed'
+    def action_confirm(self):  # Xác nhận phiếu tiền; phiếu hoàn cọc trước giao xe sẽ tự hủy hợp đồng sau khi hoàn.
+        for record in self:  # Xử lý từng phiếu được chọn trên màn hình Finance hoặc hợp đồng.
+            contract = record.contract_id  # Giữ hợp đồng liên kết để kiểm tra nhánh hoàn cọc.
+            if record.transaction_type == "refund" and contract.state == "confirmed":  # Đây là trường hợp khách hủy sau ký, trước giao xe.
+                contract._check_cancel_before_delivery()  # Kiểm tra lại ngay lúc xác nhận, phòng khi xe vừa được giao.
+                deposits = contract.payment_ids.filtered(lambda payment: payment.transaction_type == "deposit" and payment.state == "confirmed")  # Tìm cọc thực tế đã thu.
+                if len(deposits) != 1:  # Thiếu hoặc trùng phiếu cọc thì chưa biết khoản cần hoàn.
+                    raise UserError("Hợp đồng phải có đúng một phiếu cọc đã xác nhận trước khi hoàn.")  # Dừng trước khi ghi nhận hoàn tiền.
+                if record.customer_id != contract.customer_id or record.currency_id != contract.currency_id:  # Phiếu phải thuộc đúng khách và đồng tiền của hợp đồng.
+                    raise UserError("Khách hàng hoặc đồng tiền trên phiếu hoàn không khớp hợp đồng.")  # Không hoàn sai người hoặc sai loại tiền.
+                if not contract.currency_id.is_zero(record.amount - contract.deposit_amount):  # So sánh theo độ làm tròn của đồng tiền.
+                    raise UserError("Phải hoàn đúng toàn bộ tiền cọc của hợp đồng.")  # Không hoàn thiếu hoặc vượt cọc.
+                other_refunds = contract.payment_ids.filtered(lambda payment: payment.transaction_type == "refund" and payment.state == "confirmed" and payment != record)  # Tìm phiếu hoàn khác đã chốt.
+                if other_refunds:  # Đã hoàn một lần thì không được ghi nhận lần hai.
+                    raise UserError("Hợp đồng đã có phiếu hoàn cọc được xác nhận.")  # Tránh hoàn trùng.
+                record.state = "confirmed"  # Chỉ chốt phiếu sau khi nhân viên đã hoàn cọc thực tế.
+                contract.write({"state": "cancelled", "settlement_status": "settled"})  # Hoàn xong mới hủy hợp đồng; tiền thuê vẫn giữ nguyên.
+            else:  # Các phiếu khác tiếp tục dùng quy trình xác nhận hiện có.
+                record.state = "confirmed"  # Phiếu cọc/thuê cần dấu từ nút Ký hợp đồng; hóa đơn dùng luồng riêng.
 
     def action_cancel(self):
         for record in self:
@@ -310,11 +364,17 @@ class MotorbikeRentalPayment(models.Model):
 
     # model_create_multi cho phép Odoo tạo nhiều thanh toán trong một lần gọi hàm.
     @api.model_create_multi
-    def create(self, vals_list):  # Chặn thêm thanh toán cho hợp đồng hoàn tất và tự cấp mã theo loại giao dịch, ngày thanh toán.
+    def create(self, vals_list):  # Chặn phiếu mới cho hợp đồng đã hủy/hoàn tất, kiểm tra tiền thuê và tự cấp mã phiếu.
         # Kiểm tra trước khi cấp mã và tạo bản ghi thanh toán.
         for vals in vals_list:
             # browse lấy hợp đồng theo mã số; chưa chọn thì trả tập rỗng.
             contract = self.env["rental.contract"].browse(vals.get("contract_id"))
+            # Nếu hợp đồng đã hủy, không tạo thêm bất kỳ phiếu tiền nào gắn với hợp đồng đó.
+            if contract.state == "cancelled":
+                raise UserError("Không thể tạo phiếu tiền cho hợp đồng đã hủy.")  # Dừng trước khi lưu phiếu mới.
+            # Sau khi ký, tiền thuê phải lấy từ phiếu đã tạo cùng hợp đồng nháp.
+            if contract and vals.get("transaction_type") == "rental_payment" and contract.state != "draft":
+                raise UserError("Không thể tạo phiếu thu tiền thuê sau khi ký hợp đồng.")
             if contract.state == "done":
                 raise UserError("Hợp đồng đã hoàn tất, không thể tạo thêm thanh toán.")
 

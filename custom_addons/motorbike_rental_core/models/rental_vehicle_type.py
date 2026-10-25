@@ -26,7 +26,7 @@ class RentalVehicleType(models.Model):
         'res.currency',
         string='Tiền tệ',
         required=True,
-        default=lambda self: self.env.company.currency_id,
+        default=lambda self: self.env.ref('base.VND'),
         readonly=True,
     )
     daily_rate = fields.Monetary(string='Giá thuê mỗi ngày', required=True, default=0)

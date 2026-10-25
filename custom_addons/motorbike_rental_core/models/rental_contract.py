@@ -38,7 +38,7 @@ class RentalContract(models.Model):
     rental_days = fields.Integer(string='Số ngày thuê', compute='_compute_rental_days', store=True)
     currency_id = fields.Many2one(
         'res.currency', string='Tiền tệ', required=True,
-        default=lambda self: self.env.company.currency_id,
+        default=lambda self: self.env.ref('base.VND'),
     )
     deposit_amount = fields.Monetary(
         string='Tiền đặt cọc', required=True, default=0, currency_field='currency_id'
@@ -101,7 +101,11 @@ class RentalContract(models.Model):
     def write(self, vals):
         if vals.get('deposit_amount', 0) < 0:
             raise ValidationError(_('Tiền đặt cọc không được âm.'))
-        if set(vals) - {'state', 'notes'}:
+        # Ghi chú được sửa sau khi ký; Finance được cập nhật trạng thái quyết toán.
+        # Cả hai trường hợp đều không cho sửa lại hợp đồng đã hủy.
+        if self.filtered(lambda contract: contract.state == 'cancelled') and vals:
+            raise UserError(_('Không thể chỉnh sửa hợp đồng đã hủy.'))
+        if set(vals) - {'state', 'notes', 'settlement_status'}:
             locked_contract = self.filtered(lambda contract: contract.state != 'draft')
             if locked_contract:
                 raise UserError(
@@ -239,6 +243,13 @@ class RentalContract(models.Model):
         for contract in self:
             if contract.state != 'draft':
                 raise UserError(_('Chỉ hợp đồng nháp mới có thể được xác nhận.'))
+            # Kiểm tra lại từng xe ngay lúc ký vì tình trạng Fleet có thể đã đổi sau khi chọn xe.
+            for vehicle in contract.line_ids.mapped('vehicle_id'):
+                # Fleet kiểm tra kỹ thuật, khóa thuê và lịch bảo dưỡng trong thời gian hợp đồng.
+                fleet_ok = vehicle.check_fleet_availability(contract.start_date, contract.end_date)[0]['fleet_ok']
+                # Chỉ xe đang sẵn sàng và đạt mọi điều kiện Fleet mới được đưa vào hợp đồng đã ký.
+                if vehicle.operational_status != 'available' or not fleet_ok:
+                    raise UserError(_('Xe %s chưa đủ điều kiện để ký hợp đồng.') % vehicle.display_name)
             contract.state = 'confirmed'
 
     def action_start(self):
