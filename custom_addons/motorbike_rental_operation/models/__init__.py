@@ -6,5 +6,7 @@ from . import price_catalog
 from . import rental_operation_confirm_wizard
 from . import rental_delivery_receipt
 from . import rental_delivery_receipt_wizard
+from . import rental_return_receipt
+from . import rental_return_receipt_wizard
 from . import rental_vehicle_schedule_wizard
 from . import rental_contract

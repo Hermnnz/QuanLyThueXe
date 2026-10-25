@@ -214,17 +214,49 @@ class TestFleetRentalBridge(TransactionCase):
         self.assertFalse(incident.service_id)
         self.assertEqual(incident.needs_repair_display, 'yes')
 
-        # Bấm Đồng bộ dữ liệu từ phiếu
+        # Bấm Lưu thay đổi từ phiếu
         operation.ticket_id.action_bulk_sync_incidents_to_fleet()
         self.assertTrue(incident.service_id)
         self.assertEqual(incident.service_id.vehicle_id.id, self.vehicle.id)
         self.assertEqual(incident.service_id.maintenance_type, 'corrective')
         self.assertEqual(incident.service_id.customer_name, self.customer.name)
         self.assertEqual(incident.service_id.amount, 150000)
+        self.assertEqual(incident.status, 'processing')
 
         # Dữ liệu đã bấm đồng bộ thì KHÔNG cho xóa
         with self.assertRaises(UserError):
             incident.unlink()
+
+        # Thử đổi sự cố đã đồng bộ sang 'Không cần sửa chữa' phải bị chặn
+        with self.assertRaises(UserError):
+            incident.write({'needs_repair_display': 'no'})
+
+        # Tạo sự cố chọn 'Không cần sửa chữa' qua needs_repair_display
+        incident_no_repair = self.env['rental.operation.incident.log'].create({
+            'ticket_id': operation.ticket_id.id,
+            'vehicle_id': self.vehicle.id,
+            'damage_description': 'Trầy xước nhẹ (Không sửa)',
+            'needs_repair_display': 'no',
+        })
+        self.assertFalse(incident_no_repair.needs_repair)
+        self.assertEqual(incident_no_repair.needs_repair_display, 'no')
+        self.assertFalse(incident_no_repair.service_id)
+
+        # Bấm Lưu thay đổi: sự cố 'Không cần sửa chữa' TUYỆT ĐỐI không bị ép thành 'Cần sửa chữa', không bị đẩy đi và lưu ở trạng thái Hoàn tất
+        operation.ticket_id.action_bulk_sync_incidents_to_fleet()
+        self.assertFalse(incident_no_repair.needs_repair)
+        self.assertEqual(incident_no_repair.needs_repair_display, 'no')
+        self.assertFalse(incident_no_repair.service_id)
+        self.assertEqual(incident_no_repair.status, 'resolved')
+
+        # Chỉnh sửa từ 'no' sang 'yes' và ngược lại
+        incident_no_repair.write({'needs_repair_display': 'yes'})
+        self.assertTrue(incident_no_repair.needs_repair)
+        self.assertEqual(incident_no_repair.needs_repair_display, 'yes')
+
+        incident_no_repair.write({'needs_repair_display': 'no'})
+        self.assertFalse(incident_no_repair.needs_repair)
+        self.assertEqual(incident_no_repair.needs_repair_display, 'no')
 
         incident_unsynced = self.env['rental.operation.incident.log'].create({
             'ticket_id': operation.ticket_id.id,
@@ -236,6 +268,7 @@ class TestFleetRentalBridge(TransactionCase):
         self.assertFalse(incident_unsynced.service_id)
         # Dữ liệu chưa đồng bộ thì cho phép xóa bình thường
         incident_unsynced.unlink()
+        incident_no_repair.unlink()
 
     def test_contract_filter_same_customer_vehicle_time_overlap(self):
         # Hợp đồng 1 đã tạo phiếu giao xe

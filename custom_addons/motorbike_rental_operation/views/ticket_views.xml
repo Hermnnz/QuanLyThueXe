@@ -49,6 +49,8 @@
                     <field name="renting_count" invisible="1"/>
                     <field name="returned_count" invisible="1"/>
                     <field name="has_selected_vehicles" invisible="1"/>
+                    <field name="has_selected_receipts" invisible="1"/>
+                    <field name="has_selected_return_receipts" invisible="1"/>
                     <field name="contract_state" invisible="1"/>
                     <div class="oe_button_box" name="button_box">
                         <button class="oe_stat_button" icon="fa-clock-o" type="object" name="action_view_vehicles">
@@ -81,6 +83,12 @@
                                 <span class="o_stat_text">Biên lai giao</span>
                             </div>
                         </button>
+                        <button class="oe_stat_button" icon="fa-undo" type="object" name="action_view_return_receipts">
+                            <div class="o_stat_info">
+                                <span class="o_stat_value"><field name="return_receipt_count"/></span>
+                                <span class="o_stat_text">Biên lai thu hồi</span>
+                            </div>
+                        </button>
                     </div>
                     <div class="oe_title">
                         <h1><field name="name" force_save="1"/></h1>
@@ -98,14 +106,14 @@
                     </group>
                     <notebook>
                         <page string="Tất cả xe bàn giao" name="vehicles">
-                            <div class="mb-3 d-flex flex-wrap align-items-center gap-2" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done'">
+                            <div class="mb-3 d-flex flex-wrap align-items-center gap-2">
                                 <button name="action_select_all_vehicles" type="object" string="Chọn tất cả" class="btn btn-secondary btn-sm" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done'"/>
                                 <button name="action_deselect_all_vehicles" type="object" string="Bỏ chọn" class="btn btn-secondary btn-sm" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done'"/>
                                 <button name="action_bulk_update_schedule" type="object" string="Cập nhật địa điểm / thời gian" class="btn btn-outline-primary btn-sm ms-4" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done' or not has_selected_vehicles"/>
-                                <button name="action_bulk_start_delivery" type="object" string="Bắt đầu giao xe" class="btn btn-primary btn-sm" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done' or not has_selected_vehicles"/>
-                                <button name="action_bulk_confirm_delivery" type="object" string="Xác nhận đã giao" class="btn btn-warning btn-sm" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done' or not has_selected_vehicles"/>
-                                <button name="action_bulk_confirm_return" type="object" string="Xác nhận thu hồi" class="btn btn-success btn-sm" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done' or not has_selected_vehicles"/>
-                                <button name="action_open_delivery_receipt_wizard" type="object" string="Xuất biên lai giao xe" class="btn btn-info btn-sm text-white ms-auto" icon="fa-print" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done'"/>
+                                <div class="ms-auto d-flex align-items-center gap-2">
+                                    <button name="action_open_delivery_receipt_wizard" type="object" string="Xuất biên lai giao xe" class="btn btn-info btn-sm text-white" icon="fa-print" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done'"/>
+                                    <button name="action_open_return_receipt_wizard" type="object" string="Xuất biên lai thu hồi xe" class="btn btn-danger btn-sm text-white" icon="fa-print" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done'"/>
+                                </div>
                             </div>
                             <field name="vehicle_detail_ids" readonly="state in ('done', 'contract_cancelled')" context="{'default_date_checkout': expected_checkout, 'default_date_checkin': expected_checkin, 'default_delivery_location': 'Tại cửa hàng', 'default_return_location': 'Tại cửa hàng'}">
                                 <list create="0" delete="0" editable="bottom">
@@ -116,9 +124,11 @@
                                      <field name="date_checkout" string="Thời gian giao dự kiến" readonly="1" force_save="1" width="175px"/>
                                      <field name="actual_delivery_date" string="Thời gian giao thực tế" optional="show" readonly="parent.state in ('done', 'contract_cancelled')" width="175px"/>
                                      <field name="delivery_location" string="Vị trí giao" optional="show" readonly="status in ('renting', 'returned') or parent.state in ('done', 'contract_cancelled')" width="200px"/>
+                                     <field name="delivery_time" string="Giờ giao" optional="show" readonly="status in ('renting', 'returned') or parent.state in ('done', 'contract_cancelled')" width="110px"/>
                                      <field name="date_checkin" string="Thời gian thu hồi dự kiến" readonly="1" force_save="1" width="175px"/>
                                      <field name="actual_return_date" string="Thời gian thu hồi thực tế" optional="show" readonly="parent.state in ('done', 'contract_cancelled')" width="175px"/>
                                      <field name="return_location" string="Vị trí thu hồi" optional="show" readonly="status == 'returned' or parent.state in ('done', 'contract_cancelled')" width="200px"/>
+                                     <field name="return_time" string="Giờ thu hồi" optional="show" readonly="status == 'returned' or parent.state in ('done', 'contract_cancelled')" width="110px"/>
                                      <field name="qty_helmet" optional="hide" readonly="1" string="Mũ bảo hiểm" width="130px"/>
                                      <field name="qty_raincoat" optional="hide" readonly="1" string="Áo mưa" width="120px"/>
                                      <field name="qty_phone_holder" optional="hide" readonly="1" string="Giá đỡ điện thoại" width="160px"/>
@@ -144,12 +154,14 @@
                                                  <field name="date_checkout" string="Thời gian giao dự kiến" readonly="1" force_save="1"/>
                                                  <field name="actual_delivery_date" string="Thời gian giao thực tế" readonly="parent.state in ('done', 'contract_cancelled')"/>
                                                  <field name="delivery_location" string="Vị trí giao" readonly="status in ('renting', 'returned') or parent.state in ('done', 'contract_cancelled')"/>
+                                                 <field name="delivery_time" string="Giờ giao" readonly="status in ('renting', 'returned') or parent.state in ('done', 'contract_cancelled')"/>
                                              </group>
                                          </group>
                                          <group string="Lịch trình &amp; Vị trí Thu hồi Xe">
                                              <field name="date_checkin" string="Thời gian thu hồi dự kiến" readonly="1" force_save="1"/>
                                              <field name="actual_return_date" string="Thời gian thu hồi thực tế" readonly="parent.state in ('done', 'contract_cancelled')"/>
                                              <field name="return_location" string="Vị trí thu hồi" readonly="status == 'returned' or parent.state in ('done', 'contract_cancelled')"/>
+                                             <field name="return_time" string="Giờ thu hồi" readonly="status == 'returned' or parent.state in ('done', 'contract_cancelled')"/>
                                          </group>
                                          <group string="Phụ kiện bàn giao">
                                              <field name="delivery_receipt_id" invisible="1"/>
@@ -164,116 +176,231 @@
                                  </form>
                              </field>
                         </page>
-                        <page string="Phân loại theo trạng thái" name="status_split">
-                            <group string="1. Danh sách Xe chờ giao (Chưa vận chuyển)" invisible="waiting_count == 0">
-                                <field name="waiting_vehicle_ids" nolabel="1">
-                                    <list create="0" delete="0" edit="0">
-                                        <field name="currency_id" column_invisible="1"/>
-                                        <field name="vehicle_id" width="180px"/>
-                                        <field name="date_checkout" string="Thời gian giao dự kiến" width="175px"/>
-                                        <field name="actual_delivery_date" string="Thời gian giao thực tế" optional="show" width="175px"/>
-                                        <field name="delivery_location" string="Vị trí giao" optional="show" width="200px"/>
-                                        <field name="date_checkin" string="Thời gian thu hồi dự kiến" width="175px"/>
-                                        <field name="actual_return_date" string="Thời gian thu hồi thực tế" optional="show" width="175px"/>
-                                        <field name="return_location" string="Vị trí thu hồi" optional="show" width="200px"/>
-                                        <field name="qty_helmet" optional="hide" string="Mũ bảo hiểm" width="130px"/>
-                                        <field name="qty_raincoat" optional="hide" string="Áo mưa" width="120px"/>
-                                        <field name="qty_phone_holder" optional="hide" string="Giá đỡ điện thoại" width="160px"/>
-                                        <field name="qty_charger" optional="hide" string="Bộ sạc xe" width="130px"/>
-                                        <field name="delivery_visual_note" optional="show" string="Tình trạng ngoại quan" width="240px"/>
-                                        <field name="status" widget="badge" 
-                                               decoration-info="status == 'waiting'" 
-                                               decoration-primary="status == 'delivering'" 
-                                               decoration-warning="status == 'renting'" 
-                                               decoration-success="status == 'returned'" 
-                                               class="text-start text-left" width="140px"/>
-                                    </list>
-                                </field>
-                            </group>
-                            <group string="2. Danh sách Xe đang trên đường giao" invisible="delivering_count == 0">
-                                <field name="delivering_vehicle_ids" nolabel="1">
-                                    <list create="0" delete="0" edit="0">
-                                        <field name="currency_id" column_invisible="1"/>
-                                        <field name="vehicle_id" width="180px"/>
-                                        <field name="date_checkout" string="Thời gian giao dự kiến" width="175px"/>
-                                        <field name="actual_delivery_date" string="Thời gian giao thực tế" optional="show" width="175px"/>
-                                        <field name="delivery_location" string="Vị trí giao" optional="show" width="200px"/>
-                                        <field name="date_checkin" string="Thời gian thu hồi dự kiến" width="175px"/>
-                                        <field name="actual_return_date" string="Thời gian thu hồi thực tế" optional="show" width="175px"/>
-                                        <field name="return_location" string="Vị trí thu hồi" optional="show" width="200px"/>
-                                        <field name="qty_helmet" optional="hide" string="Mũ bảo hiểm" width="130px"/>
-                                        <field name="qty_raincoat" optional="hide" string="Áo mưa" width="120px"/>
-                                        <field name="qty_phone_holder" optional="hide" string="Giá đỡ điện thoại" width="160px"/>
-                                        <field name="qty_charger" optional="hide" string="Bộ sạc xe" width="130px"/>
-                                        <field name="delivery_visual_note" optional="show" string="Tình trạng ngoại quan" width="240px"/>
-                                        <field name="status" widget="badge" 
-                                               decoration-info="status == 'waiting'" 
-                                               decoration-primary="status == 'delivering'" 
-                                               decoration-warning="status == 'renting'" 
-                                               decoration-success="status == 'returned'" 
-                                               class="text-start text-left" width="140px"/>
-                                    </list>
-                                </field>
-                            </group>
-                            <group string="3. Danh sách Xe đang cho thuê (Khách đang đi)" invisible="renting_count == 0">
-                                <field name="renting_vehicle_ids" nolabel="1">
-                                    <list create="0" delete="0" edit="0">
-                                        <field name="currency_id" column_invisible="1"/>
-                                        <field name="vehicle_id" width="180px"/>
-                                        <field name="date_checkout" string="Thời gian giao dự kiến" width="175px"/>
-                                        <field name="actual_delivery_date" string="Thời gian giao thực tế" optional="show" width="175px"/>
-                                        <field name="delivery_location" string="Vị trí giao" optional="show" width="200px"/>
-                                        <field name="date_checkin" string="Thời gian thu hồi dự kiến" width="175px"/>
-                                        <field name="actual_return_date" string="Thời gian thu hồi thực tế" optional="show" width="175px"/>
-                                        <field name="return_location" string="Vị trí thu hồi" optional="show" width="200px"/>
-                                        <field name="qty_helmet" optional="hide" string="Mũ bảo hiểm" width="130px"/>
-                                        <field name="qty_raincoat" optional="hide" string="Áo mưa" width="120px"/>
-                                        <field name="qty_phone_holder" optional="hide" string="Giá đỡ điện thoại" width="160px"/>
-                                        <field name="qty_charger" optional="hide" string="Bộ sạc xe" width="130px"/>
-                                        <field name="delivery_visual_note" optional="show" string="Tình trạng ngoại quan" width="240px"/>
-                                        <field name="status" widget="badge" 
-                                               decoration-info="status == 'waiting'" 
-                                               decoration-primary="status == 'delivering'" 
-                                               decoration-warning="status == 'renting'" 
-                                               decoration-success="status == 'returned'" 
-                                               class="text-start text-left" width="140px"/>
-                                    </list>
-                                </field>
-                            </group>
-                            <group string="4. Danh sách Xe đã thu hồi hoàn tất" invisible="returned_count == 0">
-                                <field name="returned_vehicle_ids" nolabel="1">
-                                    <list create="0" delete="0" edit="0">
-                                        <field name="currency_id" column_invisible="1"/>
-                                        <field name="vehicle_id" width="180px"/>
-                                        <field name="date_checkout" string="Thời gian giao dự kiến" width="175px"/>
-                                        <field name="actual_delivery_date" string="Thời gian giao thực tế" optional="show" width="175px"/>
-                                        <field name="delivery_location" string="Vị trí giao" optional="show" width="200px"/>
-                                        <field name="date_checkin" string="Thời gian thu hồi dự kiến" width="175px"/>
-                                        <field name="actual_return_date" string="Thời gian thu hồi thực tế" optional="show" width="175px"/>
-                                        <field name="return_location" string="Vị trí thu hồi" optional="show" width="200px"/>
-                                        <field name="qty_helmet" optional="hide" string="Mũ bảo hiểm" width="130px"/>
-                                        <field name="qty_raincoat" optional="hide" string="Áo mưa" width="120px"/>
-                                        <field name="qty_phone_holder" optional="hide" string="Giá đỡ điện thoại" width="160px"/>
-                                        <field name="qty_charger" optional="hide" string="Bộ sạc xe" width="130px"/>
-                                        <field name="delivery_visual_note" optional="show" string="Tình trạng ngoại quan" width="240px"/>
-                                        <field name="status" widget="badge" 
-                                               decoration-info="status == 'waiting'" 
-                                               decoration-primary="status == 'delivering'" 
-                                               decoration-warning="status == 'renting'" 
-                                               decoration-success="status == 'returned'" 
-                                               class="text-start text-left" width="140px"/>
-                                    </list>
-                                </field>
-                            </group>
+                        <page string="Biên lai giao xe" name="delivery_receipts">
+                            <div class="mb-3 d-flex flex-wrap align-items-center gap-2">
+                                <button name="action_select_all_receipts" type="object" string="Chọn tất cả" class="btn btn-secondary btn-sm" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done'"/>
+                                <button name="action_deselect_all_receipts" type="object" string="Bỏ chọn" class="btn btn-secondary btn-sm" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done'"/>
+                                <button name="action_bulk_start_delivery_receipts" type="object" string="Bắt đầu giao xe" class="btn btn-primary btn-sm ms-4" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done' or not has_selected_receipts"/>
+                                <button name="action_bulk_confirm_delivery_receipts" type="object" string="Xác nhận đã giao" class="btn btn-warning btn-sm" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done' or not has_selected_receipts"/>
+                            </div>
+                            <field name="receipt_ids" readonly="state in ('done', 'contract_cancelled')">
+                                <list create="0" delete="0" editable="bottom">
+                                    <field name="is_selected" string="Chọn" width="45px" class="o_ticket_select_checkbox"/>
+                                    <field name="name" string="Mã biên lai" readonly="1" width="130px"/>
+                                    <button name="action_open_receipt_detail" type="object" string="Chi tiết" icon="fa-eye" class="btn btn-sm btn-link text-primary" width="90px"/>
+                                    <field name="customer_id" string="Khách nhận xe" readonly="1" width="180px"/>
+                                    <field name="customer_phone" string="Số điện thoại" readonly="1" width="130px"/>
+                                    <field name="delivery_date" string="Ngày giao" readonly="1" width="120px"/>
+                                    <field name="delivery_location" string="Địa điểm giao" readonly="1" width="180px"/>
+                                    <field name="qty_helmet" string="Mũ BH" readonly="1" width="90px"/>
+                                    <field name="qty_raincoat" string="Áo mưa" readonly="1" width="90px"/>
+                                    <field name="qty_phone_holder" string="Giá ĐT" readonly="1" width="90px"/>
+                                    <field name="qty_charger" string="Sạc xe" readonly="1" width="90px"/>
+                                    <field name="state" widget="badge" readonly="1"
+                                           decoration-info="state == 'pending'" 
+                                           decoration-primary="state == 'delivering'" 
+                                           decoration-success="state == 'delivered'" 
+                                           width="140px"/>
+                                    <button name="action_print_receipt" type="object" string="In" icon="fa-print" class="btn btn-sm btn-link text-primary" title="In Biên Lai (PDF)" width="60px"/>
+                                </list>
+                                <form string="Biên Lai Giao Xe">
+                                    <header>
+                                        <button name="action_save_changes" 
+                                                type="object" 
+                                                string="Lưu thay đổi" 
+                                                class="btn-primary" 
+                                                invisible="state == 'delivered'"/>
+                                        <button string="Hủy" 
+                                                class="btn-secondary" 
+                                                special="cancel" 
+                                                invisible="state == 'delivered'"/>
+                                        <button name="action_start_delivery" 
+                                                type="object" 
+                                                string="Bắt đầu giao xe" 
+                                                class="btn-primary" 
+                                                invisible="state != 'pending'"/>
+                                        <button name="action_confirm_delivery" 
+                                                type="object" 
+                                                string="Xác nhận đã giao" 
+                                                class="btn-warning" 
+                                                invisible="state == 'delivered'"/>
+                                        <button name="action_print_receipt" 
+                                                type="object" 
+                                                string="In Biên Lai (PDF)" 
+                                                class="oe_highlight" 
+                                                icon="fa-print"/>
+                                        <field name="state" widget="statusbar" statusbar_visible="pending,delivering,delivered"/>
+                                    </header>
+                                    <sheet>
+                                        <field name="ticket_id" invisible="1"/>
+                                        <div class="oe_title mb-2">
+                                            <label for="name" string="Số Biên Lai"/>
+                                            <h1 class="text-primary"><field name="name" readonly="1"/></h1>
+                                        </div>
+                                        <group>
+                                            <group string="Khách hàng nhận xe">
+                                                <field name="customer_id" string="Khách hàng" readonly="state == 'delivered'"/>
+                                                <field name="customer_phone" string="Số điện thoại" widget="phone" readonly="state == 'delivered'"/>
+                                            </group>
+                                            <group string="Thời gian &amp; Địa điểm giao">
+                                                <field name="delivery_time" string="Giờ giao xe" readonly="state == 'delivered'"/>
+                                                <field name="delivery_date" string="Ngày giao xe" readonly="state == 'delivered'"/>
+                                                <field name="delivery_location" string="Địa điểm giao xe" readonly="state == 'delivered'"/>
+                                                <field name="user_id" string="Nhân viên giao xe" readonly="state == 'delivered'"/>
+                                            </group>
+                                        </group>
+
+                                        <div class="o_horizontal_separator text-uppercase fw-bold mt-2 mb-2" style="font-size: 12px; color: #495057;">
+                                            <i class="fa fa-cubes me-1"/> Phụ kiện kèm theo (Bàn giao theo nhóm xe)
+                                        </div>
+                                        <group>
+                                            <group>
+                                                <field name="qty_helmet" string="Mũ bảo hiểm (cái)" readonly="state == 'delivered'"/>
+                                                <field name="qty_raincoat" string="Áo mưa (cái)" readonly="state == 'delivered'"/>
+                                            </group>
+                                            <group>
+                                                <field name="qty_phone_holder" string="Giá đỡ ĐT / Màn hình (cái)" readonly="state == 'delivered'"/>
+                                                <field name="qty_charger" string="Bộ sạc xe (bộ)" readonly="state == 'delivered'"/>
+                                            </group>
+                                        </group>
+
+                                        <div class="o_horizontal_separator text-uppercase fw-bold mt-3 mb-2" style="font-size: 12px; color: #495057;">
+                                            <i class="fa fa-motorcycle me-1"/> Thông tin xe &amp; Tình trạng ngoại quan ban đầu
+                                        </div>
+                                        <field name="vehicle_ids" readonly="state == 'delivered'">
+                                            <list editable="bottom" create="0" delete="0">
+                                                <field name="vehicle_id" string="Xe" readonly="1"/>
+                                                <field name="license_plate" string="Biển số" readonly="1"/>
+                                                <field name="delivery_time" string="Giờ giao" readonly="1"/>
+                                                <field name="delivery_location" string="Vị trí giao" readonly="1" optional="show"/>
+                                                <field name="delivery_visual_note" string="Tình trạng ngoại quan ban đầu (vết xước, phụ kiện...)" readonly="parent.state == 'delivered'"/>
+                                                <field name="status" widget="badge" 
+                                                       decoration-info="status == 'waiting'" 
+                                                       decoration-primary="status == 'delivering'" 
+                                                       decoration-warning="status == 'renting'" 
+                                                       decoration-success="status == 'returned'" 
+                                                       string="Trạng thái xe" readonly="1"/>
+                                            </list>
+                                        </field>
+                                    </sheet>
+                                </form>
+                            </field>
+                        </page>
+                        <page string="Biên lai thu hồi xe" name="return_receipts">
+                            <div class="mb-3 d-flex flex-wrap align-items-center gap-2">
+                                <button name="action_select_all_return_receipts" type="object" string="Chọn tất cả" class="btn btn-secondary btn-sm" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done'"/>
+                                <button name="action_deselect_all_return_receipts" type="object" string="Bỏ chọn" class="btn btn-secondary btn-sm" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done'"/>
+                                <button name="action_bulk_confirm_return_receipts" type="object" string="Xác nhận đã thu hồi" class="btn btn-success btn-sm ms-4" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done' or not has_selected_return_receipts"/>
+                            </div>
+                            <field name="return_receipt_ids" readonly="state in ('done', 'contract_cancelled')">
+                                <list create="0" delete="0" editable="bottom">
+                                    <field name="is_selected" string="Chọn" width="45px" class="o_ticket_select_checkbox"/>
+                                    <field name="name" string="Mã biên lai" readonly="1" width="130px"/>
+                                    <button name="action_open_receipt_detail" type="object" string="Chi tiết" icon="fa-eye" class="btn btn-sm btn-link text-success" width="90px"/>
+                                    <field name="customer_id" string="Khách trả xe" readonly="1" width="180px"/>
+                                    <field name="customer_phone" string="Số điện thoại" readonly="1" width="130px"/>
+                                    <field name="return_date" string="Ngày thu hồi" readonly="1" width="120px"/>
+                                    <field name="return_time" string="Giờ thu hồi" readonly="1" width="100px"/>
+                                    <field name="return_location" string="Địa điểm thu hồi" readonly="1" width="180px"/>
+                                    <field name="qty_helmet" string="Mũ BH" readonly="1" width="90px"/>
+                                    <field name="qty_raincoat" string="Áo mưa" readonly="1" width="90px"/>
+                                    <field name="qty_phone_holder" string="Giá ĐT" readonly="1" width="90px"/>
+                                    <field name="qty_charger" string="Sạc xe" readonly="1" width="90px"/>
+                                    <field name="state" widget="badge" readonly="1"
+                                           decoration-info="state == 'pending'" 
+                                           decoration-primary="state == 'returning'" 
+                                           decoration-success="state == 'returned'" 
+                                           width="140px"/>
+                                    <button name="action_print_receipt" type="object" string="In" icon="fa-print" class="btn btn-sm btn-link text-success" title="In Biên Lai Thu Hồi (PDF)" width="60px"/>
+                                </list>
+                                <form string="Biên Lai Thu Hồi Xe">
+                                    <header>
+                                        <button name="action_save_changes" 
+                                                type="object" 
+                                                string="Lưu thay đổi" 
+                                                class="btn-primary" 
+                                                invisible="state == 'returned'"/>
+                                        <button string="Hủy" 
+                                                class="btn-secondary" 
+                                                special="cancel" 
+                                                invisible="state == 'returned'"/>
+                                        <button name="action_confirm_return" 
+                                                type="object" 
+                                                string="Xác nhận đã thu hồi" 
+                                                class="btn-success" 
+                                                invisible="state == 'returned'"/>
+                                        <button name="action_print_receipt" 
+                                                type="object" 
+                                                string="In Biên Lai (PDF)" 
+                                                class="oe_highlight" 
+                                                icon="fa-print"/>
+                                        <field name="state" widget="statusbar" statusbar_visible="pending,returning,returned"/>
+                                    </header>
+                                    <sheet>
+                                        <field name="ticket_id" invisible="1"/>
+                                        <div class="oe_title mb-2">
+                                            <label for="name" string="Số Biên Lai Thu Hồi"/>
+                                            <h1 class="text-success"><field name="name" readonly="1"/></h1>
+                                        </div>
+                                        <group>
+                                            <group string="Khách hàng bàn giao lại xe">
+                                                <field name="customer_id" string="Khách hàng" readonly="state == 'returned'"/>
+                                                <field name="customer_phone" string="Số điện thoại" widget="phone" readonly="state == 'returned'"/>
+                                            </group>
+                                            <group string="Thời gian &amp; Địa điểm thu hồi">
+                                                <field name="return_time" string="Giờ thu hồi" readonly="state == 'returned'"/>
+                                                <field name="return_date" string="Ngày thu hồi" readonly="state == 'returned'"/>
+                                                <field name="return_location" string="Địa điểm thu hồi" readonly="state == 'returned'"/>
+                                                <field name="user_id" string="Nhân viên thu hồi xe" readonly="state == 'returned'"/>
+                                            </group>
+                                        </group>
+                                        <div class="o_horizontal_separator text-uppercase fw-bold mt-2 mb-2" style="font-size: 12px; color: #495057;">
+                                            <i class="fa fa-cubes me-1"/> Phụ kiện thu hồi thực tế
+                                        </div>
+                                        <group>
+                                            <group>
+                                                <field name="qty_helmet" string="Mũ bảo hiểm (cái)" readonly="state == 'returned'"/>
+                                                <field name="qty_raincoat" string="Áo mưa (cái)" readonly="state == 'returned'"/>
+                                            </group>
+                                            <group>
+                                                <field name="qty_phone_holder" string="Giá đỡ ĐT / Màn hình (cái)" readonly="state == 'returned'"/>
+                                                <field name="qty_charger" string="Bộ sạc xe (bộ)" readonly="state == 'returned'"/>
+                                            </group>
+                                        </group>
+                                        <group string="Tình trạng ngoại quan / Hư hại khi nhận lại">
+                                            <field name="return_visual_note" string="Ghi chú ngoại quan" readonly="state == 'returned'"/>
+                                        </group>
+                                        <div class="o_horizontal_separator text-uppercase fw-bold mt-3 mb-2" style="font-size: 12px; color: #495057;">
+                                            <i class="fa fa-motorcycle me-1"/> Danh sách xe thu hồi
+                                        </div>
+                                        <field name="vehicle_ids" readonly="state == 'returned'">
+                                            <list editable="bottom" create="0" delete="0">
+                                                <field name="vehicle_id" string="Xe" readonly="1"/>
+                                                <field name="license_plate" string="Biển số" readonly="1"/>
+                                                <field name="return_time" string="Giờ thu hồi" readonly="1"/>
+                                                <field name="return_location" string="Vị trí thu hồi" readonly="1" optional="show"/>
+                                                <field name="return_visual_note" string="Tình trạng ngoại quan khi trả xe" readonly="parent.state == 'returned'"/>
+                                                <field name="status" widget="badge" 
+                                                       decoration-info="status == 'waiting'" 
+                                                       decoration-primary="status == 'delivering'" 
+                                                       decoration-warning="status == 'renting'" 
+                                                       decoration-success="status == 'returned'" 
+                                                       string="Trạng thái xe" readonly="1"/>
+                                            </list>
+                                        </field>
+                                    </sheet>
+                                </form>
+                            </field>
                         </page>
                         <page string="Sự cố &amp; Hư hỏng" name="incidents">
                             <div class="mb-2" invisible="state in ('done', 'contract_cancelled')">
-                                <button name="action_bulk_sync_incidents_to_fleet" type="object" string="Đồng bộ dữ liệu" class="btn btn-sm btn-primary" icon="fa-refresh"/>
+                                <button name="action_bulk_sync_incidents_to_fleet" type="object" string="Lưu thay đổi" class="btn btn-sm btn-primary" icon="fa-save" confirm="Xác nhận lưu thay đổi các sự cố?"/>
                             </div>
                             <field name="incident_ids" readonly="state in ('done', 'contract_cancelled')" context="{'default_ticket_id': id}">
                                 <list editable="bottom" delete="0">
                                     <field name="currency_id" column_invisible="1"/>
                                     <field name="available_vehicle_ids" column_invisible="1"/>
+                                    <field name="needs_repair" column_invisible="1"/>
                                     <field name="name" readonly="1" force_save="1" width="120px"/>
                                     <field name="vehicle_id" options="{'no_create': True, 'no_open': True}" width="160px"/>
                                     <field name="price_catalog_id" options="{'no_create': True, 'no_open': True}" width="180px"/>
@@ -281,19 +408,21 @@
                                     <field name="unit" width="80px" readonly="1" force_save="1"/>
                                     <field name="fault_party" width="130px"/>
                                     <field name="needs_repair_display" string="Cần sửa chữa?" width="140px"/>
+                                    <field name="status" widget="badge" decoration-warning="status == 'processing'" decoration-success="status == 'resolved'" width="130px" readonly="1" force_save="1"/>
                                     <field name="service_id" column_invisible="1"/>
                                     <field name="damage_description" width="240px"/>
                                     <field name="date_reported" width="160px"/>
                                 </list>
                                 <form>
                                     <header>
-                                        <button name="action_create_fleet_service" type="object" string="Đồng bộ dữ liệu" class="btn-primary" invisible="service_id"/>
+                                        <button name="action_create_fleet_service" type="object" string="Lưu thay đổi" class="btn-primary" invisible="service_id" confirm="Xác nhận lưu thay đổi các sự cố?"/>
                                         <button name="action_open_fleet_service" type="object" string="Xem phiếu Bảo dưỡng &amp; Sửa chữa" class="btn-secondary" invisible="not service_id"/>
-                                        <field name="status" widget="statusbar" statusbar_visible="new,processing,resolved"/>
+                                        <field name="status" widget="statusbar" statusbar_visible="processing,resolved"/>
                                     </header>
                                     <sheet>
                                         <field name="available_vehicle_ids" invisible="1"/>
                                         <field name="currency_id" invisible="1"/>
+                                        <field name="needs_repair" invisible="1"/>
                                         <group>
                                             <group string="Thông tin xe &amp; thời gian">
                                                 <field name="name" readonly="1" force_save="1"/>
@@ -317,26 +446,6 @@
                                         </group>
                                     </sheet>
                                 </form>
-                            </field>
-                        </page>
-                        <page string="Biên lai giao xe" name="delivery_receipts">
-                            <div class="o_horizontal_separator mt-2 mb-3 text-uppercase fw-bold text-primary" style="font-size: 15px; border-bottom: 2px solid #0d6efd; padding-bottom: 6px;">
-                                <i class="fa fa-file-text-o me-2"/>Danh sách Biên lai Giao xe &amp; Trang thiết bị bàn giao
-                            </div>
-                            <field name="receipt_ids" nolabel="1" readonly="1">
-                                <list string="Danh sách Biên Lai Giao Xe" create="0" delete="0">
-                                    <field name="name" string="Mã biên lai" width="150px"/>
-                                    <field name="delivery_date" string="Ngày giao xe" width="160px"/>
-                                    <field name="delivery_time" string="Giờ giao xe" width="120px"/>
-                                    <field name="delivery_location" string="Địa điểm giao xe" width="260px"/>
-                                    <field name="vehicle_ids" widget="many2many_tags" string="Danh sách xe bàn giao" width="280px"/>
-                                    <field name="qty_helmet" string="Mũ bảo hiểm" width="130px"/>
-                                    <field name="qty_raincoat" string="Áo mưa" width="120px"/>
-                                    <field name="qty_phone_holder" string="Giá đỡ điện thoại" width="160px"/>
-                                    <field name="qty_charger" string="Bộ sạc xe" width="130px"/>
-                                    <field name="state" widget="badge" decoration-success="state == 'confirmed'" string="Trạng thái" width="140px"/>
-                                    <button name="action_print_receipt" type="object" string="In lại biên lai" icon="fa-print" class="btn-sm btn-secondary" width="140px"/>
-                                </list>
                             </field>
                         </page>
                     </notebook>

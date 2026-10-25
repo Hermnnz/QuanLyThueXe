@@ -4,7 +4,7 @@
         <field name="name">rental.vehicle.schedule.wizard.form</field>
         <field name="model">rental.vehicle.schedule.wizard</field>
         <field name="arch" type="xml">
-            <form string="Cập nhật Địa điểm &amp; Giờ Giao xe">
+            <form string="Cập nhật Địa điểm &amp; Giờ Giao / Thu hồi xe">
                 <sheet>
                     <div class="alert alert-info d-flex align-items-center mb-3" role="alert">
                         <i class="fa fa-info-circle fa-2x me-3 text-info"/>
@@ -19,6 +19,7 @@
                         </group>
                         <group string="Thông tin Thu hồi xe">
                             <field name="return_location" placeholder="Mặc định: Tại cửa hàng"/>
+                            <field name="return_time" placeholder="VD: 12:00 hoặc 18:00"/>
                         </group>
                     </group>
                     <notebook>
@@ -30,6 +31,7 @@
                                     <field name="delivery_location"/>
                                     <field name="delivery_time"/>
                                     <field name="return_location"/>
+                                    <field name="return_time" string="Giờ thu hồi xe"/>
                                 </list>
                             </field>
                         </page>

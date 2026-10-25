@@ -30,17 +30,20 @@ class RentalOperationTicketVehicle(models.Model):
     )
 
     vehicle_id = fields.Many2one('fleet.vehicle', string='Xe', required=True)
+    license_plate = fields.Char(string='Biển số xe', related='vehicle_id.license_plate', readonly=True)
     vehicle_price = fields.Monetary(string='Giá tiền xe', default=0.0, currency_field='currency_id')
 
     # Thông tin vận chuyển - Mặc định lấy từ địa điểm chung của hợp đồng/phiếu
     delivery_location = fields.Char(string='Vị trí giao', default='Tại cửa hàng')
     return_location = fields.Char(string='Vị trí thu hồi', default='Tại cửa hàng')
     delivery_time = fields.Char(string='Giờ giao xe', default=False, help='Thời gian dự kiến giao xe (VD: 08:30)')
+    return_time = fields.Char(string='Giờ thu hồi xe', default=False, help='Thời gian dự kiến thu hồi xe (VD: 18:00)')
 
     # Đánh dấu người dùng đã chỉnh riêng địa điểm / thời gian (không bị ghi đè khi đổi giá trị chung)
     is_custom_delivery_location = fields.Boolean(string='Chỉnh địa điểm giao riêng', default=False)
     is_custom_return_location = fields.Boolean(string='Chỉnh địa điểm thu hồi riêng', default=False)
     is_custom_delivery_time = fields.Boolean(string='Chỉnh giờ giao riêng', default=False)
+    is_custom_return_time = fields.Boolean(string='Chỉnh giờ thu hồi riêng', default=False)
 
     @api.onchange('delivery_location')
     def _onchange_delivery_location(self):
@@ -66,10 +69,27 @@ class RentalOperationTicketVehicle(models.Model):
         if self.ticket_id and hasattr(self.ticket_id, 'quick_delivery_time') and self.delivery_time != self.ticket_id.quick_delivery_time:
             self.is_custom_delivery_time = True
 
+    @api.onchange('return_time')
+    def _onchange_return_time(self):
+        if self.status == 'returned':
+            name = self._get_vehicle_label()
+            raise UserError(f'Xe {name} đã được thu hồi hoàn tất, không được phép chỉnh sửa Giờ thu hồi xe!')
+        if self.ticket_id and hasattr(self.ticket_id, 'quick_return_time') and self.return_time != self.ticket_id.quick_return_time:
+            self.is_custom_return_time = True
+
     # Thông tin Biên lai bàn giao xe & Phụ kiện đi kèm (lưu vết phục vụ khi Thu hồi xe)
     delivery_receipt_id = fields.Many2one('rental.delivery.receipt', string='Biên lai giao xe', readonly=True)
     delivery_receipt_issued = fields.Boolean(string='Đã xuất biên lai', default=False, readonly=True)
     receipt_printed_at = fields.Datetime(string='Thời điểm xuất biên lai', readonly=True)
+
+    # Thông tin Biên lai thu hồi xe & Tình trạng khi trả
+    return_receipt_id = fields.Many2one('rental.return.receipt', string='Biên lai thu hồi xe', readonly=True)
+    return_receipt_issued = fields.Boolean(string='Đã xuất biên lai thu hồi', default=False, readonly=True)
+    return_receipt_printed_at = fields.Datetime(string='Thời điểm xuất biên lai thu hồi', readonly=True)
+    return_visual_note = fields.Text(
+        string='Ngoại quan khi thu hồi',
+        default='Xe hoàn trả đầy đủ, ngoại quan bình thường, không trầy xước phát sinh.'
+    )
 
     # 4 món phụ kiện đi kèm cố định (mặc định 2 mũ, 2 áo mưa, 1 giá đt, 1 sạc/xe)
     qty_helmet = fields.Integer(string='Mũ bảo hiểm', default=2)
@@ -261,6 +281,7 @@ class RentalOperationTicketVehicle(models.Model):
             })
             if rec.vehicle_id:
                 rec.vehicle_id.write({'operational_status': 'renting'})
+        self._sync_delivery_receipt_state()
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -280,12 +301,24 @@ class RentalOperationTicketVehicle(models.Model):
                     rec.vehicle_id.write({'operational_status': 'renting'})
         return records
 
+    def _sync_delivery_receipt_state(self):
+        """Đồng bộ trạng thái biên lai giao xe khi xe chuyển trạng thái"""
+        receipts = self.mapped('delivery_receipt_id') | self.mapped('ticket_id.receipt_ids')
+        if receipts:
+            receipts._compute_state()
+
+    def _sync_return_receipt_state(self):
+        """Đồng bộ trạng thái biên lai thu hồi xe khi xe chuyển trạng thái"""
+        receipts = self.mapped('return_receipt_id') | self.mapped('ticket_id.return_receipt_ids')
+        if receipts:
+            receipts._compute_state()
+
     def _sync_contract_in_progress(self):
         """Khi có xe trong bản ghi giao xe được giao ('renting'), chuyển hợp đồng sang Đang thuê ('in_progress')"""
         for rec in self:
             contract = rec.ticket_id.contract_id if rec.ticket_id else False
             if contract and contract.state == 'confirmed':
-                contract.write({'state': 'in_progress'})
+                contract.sudo().write({'state': 'in_progress'})
 
     def action_confirm_delivery(self):
         """Xác nhận đã bàn giao xe thành công cho khách - Xe bên Bắc ở trạng thái Đang cho thuê (renting)"""
@@ -311,6 +344,8 @@ class RentalOperationTicketVehicle(models.Model):
             rec._sync_contract_in_progress()
             if rec.vehicle_id:
                 rec.vehicle_id.write({'operational_status': 'renting'})
+        self._sync_delivery_receipt_state()
+        self._sync_return_receipt_state()
 
     def action_confirm_return(self):
         """Xác nhận thu hồi xe từ khách - Mặc định xe bên Bắc chuyển sang Chờ kiểm tra (pending_inspection)"""
@@ -340,6 +375,8 @@ class RentalOperationTicketVehicle(models.Model):
                     'operational_status': 'pending_inspection',
                     'technical_ready': False,
                 })
+        self._sync_delivery_receipt_state()
+        self._sync_return_receipt_state()
 
     def write(self, vals):
         for rec in self:
@@ -362,6 +399,11 @@ class RentalOperationTicketVehicle(models.Model):
                 if rec.status == 'returned' and vals['return_location'] != rec.return_location:
                     name = rec._get_vehicle_label()
                     raise UserError(f'Xe {name} đã được thu hồi hoàn tất, không được phép chỉnh sửa Địa chỉ thu hồi xe!')
+        if 'return_time' in vals:
+            for rec in self:
+                if rec.status == 'returned' and vals['return_time'] != rec.return_time:
+                    name = rec._get_vehicle_label()
+                    raise UserError(f'Xe {name} đã được thu hồi hoàn tất, không được phép chỉnh sửa Giờ thu hồi xe!')
 
         res = super(RentalOperationTicketVehicle, self).write(vals)
         if 'status' in vals:
@@ -377,6 +419,31 @@ class RentalOperationTicketVehicle(models.Model):
                 # Khi xe ở trạng thái đã giao xe ('renting'), hợp đồng chuyển sang trạng thái Đang thuê ('in_progress')
                 if vals['status'] == 'renting':
                     rec._sync_contract_in_progress()
+            self._sync_delivery_receipt_state()
+            self._sync_return_receipt_state()
+
+        if 'delivery_location' in vals or 'delivery_time' in vals:
+            for rec in self:
+                if rec.delivery_receipt_id and rec.delivery_receipt_id.state != 'delivered':
+                    r_vals = {}
+                    if 'delivery_location' in vals and vals['delivery_location']:
+                        r_vals['delivery_location'] = vals['delivery_location']
+                    if 'delivery_time' in vals:
+                        r_vals['delivery_time'] = vals['delivery_time']
+                    if r_vals:
+                        rec.delivery_receipt_id.write(r_vals)
+
+        if 'return_location' in vals or 'return_time' in vals:
+            for rec in self:
+                if rec.return_receipt_id and rec.return_receipt_id.state != 'returned':
+                    r_vals = {}
+                    if 'return_location' in vals and vals['return_location']:
+                        r_vals['return_location'] = vals['return_location']
+                    if 'return_time' in vals:
+                        r_vals['return_time'] = vals['return_time']
+                    if r_vals:
+                        rec.return_receipt_id.write(r_vals)
+
         return res
 
     def action_reset_waiting(self):

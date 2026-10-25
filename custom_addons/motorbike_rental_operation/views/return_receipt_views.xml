@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_rental_return_receipt" model="ir.actions.act_window">
+        <field name="name">Biên Lai Thu Hồi Xe</field>
+        <field name="res_model">rental.return.receipt</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_rental_return_receipt_tree" model="ir.ui.view">
+        <field name="name">rental.return.receipt.list</field>
+        <field name="model">rental.return.receipt</field>
+        <field name="arch" type="xml">
+            <list string="Biên Lai Thu Hồi Xe" create="0" class="o_rental_receipt_list_table">
+                <header>
+                    <button name="action_confirm_return" type="object" string="Xác nhận đã thu hồi" class="btn-success"/>
+                </header>
+                <field name="is_selected" string="Chọn" width="45px"/>
+                <field name="name" width="130px"/>
+                <field name="return_date" width="140px"/>
+                <field name="return_time" width="110px"/>
+                <field name="customer_id" width="180px"/>
+                <field name="customer_phone" widget="phone" optional="show" width="130px"/>
+                <field name="ticket_id" width="160px"/>
+                <field name="vehicle_count" string="Số xe" width="80px"/>
+                <field name="qty_helmet" string="Mũ bảo hiểm" width="130px"/>
+                <field name="qty_raincoat" string="Áo mưa" width="120px"/>
+                <field name="qty_phone_holder" string="Giá đỡ điện thoại" width="160px"/>
+                <field name="qty_charger" string="Bộ sạc xe" width="130px"/>
+                <field name="state" widget="badge" 
+                       decoration-info="state == 'pending'" 
+                       decoration-primary="state == 'returning'" 
+                       decoration-success="state == 'returned'" 
+                       width="140px"/>
+                <button name="action_print_receipt" type="object" string="In" icon="fa-print" class="btn btn-sm btn-link text-success" title="In Biên Lai Thu Hồi (PDF)"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_rental_return_receipt_form" model="ir.ui.view">
+        <field name="name">rental.return.receipt.form</field>
+        <field name="model">rental.return.receipt</field>
+        <field name="arch" type="xml">
+            <form string="Biên Lai Thu Hồi Xe">
+                <header>
+                    <button name="action_save_changes" 
+                            type="object" 
+                            string="Lưu thay đổi" 
+                            class="btn-primary" 
+                            invisible="state == 'returned'"/>
+                    <button string="Hủy" 
+                            class="btn-secondary" 
+                            special="cancel" 
+                            invisible="state == 'returned'"/>
+                    <button name="action_confirm_return" 
+                            type="object" 
+                            string="Xác nhận đã thu hồi" 
+                            class="btn-success" 
+                            invisible="state == 'returned'"/>
+                    <button name="action_print_receipt" 
+                            type="object" 
+                            string="In Biên Lai (PDF)" 
+                            class="oe_highlight" 
+                            icon="fa-print"/>
+                    <field name="state" widget="statusbar" statusbar_visible="pending,returning,returned"/>
+                </header>
+                <sheet>
+                    <field name="ticket_id" invisible="1"/>
+                    <div class="oe_title mb-2">
+                        <label for="name" string="Số Biên Lai Thu Hồi"/>
+                        <h1 class="text-success"><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Khách hàng bàn giao lại xe">
+                            <field name="customer_id" string="Khách hàng" readonly="state == 'returned'"/>
+                            <field name="customer_phone" string="Số điện thoại" widget="phone" readonly="state == 'returned'"/>
+                        </group>
+                        <group string="Thời gian &amp; Địa điểm thu hồi">
+                            <field name="return_time" string="Giờ thu hồi" readonly="state == 'returned'"/>
+                            <field name="return_date" string="Ngày thu hồi" readonly="state == 'returned'"/>
+                            <field name="return_location" string="Địa điểm thu hồi" readonly="state == 'returned'"/>
+                            <field name="user_id" string="Nhân viên thu hồi xe" readonly="state == 'returned'"/>
+                        </group>
+                    </group>
+
+                    <div class="o_horizontal_separator text-uppercase fw-bold mt-2 mb-2" style="font-size: 12px; color: #495057;">
+                        <i class="fa fa-cubes me-1"/> Phụ kiện thu hồi thực tế
+                    </div>
+                    <group>
+                        <group>
+                            <field name="qty_helmet" string="Mũ bảo hiểm (cái)" readonly="state == 'returned'"/>
+                            <field name="qty_raincoat" string="Áo mưa (cái)" readonly="state == 'returned'"/>
+                        </group>
+                        <group>
+                            <field name="qty_phone_holder" string="Giá đỡ ĐT / Màn hình (cái)" readonly="state == 'returned'"/>
+                            <field name="qty_charger" string="Bộ sạc xe (bộ)" readonly="state == 'returned'"/>
+                        </group>
+                    </group>
+
+                    <group string="Tình trạng ngoại quan / Hư hại khi nhận lại">
+                        <field name="return_visual_note" string="Ghi chú ngoại quan" readonly="state == 'returned'"/>
+                    </group>
+
+                    <div class="o_horizontal_separator text-uppercase fw-bold mt-3 mb-2" style="font-size: 12px; color: #495057;">
+                        <i class="fa fa-motorcycle me-1"/> Danh sách xe thu hồi
+                    </div>
+                    <field name="vehicle_ids" readonly="state == 'returned'">
+                        <list editable="bottom" create="0" delete="0">
+                            <field name="vehicle_id" string="Xe" readonly="1"/>
+                            <field name="license_plate" string="Biển số" readonly="1"/>
+                            <field name="return_time" string="Giờ thu hồi" readonly="1"/>
+                            <field name="return_location" string="Vị trí thu hồi" readonly="1" optional="show"/>
+                            <field name="return_visual_note" string="Tình trạng ngoại quan khi trả xe" readonly="parent.state == 'returned'"/>
+                            <field name="status" widget="badge" 
+                                   decoration-info="status == 'waiting'" 
+                                   decoration-primary="status == 'delivering'" 
+                                   decoration-warning="status == 'renting'" 
+                                   decoration-success="status == 'returned'" 
+                                   string="Trạng thái xe" readonly="1"/>
+                        </list>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

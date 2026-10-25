@@ -27,19 +27,10 @@ class RentalIncidentLog(models.Model):
                 qty = vals.get('quantity') if vals.get('quantity') is not None else 1
                 price = vals.get('unit_price') or 0.0
 
-            # Đồng bộ hai chiều giữa needs_repair_display và needs_repair
-            if 'needs_repair_display' in vals:
+            if 'needs_repair_display' in vals and 'needs_repair' not in vals:
                 vals['needs_repair'] = (vals['needs_repair_display'] == 'yes')
-            elif 'needs_repair' in vals:
-                vals['needs_repair_display'] = 'yes' if vals['needs_repair'] else 'no'
-            else:
-                vals['needs_repair'] = True
-                vals['needs_repair_display'] = 'yes'
-        records = super(RentalIncidentLog, self.with_context(skip_needs_repair_inverse=True)).create(vals_list)
-        # Tự động đồng bộ sang Fleet ngay sau khi tạo bản ghi sự cố
-        for rec in records:
-            rec._sync_to_fleet_service()
-        return records
+
+        return super(RentalIncidentLog, self).create(vals_list)
 
     def write(self, vals):
         for rec in self:
@@ -49,13 +40,21 @@ class RentalIncidentLog(models.Model):
             new_ticket = self.env['rental.operation.ticket'].browse(vals['ticket_id'])
             if new_ticket.state == 'contract_cancelled':
                 raise UserError(_('Không thể liên kết sự cố tới phiếu vận hành ở trạng thái "Hợp đồng bị hủy"!'))
-        if not self.env.context.get('skip_needs_repair_inverse'):
-            if 'needs_repair_display' in vals and 'needs_repair' not in vals:
-                vals['needs_repair'] = (vals['needs_repair_display'] == 'yes')
-            elif 'needs_repair' in vals and 'needs_repair_display' not in vals:
-                vals['needs_repair_display'] = 'yes' if vals['needs_repair'] else 'no'
-        res = super(RentalIncidentLog, self).write(vals)
-        return res
+
+        if 'needs_repair_display' in vals and 'needs_repair' not in vals:
+            vals['needs_repair'] = (vals['needs_repair_display'] == 'yes')
+
+        # Nếu đã có hồ sơ sửa chữa bên Fleet (service_id), không cho phép đổi thành "Không cần sửa chữa"
+        is_turning_off_repair = (
+            ('needs_repair' in vals and not vals['needs_repair']) or
+            ('needs_repair_display' in vals and vals['needs_repair_display'] == 'no')
+        )
+        if is_turning_off_repair:
+            for rec in self:
+                if rec.service_id:
+                    raise UserError(_('Sự cố "%s" đã được đồng bộ sang hồ sơ bảo dưỡng & sửa chữa của Fleet, không thể chuyển thành "Không cần sửa chữa"!') % (rec.name or ''))
+
+        return super(RentalIncidentLog, self).write(vals)
 
     ticket_id = fields.Many2one(
         'rental.operation.ticket', 
@@ -159,14 +158,14 @@ class RentalIncidentLog(models.Model):
 
     damage_description = fields.Text(string='Mô tả chi tiết lỗi')
 
-    needs_repair = fields.Boolean(string='Cần sửa chữa?', default=True)
+    needs_repair = fields.Boolean(string='Cần sửa chữa?', default=False)
     needs_repair_display = fields.Selection(
         [
-            ('yes', 'Cần sửa chữa'),
             ('no', 'Không cần sửa chữa'),
+            ('yes', 'Cần sửa chữa'),
         ],
         string='Cần sửa chữa?',
-        default='yes',
+        default='no',
         compute='_compute_needs_repair_display',
         inverse='_inverse_needs_repair_display',
         store=True,
@@ -179,18 +178,34 @@ class RentalIncidentLog(models.Model):
             if len(vehicles) == 1 and not self.vehicle_id:
                 self.vehicle_id = vehicles[0]
 
+    @api.onchange('needs_repair_display')
+    def _onchange_needs_repair_display(self):
+        if self.service_id and self.needs_repair_display == 'no':
+            self.needs_repair_display = 'yes'
+            self.needs_repair = True
+            return {
+                'warning': {
+                    'title': _('Cảnh báo'),
+                    'message': _('Sự cố này đã được đồng bộ sang hồ sơ bảo dưỡng & sửa chữa của Fleet, không thể chuyển thành "Không cần sửa chữa"!')
+                }
+            }
+        if self.needs_repair_display:
+            self.needs_repair = (self.needs_repair_display == 'yes')
+
+    @api.onchange('needs_repair')
+    def _onchange_needs_repair(self):
+        self.needs_repair_display = 'yes' if self.needs_repair else 'no'
+
     @api.depends('needs_repair')
     def _compute_needs_repair_display(self):
         for rec in self:
             rec.needs_repair_display = 'yes' if rec.needs_repair else 'no'
 
     def _inverse_needs_repair_display(self):
-        if self.env.context.get('skip_needs_repair_inverse'):
-            return
         for rec in self:
-            target_bool = (rec.needs_repair_display == 'yes')
-            if rec.needs_repair != target_bool:
-                rec.needs_repair = target_bool
+            is_repair = (rec.needs_repair_display == 'yes')
+            if rec.needs_repair != is_repair:
+                rec.needs_repair = is_repair
 
     service_id = fields.Many2one(
         'fleet.vehicle.log.services',
@@ -204,7 +219,7 @@ class RentalIncidentLog(models.Model):
         if self.env.context.get('skip_sync_fleet'):
             return
         Service = self.env['fleet.vehicle.log.services'].sudo()
-        for rec in self.with_context(skip_sync_fleet=True, skip_needs_repair_inverse=True):
+        for rec in self.with_context(skip_sync_fleet=True):
             if rec.needs_repair and not rec.service_id and rec.vehicle_id:
                 cust_name = False
                 cust_phone = False
@@ -235,18 +250,25 @@ class RentalIncidentLog(models.Model):
                     service_vals['service_type_id'] = service_type.id
 
                 service = Service.create(service_vals)
-                rec.sudo().with_context(skip_sync_fleet=True, skip_needs_repair_inverse=True).write({'service_id': service.id})
+                rec.sudo().with_context(skip_sync_fleet=True).write({'service_id': service.id})
                 rec.service_id = service
 
     def action_create_fleet_service(self):
-        """Thủ công tạo phiếu bảo dưỡng / sửa chữa sang Fleet nếu chưa có"""
+        """Lưu thay đổi cho sự cố:
+        - Nếu cần sửa chữa: tạo phiếu bảo dưỡng / sửa chữa sang Fleet và lưu trạng thái Đang thực hiện ('processing')
+        - Nếu không cần sửa chữa: lưu ở trạng thái Hoàn tất ('resolved')
+        """
         for rec in self:
-            if not rec.vehicle_id:
-                raise UserError('Vui lòng chọn xe gặp sự cố trước khi tạo phiếu bảo dưỡng / sửa chữa.')
-            rec.sudo().with_context(skip_sync_fleet=True).write({'needs_repair': True, 'needs_repair_display': 'yes'})
-            rec.needs_repair = True
-            rec.needs_repair_display = 'yes'
-        self._sync_to_fleet_service()
+            if rec.needs_repair:
+                if not rec.vehicle_id:
+                    raise UserError(_('Vui lòng chọn xe gặp sự cố trước khi lưu thay đổi.'))
+                if not rec.service_id:
+                    rec._sync_to_fleet_service()
+                if rec.status != 'processing':
+                    rec.write({'status': 'processing'})
+            else:
+                if rec.status != 'resolved':
+                    rec.write({'status': 'resolved'})
         return True
 
     def action_open_fleet_service(self):
@@ -264,10 +286,17 @@ class RentalIncidentLog(models.Model):
         }
 
     status = fields.Selection([
-        ('new', 'Mới'),
-        ('processing', 'Đang xử lý'),
-        ('resolved', 'Đã giải quyết')
-    ], string='Trạng thái', default='new')
+        ('processing', 'Đang thực hiện'),
+        ('resolved', 'Hoàn tất')
+    ], string='Trạng thái', default='processing')
+
+    def init(self):
+        super().init()
+        self.env.cr.execute("""
+            UPDATE rental_operation_incident_log
+            SET status = 'processing'
+            WHERE status = 'new' OR status IS NULL
+        """)
 
     def _get_incident_label(self):
         self.ensure_one()
@@ -291,8 +320,6 @@ class RentalIncidentLog(models.Model):
         """Xác nhận sự cố đã được xử lý / khắc phục hoàn tất"""
         for rec in self:
             label = rec._get_incident_label()
-            if rec.status == 'new':
-                raise UserError(f'Sự cố {label} chưa được bắt đầu xử lý!')
             if rec.status == 'resolved':
                 raise UserError(f'Sự cố {label} đã hoàn tất trước đó!')
             rec.write({
