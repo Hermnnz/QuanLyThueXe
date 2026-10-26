@@ -4,9 +4,11 @@
         <field name="name">rental.contract.calendar</field>
         <field name="model">rental.contract</field>
         <field name="arch" type="xml">
-            <calendar string="Lịch thuê xe" date_start="start_date" date_stop="end_date" color="state" mode="week" quick_create="false">
+            <calendar string="Lịch thuê xe" date_start="start_date" date_stop="end_date" create_name_field="calendar_title" color="state" mode="month" quick_create="false">
+                <field name="calendar_title"/>
                 <field name="name"/>
                 <field name="customer_id"/>
+                <field name="vehicle_summary"/>
                 <field name="state"/>
                 <field name="rental_days"/>
                 <field name="total_amount"/>
@@ -26,6 +28,10 @@
                 <field name="rental_days"/>
                 <field name="total_amount"/>
                 <field name="state" widget="badge"/>
+                <button name="action_upload_customer_document" type="object"
+                        string="Tải scan"
+                        icon="fa-upload"
+                        invisible="state != 'draft' or not customer_id"/>
             </list>
         </field>
     </record>
@@ -37,7 +43,7 @@
             <form string="Hợp đồng thuê xe">
                 <header>
                     <button name="action_confirm" type="object" string="Xác nhận" class="btn-primary" invisible="state != 'draft'"/>
-                    <button name="action_start" type="object" string="Bắt đầu thuê" class="btn-primary" invisible="state != 'confirmed'"/>
+                    <button name="action_upload_customer_document" type="object" string="Tải scan khách hàng" invisible="state != 'draft' or not customer_id"/>
                     <button name="action_done" type="object" string="Hoàn tất" class="btn-primary" invisible="state != 'in_progress'"/>
                     <button name="action_cancel" type="object" string="Hủy" invisible="state in ('done', 'cancelled')"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,in_progress,done,cancelled" readonly="1"/>
@@ -55,10 +61,24 @@
                         </group>
                         <group string="Chi phí">
                             <field name="currency_id" invisible="1"/>
-                            <field name="rental_days"/>
+                            <field name="rental_days" readonly="state != 'draft'"/>
                             <field name="deposit_amount" readonly="state != 'draft'"/>
                             <field name="total_amount"/>
                         </group>
+                    </group>
+                    <group string="Thông tin khách hàng bắt buộc trước khi xác nhận"
+                           invisible="state != 'draft'">
+                        <group>
+                            <field name="customer_name" readonly="not customer_id"/>
+                            <field name="customer_phone" readonly="not customer_id"/>
+                        </group>
+                        <group>
+                            <field name="customer_email" readonly="not customer_id"/>
+                            <field name="customer_id_number" readonly="not customer_id"/>
+                        </group>
+                        <div class="text-muted" colspan="2">
+                            Tải tối thiểu một tệp scan bất kỳ bằng nút Tải scan khách hàng ở phía trên.
+                        </div>
                     </group>
                     <group string="Xe thuê">
                         <field name="line_ids" readonly="state != 'draft'">
@@ -119,7 +139,7 @@
         <field name="context">{'search_default_reserved': 1}</field>
     </record>
 
-    <menuitem id="menu_motorbike_rental_root" name="Cho thuê xe máy" sequence="35" groups="motorbike_rental_core.group_rental_user"/>
+    <menuitem id="menu_motorbike_rental_root" name="Cho thuê xe" sequence="35" groups="motorbike_rental_core.group_rental_user"/>
     <menuitem id="menu_rental_management" name="Quản lý thuê xe" parent="menu_motorbike_rental_root" sequence="10"/>
     <menuitem id="menu_rental_calendar" name="Lịch thuê xe" parent="menu_rental_management" action="action_rental_contract_calendar" sequence="5"/>
     <menuitem id="menu_rental_contract" name="Hợp đồng thuê xe" parent="menu_rental_management" action="action_rental_contract" sequence="10"/>

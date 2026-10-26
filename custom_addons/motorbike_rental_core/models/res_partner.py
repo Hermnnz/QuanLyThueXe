@@ -9,7 +9,7 @@ class ResPartner(models.Model):
     rental_driver_license = fields.Char(string='Số giấy phép lái xe')
     rental_notes = fields.Text(string='Ghi chú thuê xe')
     rental_document_ids = fields.One2many(
-        'rental.customer.document', 'customer_id', string='Tài liệu PDF'
+        'rental.customer.document', 'customer_id', string='Tài liệu scan'
     )
     rental_contract_ids = fields.One2many(
         'rental.contract', 'customer_id', string='Hợp đồng thuê xe'

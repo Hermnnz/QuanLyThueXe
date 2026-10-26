@@ -147,28 +147,13 @@ class RentalWebsite(http.Controller):
             if not selected_vehicles:
                 errors.append(_('Vui lòng chọn ít nhất một xe.'))
 
-            rental_users = request.env.ref(
-                'motorbike_rental_core.group_rental_user'
-            ).sudo().users.filtered('active')
-            if not rental_users:
-                errors.append(
-                    _(
-                        'Chưa có nhân viên được cấp quyền Nhân viên thuê xe để nhận thông báo đặt xe.'
-                    )
-                )
-
             if not errors and selected_vehicles:
                 try:
                     with request.env.cr.savepoint():
-                        customer = request.env['res.partner'].sudo().create({
-                            'name': form_values['customer_name'],
+                        request.env['rental.booking.request'].sudo().create({
+                            'customer_name': form_values['customer_name'],
                             'phone': form_values['phone'],
                             'email': form_values['email'],
-                            'is_rental_customer': True,
-                        })
-                        contract = request.env['rental.contract'].sudo().create({
-                            'customer_id': customer.id,
-                            'currency_id': selected_vehicles[0][1].currency_id.id,
                             'start_date': start_date,
                             'end_date': end_date,
                             'notes': form_values['notes'],
@@ -176,22 +161,10 @@ class RentalWebsite(http.Controller):
                                 (0, 0, {
                                     'vehicle_id': vehicle.id,
                                     'vehicle_type_id': vehicle_type.id,
-                                    'daily_rate': vehicle_type.daily_rate,
                                 })
                                 for vehicle, vehicle_type in selected_vehicles
                             ],
                         })
-                        for rental_user in rental_users:
-                            customer.sudo().activity_schedule(
-                                'mail.mail_activity_data_todo',
-                                summary=_('Yêu cầu thuê xe mới'),
-                                note=_(
-                                    'Khách đã gửi yêu cầu thuê xe trên website. '
-                                    'Vui lòng kiểm tra hợp đồng %(contract)s '
-                                    'và xác nhận nếu thông tin hợp lệ.'
-                                ) % {'contract': contract.name},
-                                user_id=rental_user.id,
-                            )
                 except ValidationError as error:
                     errors.append(str(error))
                 else:

@@ -17,20 +17,16 @@ class RentalCustomerDocument(models.Model):
     document_date = fields.Date(
         string='Ngày lưu', required=True, default=fields.Date.context_today
     )
-    file = fields.Binary(string='Tệp PDF', required=True, attachment=True)
+    file = fields.Binary(string='Tệp scan', required=True, attachment=True)
     filename = fields.Char(string='Tên tệp', required=True)
     notes = fields.Char(string='Ghi chú')
 
-    @api.constrains('file', 'filename')
-    def _check_pdf_file(self):
+    @api.constrains('file')
+    def _check_file(self):
         for document in self:
             if not document.file:
                 continue
-            if not document.filename or not document.filename.lower().endswith('.pdf'):
-                raise ValidationError(_('Vui lòng chọn tệp có phần mở rộng .pdf.'))
             try:
-                content = base64.b64decode(document.file)
+                base64.b64decode(document.file, validate=True)
             except (binascii.Error, TypeError, ValueError):
-                raise ValidationError(_('Tệp tải lên không phải là PDF hợp lệ.')) from None
-            if not content.startswith(b'%PDF-'):
-                raise ValidationError(_('Tệp tải lên không phải là PDF hợp lệ.'))
+                raise ValidationError(_('Tệp tải lên không hợp lệ.')) from None
