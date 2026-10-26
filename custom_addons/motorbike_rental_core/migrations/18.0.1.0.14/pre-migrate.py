@@ -1,4 +1,8 @@
 def migrate(cr, version):
+    cr.execute("SELECT to_regclass('public.rental_booking_request')")
+    if cr.fetchone()[0] is None:
+        return
+
     cr.execute(
         """
         UPDATE rental_booking_request
