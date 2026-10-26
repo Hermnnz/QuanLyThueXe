@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Action Report Definition -->
+    <record id="action_report_delivery_receipt" model="ir.actions.report">
+        <field name="name">Biên Bản Bàn Giao Xe Máy</field>
+        <field name="model">rental.delivery.receipt</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">motorbike_rental_operation.report_delivery_receipt_template</field>
+        <field name="report_file">motorbike_rental_operation.report_delivery_receipt_template</field>
+        <field name="print_report_name">'Bien_Ban_Ban_Giao_Xe_' + (object.name or '').replace('/', '_')</field>
+        <field name="binding_model_id" ref="model_rental_delivery_receipt"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- Master Template -->
+    <template id="report_delivery_receipt_template">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="motorbike_rental_operation.report_delivery_receipt_document"/>
+            </t>
+        </t>
+    </template>
+
+    <!-- Document Content Template -->
+    <template id="report_delivery_receipt_document">
+        <t t-call="web.basic_layout">
+            <div class="page" style="font-family: 'Times New Roman', Times, serif; font-size: 13pt; line-height: 1.4; color: #000; padding: 10px 15px;">
+                
+                <!-- Quốc hiệu & Tiêu ngữ -->
+                <div style="text-align: center; margin-bottom: 4px;">
+                    <p style="font-weight: bold; font-size: 13pt; margin-bottom: 2px; text-transform: uppercase;">
+                        CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+                    </p>
+                    <p style="font-weight: bold; font-size: 14pt; margin-bottom: 4px;">
+                        Độc lập – Tự do – Hạnh phúc
+                    </p>
+                    <div style="width: 170px; height: 1px; border-bottom: 1px solid #000; margin: 0 auto 8px auto;"/>
+                </div>
+
+                <!-- Ngày tháng địa điểm -->
+                <div style="text-align: right; font-style: italic; margin-bottom: 12px; font-size: 12pt;">
+                    <t t-if="doc.delivery_date">
+                        <span t-out="doc.company_id.city or 'Đà Nẵng'"/>, ngày <span t-out="doc.delivery_date.strftime('%d')"/> tháng <span t-out="doc.delivery_date.strftime('%m')"/> năm <span t-out="doc.delivery_date.strftime('%Y')"/>
+                    </t>
+                    <t t-else="">
+                        ……, ngày …… tháng …… năm ……
+                    </t>
+                </div>
+
+                <!-- Tiêu đề biên bản -->
+                <div style="text-align: center; margin-bottom: 14px;">
+                    <h2 style="font-weight: bold; text-transform: uppercase; font-size: 16pt; margin-bottom: 2px;">
+                        BIÊN BẢN BÀN GIAO XE MÁY
+                    </h2>
+                    <p style="font-size: 11pt; font-style: italic; margin-bottom: 4px;">
+                        (Số biên bản: <span t-field="doc.name"/> | Thuộc HĐ: <span t-field="doc.contract_id.name"/>)
+                    </p>
+                </div>
+
+                <!-- Hôm nay vào lúc... -->
+                <p style="margin-bottom: 6px; text-align: justify;">
+                    Hôm nay, vào lúc 
+                    <t t-if="doc.delivery_time">
+                        <strong><span t-field="doc.delivery_time"/></strong>
+                    </t>
+                    <t t-else="">
+                        ......
+                    </t> 
+                    ngày 
+                    <t t-if="doc.delivery_date">
+                        <strong><span t-out="doc.delivery_date.strftime('%d/%m/%Y')"/></strong>
+                    </t>
+                    <t t-else="">
+                        <strong>..........</strong>
+                    </t> 
+                    <t t-if="doc.delivery_location and doc.delivery_location.strip().lower().startswith('tại ')">
+                        <strong><span t-out="doc.delivery_location"/></strong>
+                    </t>
+                    <t t-else="">
+                        tại <strong><span t-field="doc.delivery_location"/></strong>
+                    </t>
+                </p>
+                <p style="margin-bottom: 6px;">Chúng tôi gồm có:</p>
+
+                <!-- I. BÊN GIAO XE (BÊN A) -->
+                <div style="margin-bottom: 8px;">
+                    <p style="font-weight: bold; margin-bottom: 3px;">I. BÊN GIAO XE (BÊN A):</p>
+                    <table style="width: 100%; border: none; margin-left: 10px;">
+                        <tr>
+                            <td style="width: 25%; padding: 2px 0;">- Đơn vị cho thuê</td>
+                            <td style="padding: 2px 0;">: <strong><span t-out="doc.company_id.name or 'Dịch vụ cho thuê xe AAA'"/></strong></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 2px 0;">- Địa chỉ</td>
+                            <td style="padding: 2px 0;">: <span t-out="doc.company_id.street or '012 Ngũ Hành Sơn, Ngũ Hành Sơn, Đà Nẵng'"/></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 2px 0;">- Số điện thoại</td>
+                            <td style="padding: 2px 0;">: <span t-out="doc.company_id.phone or '012 345 789'"/></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 2px 0;">- Đại diện giao xe</td>
+                            <td style="padding: 2px 0;">: Ông/Bà 
+                                <t t-if="doc.user_id and doc.user_id.name and doc.user_id.name.lower() not in ('administrator', 'admin')">
+                                    <span t-field="doc.user_id.name"/>
+                                </t>
+                                <t t-else="">
+                                    ……………………………..
+                                </t>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- II. BÊN NHẬN XE (BÊN B) -->
+                <div style="margin-bottom: 10px;">
+                    <p style="font-weight: bold; margin-bottom: 3px;">II. BÊN NHẬN XE (BÊN B):</p>
+                    <table style="width: 100%; border: none; margin-left: 10px;">
+                        <tr>
+                            <td style="width: 25%; padding: 2px 0;">- Họ và tên khách hàng</td>
+                            <td style="padding: 2px 0;">: <strong><span t-field="doc.customer_id.name"/></strong></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 2px 0;">- Số điện thoại</td>
+                            <td style="padding: 2px 0;">: <strong><span t-field="doc.customer_phone"/></strong></td>
+                        </tr>
+                    </table>
+                </div>
+
+                <p style="margin-bottom: 8px; text-align: justify;">
+                    Hai bên cùng tiến hành kiểm tra thực tế và thống nhất bàn giao phương tiện cùng các phụ kiện đi kèm theo thỏa thuận thuê xe với các nội dung chi tiết sau:
+                </p>
+
+                <!-- III. THÔNG TIN PHƯƠNG TIỆN BÀN GIAO -->
+                <div style="margin-bottom: 12px;">
+                    <p style="font-weight: bold; margin-bottom: 2px;">III. THÔNG TIN PHƯƠNG TIỆN BÀN GIAO:</p>
+                    <p style="font-style: italic; font-size: 11pt; margin-bottom: 5px;">(Trường hợp bàn giao 1 hoặc nhiều xe trong cùng biên lai)</p>
+                    
+                    <table class="table table-bordered table-sm" style="width: 100%; border-collapse: collapse; margin-bottom: 6px;" border="1">
+                        <thead style="background-color: #f2f2f2; text-align: center;">
+                            <tr>
+                                <th style="width: 8%; padding: 5px; text-align: center; border: 1px solid #000;">STT</th>
+                                <th style="width: 37%; padding: 5px; text-align: center; border: 1px solid #000;">Tên dòng xe &amp; Model</th>
+                                <th style="width: 20%; padding: 5px; text-align: center; border: 1px solid #000;">Biển kiểm soát</th>
+                                <th style="width: 35%; padding: 5px; text-align: center; border: 1px solid #000;">Tình trạng ngoại quan ban đầu</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-set="idx" t-value="1"/>
+                            <t t-foreach="doc.vehicle_ids" t-as="veh">
+                                <tr>
+                                    <td style="text-align: center; padding: 5px; border: 1px solid #000; vertical-align: middle;">
+                                        <t t-out="idx"/>
+                                    </td>
+                                    <td style="padding: 5px; border: 1px solid #000; vertical-align: middle;">
+                                        <strong><span t-field="veh.vehicle_id.name"/></strong>
+                                    </td>
+                                    <td style="text-align: center; padding: 5px; border: 1px solid #000; vertical-align: middle;">
+                                        <strong><span t-field="veh.vehicle_id.license_plate"/></strong>
+                                    </td>
+                                    <td style="padding: 5px; border: 1px solid #000; vertical-align: middle;">
+                                        <span t-out="veh._get_display_visual_note()"/>
+                                    </td>
+                                </tr>
+                                <t t-set="idx" t-value="idx + 1"/>
+                            </t>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- IV. BẢNG TRANG THIẾT BỊ, PHỤ KIỆN & GIẤY TỜ KÈM THEO XE -->
+                <div style="margin-bottom: 12px;">
+                    <p style="font-weight: bold; margin-bottom: 5px;">IV. BẢNG TRANG THIẾT BỊ, PHỤ KIỆN &amp; GIẤY TỜ KÈM THEO XE:</p>
+                    
+                    <table class="table table-bordered table-sm" style="width: 100%; border-collapse: collapse; margin-bottom: 6px;" border="1">
+                        <thead style="background-color: #f2f2f2; text-align: center;">
+                            <tr>
+                                <th style="width: 10%; padding: 5px; text-align: center; border: 1px solid #000;">STT</th>
+                                <th style="width: 65%; padding: 5px; text-align: center; border: 1px solid #000;">Danh mục thiết bị / Giấy tờ bàn giao</th>
+                                <th style="width: 25%; padding: 5px; text-align: center; border: 1px solid #000;">Số lượng</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="text-align: center; padding: 4px; border: 1px solid #000;">1</td>
+                                <td style="padding: 4px; border: 1px solid #000;">Giấy đăng ký xe (Bản gốc)</td>
+                                <td style="text-align: center; padding: 4px; border: 1px solid #000;">01 bản/xe</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: center; padding: 4px; border: 1px solid #000;">2</td>
+                                <td style="padding: 4px; border: 1px solid #000;">Giấy chứng nhận Bảo hiểm TNDS bắt buộc</td>
+                                <td style="text-align: center; padding: 4px; border: 1px solid #000;">01 bản/xe</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: center; padding: 4px; border: 1px solid #000;">3</td>
+                                <td style="padding: 4px; border: 1px solid #000;">Chìa khóa xe</td>
+                                <td style="text-align: center; padding: 4px; border: 1px solid #000;">01 cái/xe</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: center; padding: 4px; border: 1px solid #000;">4</td>
+                                <td style="padding: 4px; border: 1px solid #000;">Mũ bảo hiểm</td>
+                                <td style="text-align: center; padding: 4px; border: 1px solid #000;"><strong><span t-field="doc.qty_helmet"/> cái</strong></td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: center; padding: 4px; border: 1px solid #000;">5</td>
+                                <td style="padding: 4px; border: 1px solid #000;">Áo mưa tiện lợi</td>
+                                <td style="text-align: center; padding: 4px; border: 1px solid #000;"><strong><span t-field="doc.qty_raincoat"/> cái</strong></td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: center; padding: 4px; border: 1px solid #000;">6</td>
+                                <td style="padding: 4px; border: 1px solid #000;">Giá đỡ điện thoại gắn ghi-đông</td>
+                                <td style="text-align: center; padding: 4px; border: 1px solid #000;"><strong><span t-field="doc.qty_phone_holder"/> cái</strong></td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: center; padding: 4px; border: 1px solid #000;">7</td>
+                                <td style="padding: 4px; border: 1px solid #000;">Bộ sạc xe máy điện chính hãng (nếu có)</td>
+                                <td style="text-align: center; padding: 4px; border: 1px solid #000;">
+                                    <t t-if="doc.qty_charger &gt; 0"><strong><span t-field="doc.qty_charger"/> bộ</strong></t>
+                                    <t t-else="">Không</t>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- V. CAM KẾT CỦA CÁC BÊN -->
+                <div style="margin-bottom: 10px; page-break-inside: avoid;">
+                    <p style="font-weight: bold; margin-bottom: 3px;">V. CAM KẾT CỦA CÁC BÊN:</p>
+                    <p style="margin-bottom: 3px; text-align: justify;">
+                        1. Bên B xác nhận đã tự mình kiểm tra kỹ lưỡng tình trạng kỹ thuật, phanh, lốp, đèn, còi và chạy thử xe trước khi nhận. Xe hoàn toàn đáp ứng tiêu chuẩn an toàn lưu thông.
+                    </p>
+                    <p style="margin-bottom: 3px; text-align: justify;">
+                        2. Bên B cam kết tự chịu trách nhiệm trước pháp luật về mọi vi phạm giao thông đường bộ (bao gồm cả phạt nguội phát sinh trong thời gian thuê) và bồi thường thiệt hại nếu để xảy ra mất mát, hư hỏng phương tiện/phụ kiện theo đơn giá quy định.
+                    </p>
+                    <p style="margin-bottom: 5px; text-align: justify;">
+                        3. Bên A cam kết bàn giao xe đúng chủng loại, đảm bảo tính pháp lý của phương tiện và hỗ trợ kỹ thuật khi có sự cố phát sinh.
+                    </p>
+                    <p style="font-style: italic; margin-bottom: 12px; text-align: justify;">
+                        Biên bản này được lập thành 02 (hai) bản có giá trị pháp lý như nhau, mỗi bên giữ 01 (một) bản và có hiệu lực kể từ thời điểm hai bên ký nhận dưới đây.
+                    </p>
+                </div>
+
+                <!-- Chữ ký hai bên -->
+                <div class="row text-center mt-2" style="width: 100%; margin-top: 10px; page-break-inside: avoid;">
+                    <table style="width: 100%; border: none;">
+                        <tr>
+                            <td style="width: 50%; text-align: center; vertical-align: top;">
+                                <p style="font-weight: bold; text-transform: uppercase; margin-bottom: 2px;">ĐẠI DIỆN BÊN GIAO XE</p>
+                                <p style="font-style: italic; font-size: 11pt; margin-bottom: 50px;">(Ký và ghi rõ họ tên)</p>
+                                <p style="font-weight: bold; margin-bottom: 0;">
+                                    <t t-if="doc.user_id and doc.user_id.name and doc.user_id.name.lower() not in ('administrator', 'admin')">
+                                        <span t-field="doc.user_id.name"/>
+                                    </t>
+                                </p>
+                            </td>
+                            <td style="width: 50%; text-align: center; vertical-align: top;">
+                                <p style="font-weight: bold; text-transform: uppercase; margin-bottom: 2px;">ĐẠI DIỆN BÊN NHẬN XE</p>
+                                <p style="font-style: italic; font-size: 11pt; margin-bottom: 50px;">(Ký và ghi rõ họ tên)</p>
+                                <p style="font-weight: bold; margin-bottom: 0;">
+                                    <span t-field="doc.customer_id.name"/>
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+
+            </div>
+        </t>
+    </template>
+</odoo>

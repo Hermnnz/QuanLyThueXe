@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
     <record id="module_category_motorbike_rental" model="ir.module.category">
-        <field name="name">Cho thuê xe máy</field>
+        <field name="name">Cho thuê xe</field>
         <field name="sequence">35</field>
     </record>
 

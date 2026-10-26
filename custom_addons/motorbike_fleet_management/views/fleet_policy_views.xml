@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="service_policy_form" model="ir.ui.view">
+    <field name="name">fleet.vehicle.model.service.policy</field>
+    <field name="model">fleet.vehicle.model</field>
+    <field name="arch" type="xml">
+      <form string="Chu kỳ bảo dưỡng dòng xe" create="0" delete="0">
+        <sheet>
+          <group><field name="name" readonly="1"/><field name="brand_id" readonly="1"/></group>
+          <p>Đặt 0 để không dùng tiêu chí đó. Nhập theo quy định đã xác minh của doanh nghiệp/nhà sản xuất.</p>
+          <group>
+            <group><field name="service_interval_km"/><field name="service_interval_months"/></group>
+            <group><field name="service_warning_km"/><field name="service_warning_days"/></group>
+          </group>
+        </sheet>
+        <footer><button string="Lưu" special="save" class="btn-primary"/><button string="Hủy" special="cancel"/></footer>
+      </form>
+    </field>
+  </record>
+</odoo>

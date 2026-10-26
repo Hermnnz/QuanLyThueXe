@@ -36,6 +36,8 @@
         <field name="name">Báo cáo dòng tiền thanh toán</field>
         <field name="res_model">motorbike.rental.payment</field>
         <field name="view_mode">graph,pivot</field>
+        <!-- Chỉ đưa phiếu đã xác nhận vào báo cáo; phiếu nháp và đã hủy chưa tạo dòng tiền thực tế. -->
+        <field name="domain">[('state', '=', 'confirmed')]</field>
     </record>
 
 

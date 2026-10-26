@@ -62,10 +62,9 @@ class TestFleetBusinessHardening(TransactionCase):
         vehicle.action_return_vehicle('passed')
         self.assertEqual(vehicle.operational_status, 'available')
 
-    def test_cannot_reclassify_scheduled_or_running_service(self):
+    def test_cannot_reclassify_draft_or_running_service(self):
         vehicle = self.ready()
-        service = self.env['fleet.vehicle.log.services'].create({'vehicle_id': vehicle.id, 'state': 'scheduled',
-            'scheduled_start': '2027-01-01 00:00:00', 'scheduled_end': '2027-01-02 00:00:00'})
+        service = self.env['fleet.vehicle.log.services'].create({'vehicle_id': vehicle.id, 'state': 'new'})
         with self.assertRaises(UserError), self.cr.savepoint():
             vehicle.is_electric_motorbike = False
         service.action_start()
@@ -161,3 +160,22 @@ class TestFleetBusinessHardening(TransactionCase):
             arch = self.env.ref(xmlid)._get_combined_arch()
             self.assertTrue(arch.xpath('.//field[@name="active" and not(@invisible)]'), xmlid)
         self.assertEqual(self.env.ref('fleet.fleet_vehicle_model_brand_action').context, '{}')
+
+    def test_vehicle_cannot_be_deleted_even_without_history_or_with_sudo(self):
+        vehicle = self.ready()
+        for record in [vehicle, vehicle.sudo()]:
+            with self.assertRaises(UserError), self.cr.savepoint():
+                record.unlink()
+        vehicle.active = False
+        self.assertTrue(vehicle.exists())
+        self.assertFalse(vehicle.active)
+        with self.assertRaises(UserError), self.cr.savepoint():
+            vehicle.sudo().unlink()
+        vehicle.active = True
+        self.assertTrue(vehicle.active)
+
+    def test_batch_vehicle_delete_does_not_remove_any_vehicle(self):
+        vehicles = self.ready() | self.ready()
+        with self.assertRaises(UserError), self.cr.savepoint():
+            vehicles.sudo().unlink()
+        self.assertEqual(len(vehicles.exists()), 2)

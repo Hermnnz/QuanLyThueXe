@@ -1,0 +1,37 @@
+.o_fleet_vehicle_kanban {
+    .o_kanban_record { position: relative; }
+    .o_fleet_kanban_ribbon {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 94px;
+        height: 94px;
+        overflow: hidden;
+        pointer-events: none;
+        z-index: 1;
+        > span {
+            position: absolute;
+            top: 18px;
+            right: -36px;
+            width: 146px;
+            padding: 5px 0;
+            transform: rotate(45deg);
+            text-align: center;
+            font-size: 10px;
+            font-weight: 700;
+            line-height: 1.2;
+            color: white;
+            background: #dc3545;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, .18);
+        }
+    }
+    .o_fleet_kanban_ribbon_inactive > span,
+    .o_fleet_kanban_ribbon_missing > span { background: #6c757d; }
+    .o_fleet_kanban_ribbon_soon > span { background: #ffc107; color: #212529; }
+    .o_fleet_vehicle_identity_has_ribbon {
+        padding-right: 78px;
+        min-height: 84px;
+        overflow-wrap: anywhere;
+    }
+    .o_fleet_secondary_badges:empty { display: none !important; }
+}

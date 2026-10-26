@@ -25,7 +25,8 @@
         "views/account_move_views.xml",
         "views/finance_actions.xml",
         "views/finance_menu.xml",
-        "data/finance_demo.xml",
+        # Bộ cấp số cho các phiếu thanh toán.
+        "data/rental_payment_sequence.xml",
     ],
 
     "installable": True,

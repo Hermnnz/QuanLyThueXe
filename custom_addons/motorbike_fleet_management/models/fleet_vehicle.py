@@ -29,6 +29,7 @@ class FleetVehicle(models.Model):
     operational_status = fields.Selection([
         ('available', 'Sẵn sàng'), ('renting', 'Đang thuê'),
         ('pending_inspection', 'Chờ kiểm tra'), ('maintenance', 'Bảo dưỡng'),
+        ('inactive', 'Ngừng hoạt động'),
     ], default='pending_inspection', required=True, copy=False, group_expand=True,
        string='Trạng thái vận hành', tracking=True)
     technical_ready = fields.Boolean('Đạt điều kiện kỹ thuật', default=False, copy=False, tracking=True)
@@ -60,6 +61,8 @@ class FleetVehicle(models.Model):
             vehicle_model = self.env['fleet.vehicle.model'].browse(values.get('model_id'))
             if vehicle_model and (not vehicle_model.active or not vehicle_model.brand_id.active):
                 raise UserError('Không tạo xe từ hãng hoặc dòng xe đã ngừng sử dụng.')
+            if values.get('active') is False or values.get('operational_status') == 'inactive':
+                values.update(active=False, operational_status='inactive', technical_ready=False)
             prepared.append(values)
         return super().create(prepared)
 
@@ -71,7 +74,24 @@ class FleetVehicle(models.Model):
                 raise ValidationError('Không được xóa mã phương tiện đã cấp.')
         if vals.get('license_plate'):
             vals['license_plate'] = vals['license_plate'].strip().upper()
-        for vehicle in self.filtered('is_electric_motorbike'):
+        electric = self.filtered('is_electric_motorbike')
+        if 'odometer' in vals and electric:
+            new_odo = vals['odometer']
+            if new_odo is not None and not isinstance(new_odo, bool) and isinstance(new_odo, (int, float)):
+                for vehicle in electric:
+                    if new_odo < vehicle.odometer:
+                        raise ValidationError('Không được điều chỉnh lùi số ODO hiện tại của xe.')
+        if vals.get('operational_status') == 'inactive':
+            vals['active'] = False
+        if vals.get('active') is False and electric:
+            if electric.filtered(lambda v: v.operational_status in ('renting', 'maintenance')) or electric._running_blocking_services():
+                raise UserError('Nhận trả xe và hoàn tất/hủy phiếu đang thực hiện trước khi ngừng hoạt động.')
+            vals.update(operational_status='inactive', technical_ready=False)
+        elif vals.get('active') is True and electric.filtered(lambda v: not v.active):
+            if self.filtered('active'):
+                raise UserError('Chỉ khôi phục các xe ngừng hoạt động trong cùng một thao tác.')
+            vals.update(operational_status='pending_inspection', technical_ready=False)
+        for vehicle in electric:
             if vals.get('active') is False and vehicle.operational_status == 'renting':
                 raise UserError('Không ngừng sử dụng xe đang thuê; cần nhận trả trước.')
             if vals.get('is_electric_motorbike') is False:
@@ -93,14 +113,8 @@ class FleetVehicle(models.Model):
         return super().write(values)
 
     def unlink(self):
-        self.check_access('unlink')
-        for vehicle in self:
-            if vehicle.operational_status in ('renting', 'maintenance'):
-                raise UserError('Không xóa xe đang thuê hoặc đang bảo dưỡng.')
-            if self.env['fleet.vehicle.log.services'].sudo().with_context(active_test=False).search_count([
-                    ('vehicle_id', '=', vehicle.id)]):
-                raise UserError('Xe đã có lịch sử bảo dưỡng; hãy ngừng sử dụng thay vì xóa.')
-        return super().unlink()
+        # Preserve vehicle identity and all business references, even for sudo.
+        raise UserError('Không được xóa phương tiện trong bất kỳ trường hợp nào. Hãy dùng Lưu trữ / Ngừng sử dụng.')
 
     @api.constrains('odometer', 'is_electric_motorbike')
     def _check_current_odometer(self):
@@ -129,6 +143,10 @@ class FleetVehicle(models.Model):
         for vehicle in self.filtered('is_electric_motorbike'):
             if vehicle.rental_blocked and not (vehicle.block_reason or '').strip():
                 raise ValidationError('Cần nhập lý do khi khóa thuê xe.')
+            if (vehicle.operational_status == 'inactive') != (not vehicle.active):
+                raise ValidationError('Xe ngừng hoạt động phải được lưu trữ; khôi phục xe phải kiểm tra kỹ thuật lại.')
+            if vehicle.operational_status == 'inactive' and vehicle.technical_ready:
+                raise ValidationError('Xe ngừng hoạt động không được đánh dấu đạt kỹ thuật.')
             if vehicle.operational_status == 'available' and not vehicle.technical_ready:
                 raise ValidationError('Xe sẵn sàng phải đạt điều kiện kỹ thuật.')
             if vehicle.operational_status in ('pending_inspection', 'maintenance') and vehicle.technical_ready:
@@ -160,19 +178,9 @@ class FleetVehicle(models.Model):
 
     def _maintenance_overlaps(self, start, end):
         self.ensure_one()
-        services = self.env['fleet.vehicle.log.services'].sudo().search([
-            ('vehicle_id', '=', self.id), ('active', '=', True), ('blocks_rental', '=', True),
-            ('state', 'in', ['scheduled', 'running'])])
-        for service in services:
-            if service.state == 'running':
-                # An unfinished job has no guaranteed release time; a planned end is not completion.
-                actual_start = service.actual_start or service.scheduled_start
-                if not actual_start or actual_start < end:
-                    return True
-            elif service.scheduled_start and service.scheduled_end and (
-                    service.scheduled_start < end and service.scheduled_end > start):
-                return True
-        return False
+        # Only work already in progress blocks rental. Drafts reserve no time.
+        return any(not service.actual_start or service.actual_start < end
+                   for service in self._running_blocking_services())
 
     def check_fleet_availability(self, start, end):
         """Fleet eligibility only. Rental must also check its confirmed/renting contracts.

@@ -8,6 +8,9 @@ class FleetVehicleLogServices(models.Model):
     _inherit = 'fleet.vehicle.log.services'
 
     is_electric_motorbike = fields.Boolean(related='vehicle_id.is_electric_motorbike')
+    vehicle_code = fields.Char(related='vehicle_id.vehicle_code', string='Mã phương tiện', readonly=True)
+    customer_name = fields.Char(string='Khách hàng')
+    customer_phone = fields.Char(string='Số điện thoại khách hàng')
     service_type_id = fields.Many2one(default=lambda self: self.env.ref(
         'motorbike_fleet_management.service_type_electric_maintenance', raise_if_not_found=False))
     technician_id = fields.Many2one('res.partner', string='Kỹ thuật viên')
@@ -16,32 +19,23 @@ class FleetVehicleLogServices(models.Model):
     maintenance_type = fields.Selection([
         ('preventive', 'Định kỳ'), ('corrective', 'Sửa chữa'), ('emergency', 'Khẩn cấp'),
     ], default='preventive', required=True, string='Loại bảo dưỡng')
-    scheduled_start = fields.Datetime('Dự kiến bắt đầu')
-    scheduled_end = fields.Datetime('Dự kiến kết thúc')
-    actual_start = fields.Datetime('Thực tế bắt đầu', copy=False)
-    actual_end = fields.Datetime('Thực tế kết thúc', copy=False)
+    actual_start = fields.Datetime('Ngày bắt đầu', copy=False)
+    actual_end = fields.Datetime('Ngày kết thúc', copy=False)
     blocks_rental = fields.Boolean('Ghi nhận chặn thuê', default=True)
     cost = fields.Monetary(related='amount', readonly=False, string='Chi phí')
-    state = fields.Selection(selection_add=[('scheduled', 'Đã lên lịch'), ('running',)],
-                             ondelete={'scheduled': 'set default'}, copy=False)
+    state = fields.Selection(copy=False)
 
-    @api.constrains('vehicle_id', 'scheduled_start', 'scheduled_end', 'actual_start',
+    @api.constrains('vehicle_id', 'actual_start',
                     'actual_end', 'amount', 'next_service_date', 'date', 'state', 'blocks_rental')
     def _check_maintenance_values(self):
         for service in self.filtered('is_electric_motorbike'):
             if not math.isfinite(service.amount) or service.amount < 0:
                 raise ValidationError('Chi phí bảo dưỡng phải là số hữu hạn, không âm.')
-            for start, end in [(service.scheduled_start, service.scheduled_end),
-                               (service.actual_start, service.actual_end)]:
+            for start, end in [(service.actual_start, service.actual_end)]:
                 if end and not start:
                     raise ValidationError('Cần nhập thời gian bắt đầu trước thời gian kết thúc.')
                 if start and end and end < start:
                     raise ValidationError('Thời gian kết thúc không được trước thời gian bắt đầu.')
-            if service.state == 'scheduled' and not (service.scheduled_start and service.scheduled_end):
-                raise ValidationError('Lên lịch bảo dưỡng cần đủ thời gian dự kiến bắt đầu và kết thúc.')
-            if (service.state == 'scheduled' and service.blocks_rental
-                    and service.scheduled_end <= service.scheduled_start):
-                raise ValidationError('Lịch bảo dưỡng chặn thuê cần kết thúc sau thời gian bắt đầu.')
             if service.next_service_date and service.date and service.next_service_date <= service.date:
                 raise ValidationError('Mốc bảo dưỡng tiếp theo phải sau ngày hồ sơ bảo dưỡng.')
 
@@ -62,11 +56,24 @@ class FleetVehicleLogServices(models.Model):
     def _release_vehicle_maintenance(self):
         for vehicle in self.filtered(lambda s: s.is_electric_motorbike and s.blocks_rental).vehicle_id:
             if not vehicle._running_blocking_services() and vehicle.operational_status == 'maintenance':
-                vehicle.write({'operational_status': 'pending_inspection', 'technical_ready': False})
+                finished = self.filtered(lambda s: s.vehicle_id == vehicle)
+                passed = bool(finished) and all(s.state == 'done' for s in finished)
+                vehicle._write_operational_state({
+                    'operational_status': 'available' if passed else 'pending_inspection',
+                    'technical_ready': passed})
 
     @api.model_create_multi
     def create(self, vals_list):
         for values in vals_list:
+            cid = values.pop('customer_id', None)
+            if cid and not values.get('customer_name'):
+                if isinstance(cid, int):
+                    partner = self.env['res.partner'].browse(cid)
+                    values['customer_name'] = partner.name
+                    if not values.get('customer_phone') and (partner.phone or partner.mobile):
+                        values['customer_phone'] = partner.phone or partner.mobile
+                elif isinstance(cid, str):
+                    values['customer_name'] = cid
             vehicle = self.env['fleet.vehicle'].browse(
                 values.get('vehicle_id') or self.env.context.get('default_vehicle_id'))
             if vehicle.is_electric_motorbike:
@@ -106,23 +113,28 @@ class FleetVehicleLogServices(models.Model):
 
     def write(self, vals):
         self.check_access('write')
+        cid = vals.pop('customer_id', None)
+        if cid and not vals.get('customer_name'):
+            if isinstance(cid, int):
+                partner = self.env['res.partner'].browse(cid)
+                vals['customer_name'] = partner.name
+                if not vals.get('customer_phone') and (partner.phone or partner.mobile):
+                    vals['customer_phone'] = partner.phone or partner.mobile
+            elif isinstance(cid, str):
+                vals['customer_name'] = cid
         target = self.env['fleet.vehicle'].browse(vals.get('vehicle_id'))
         electric = self.filtered(lambda s: s.is_electric_motorbike or target.is_electric_motorbike)
         if electric:
             self._validate_cost_input(vals)
-        protected = {'vehicle_id', 'description', 'date', 'amount', 'cost', 'result',
-                     'maintenance_type', 'next_service_date', 'blocks_rental',
-                     'scheduled_start', 'scheduled_end', 'actual_start', 'actual_end'}
-        for service in electric.filtered(lambda s: s.state in ('done', 'cancelled')):
-            if any(key in vals and vals[key] != service[key] for key in protected):
-                raise UserError('Hồ sơ đã kết thúc không được sửa nội dung nghiệp vụ; dùng ghi chú để bổ sung thông tin.')
+        for service in self:
+            if service.state in ('done', 'cancelled') and set(vals) - {'notes', 'active'}:
+                raise UserError('Hồ sơ đã kết thúc chỉ được bổ sung ghi chú.')
         running = electric.filtered(lambda s: s.state == 'running')
         if running and any(key in vals for key in ('vehicle_id', 'blocks_rental', 'active')):
             raise UserError('Hoàn tất hoặc hủy bảo dưỡng đang chạy trước khi đổi xe, chặn thuê hoặc lưu trữ.')
         if 'vehicle_id' in vals and electric.filtered(lambda s: s.state in ('done', 'cancelled')):
             raise UserError('Không đổi xe của hồ sơ bảo dưỡng đã kết thúc.')
-        transitions = {'new': {'scheduled', 'running', 'cancelled'},
-                       'scheduled': {'running', 'cancelled'}, 'running': {'done', 'cancelled'},
+        transitions = {'new': {'running', 'cancelled'}, 'running': {'done', 'cancelled'},
                        'done': set(), 'cancelled': set()}
         changed = electric.filtered(lambda s: 'state' in vals and s.state != vals['state'])
         for service in changed:
@@ -159,24 +171,11 @@ class FleetVehicleLogServices(models.Model):
         return True
 
     def unlink(self):
-        if self.filtered(lambda s: s.is_electric_motorbike and s.state == 'running'):
-            raise UserError('Không xóa bảo dưỡng đang thực hiện; hãy hoàn tất hoặc hủy trước.')
-        milestones = {service.vehicle_id.id: service.vehicle_id.next_service_date
-                      for service in self.filtered(lambda s: s.is_electric_motorbike
-                          and s.state == 'done' and s.next_service_date
-                          and s.vehicle_id.next_service_date == s.next_service_date)}
-        vehicles = self.env['fleet.vehicle'].browse(list(milestones))
-        vehicles.check_access('write')
-        result = super().unlink()
-        for vehicle in vehicles:
-            latest = self.with_context(active_test=False).search([
-                ('vehicle_id', '=', vehicle.id), ('state', '=', 'done'),
-                ('next_service_date', '!=', False)], order='date desc, id desc', limit=1)
-            vehicle.next_service_date = latest.next_service_date if latest else False
-        return result
-
-    def action_schedule(self):
-        return self.write({'state': 'scheduled'})
+        # Tập rỗng không có hồ sơ nào để xóa; cho phép Odoo tiếp tục xử lý hóa đơn.
+        if not self:
+            return True
+        # Giữ hồ sơ bảo dưỡng ở mọi trạng thái để bảo toàn lịch sử.
+        raise UserError('Không được xóa hồ sơ bảo dưỡng; hãy hủy hoặc lưu trữ nếu cần.')
 
     def action_start(self):
         return self.write({'state': 'running'})

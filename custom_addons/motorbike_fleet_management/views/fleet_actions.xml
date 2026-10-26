@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="action_electric_motorbikes" model="ir.actions.act_window">
+    <field name="name">Phương tiện</field>
+    <field name="res_model">fleet.vehicle</field>
+    <field name="view_mode">kanban,list,form</field>
+    <field name="view_id" ref="vehicle_kanban_electric"/>
+    <field name="search_view_id" ref="vehicle_search_electric"/>
+    <field name="domain">[]</field>
+    <field name="context">{'default_is_electric_motorbike': True, 'default_fuel_type': 'electric', 'active_test': False}</field>
+  </record>
+  <record id="action_electric_motorbikes_kanban" model="ir.actions.act_window.view">
+    <field name="sequence">1</field>
+    <field name="view_mode">kanban</field>
+    <field name="view_id" ref="vehicle_kanban_electric"/>
+    <field name="act_window_id" ref="action_electric_motorbikes"/>
+  </record>
+  <record id="action_electric_motorbikes_list" model="ir.actions.act_window.view">
+    <field name="sequence">2</field>
+    <field name="view_mode">list</field>
+    <field name="view_id" ref="vehicle_list_electric"/>
+    <field name="act_window_id" ref="action_electric_motorbikes"/>
+  </record>
+  <record id="action_motorbike_services" model="ir.actions.act_window">
+    <field name="name">Bảo dưỡng &amp; Sửa chữa</field>
+    <field name="res_model">fleet.vehicle.log.services</field>
+    <field name="view_mode">list,form</field>
+    <field name="view_id" ref="service_list_motorbike"/>
+    <field name="search_view_id" ref="service_search_motorbike"/>
+    <field name="domain">[('vehicle_id.is_electric_motorbike', '=', True)]</field>
+    <field name="context">{'motorbike_only': True}</field>
+  </record>
+  <record id="fleet.fleet_vehicle_model_action" model="ir.actions.act_window">
+    <field name="name">Dòng xe</field>
+  </record>
+  <record id="fleet.fleet_vehicle_model_brand_action" model="ir.actions.act_window">
+    <field name="name">Hãng xe</field>
+    <field name="context">{}</field>
+  </record>
+</odoo>

@@ -12,7 +12,7 @@ Nhóm xây dựng một luồng làm việc chung cho bốn mảng: quản lý �
 
 Ví dụ, khách thuê một xe trong một ngày với **tiền thuê 600.000đ** và **tiền cọc 500.000đ**:
 
-1. **Tiếp nhận yêu cầu:** Khách gửi thông tin trên website hoặc nhân viên lập hợp đồng tại quầy. Yêu cầu từ website tạo **hợp đồng nháp** để nhân viên kiểm tra; bản nháp chưa giữ chỗ chắc chắn cho xe.
+1. **Tiếp nhận yêu cầu:** Khách gửi thông tin trên website hoặc nhân viên lập hợp đồng tại quầy. Yêu cầu từ website tạo **phiếu yêu cầu đặt xe**; nhân viên kiểm tra rồi mới tạo hợp đồng nháp. Phiếu yêu cầu chưa giữ chỗ chắc chắn cho xe.
 2. **Kiểm tra và ký hợp đồng:** Nhân viên chọn xe phù hợp. Hệ thống kiểm tra tình trạng kỹ thuật và lịch thuê trước khi xác nhận. Finance tạo hai phiếu thu nháp, tương ứng **600.000đ tiền thuê** và **500.000đ tiền cọc**. Sau khi nhận đủ cả hai khoản ngoài đời, nhân viên xác nhận trên hợp đồng; hợp đồng và hai phiếu thu cùng chuyển sang đã xác nhận.
 3. **Giao xe:** Nhân viên lập phiếu vận hành từ hợp đồng và xác nhận giao xe. Operations ghi nhận chiếc xe đã giao; Fleet chuyển xe sang **đang thuê**; hợp đồng chuyển sang **đang thuê**. Từ khi đã bắt đầu giao xe, không được hủy trực tiếp hợp đồng.
 4. **Xử lý phát sinh:** Nếu có sự cố, nhân viên ghi nhận xe gặp sự cố, bên chịu lỗi và mức phí. Sự cố do khách gây ra và có tiền phạt sẽ tạo **phụ phí nháp** để xử lý; lỗi do xe/công ty không thu phí của khách. Trường hợp cần sửa chữa có thể tạo hồ sơ bên Fleet.

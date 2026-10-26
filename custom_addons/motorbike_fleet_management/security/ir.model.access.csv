@@ -1,2 +1,5 @@
 id,name,model_id/id,group_id/id,perm_read,perm_write,perm_create,perm_unlink
 access_service_technician,Motorbike technician services,fleet.model_fleet_vehicle_log_services,group_motorbike_technician,1,1,1,0
+access_vehicle_fleet_staff,Fleet staff create vehicles,fleet.model_fleet_vehicle,group_fleet_staff,1,0,1,0
+access_service_fleet_staff,Fleet staff create services,fleet.model_fleet_vehicle_log_services,group_fleet_staff,1,0,1,0
+access_service_complete_wizard_staff,Fleet staff completion wizard,model_motorbike_service_complete_wizard,group_fleet_staff,1,1,1,1

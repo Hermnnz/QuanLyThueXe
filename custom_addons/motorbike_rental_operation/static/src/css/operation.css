@@ -1,6 +1,8 @@
-/* CSS Tùy chỉnh Vận Hành Thuê Xe */
+/* ==========================================================================
+   CSS TÙY CHỈNH GIAO DIỆN VẬN HÀNH THUÊ XE & CÁC BẢNG DANH SÁCH (LIST / TREE)
+   ========================================================================== */
 
-/* Chỉ làm nổi bật ô tick chọn ở danh sách xe bàn giao */
+/* 1. Ô tick chọn xe (Checkbox) nổi bật */
 .o_ticket_select_checkbox input[type="checkbox"],
 td[name="is_selected"] input[type="checkbox"] {
     width: 20px !important;
@@ -30,21 +32,300 @@ td[name="is_selected"] input[type="checkbox"]:checked {
     box-shadow: 0 2px 4px rgba(13, 110, 253, 0.4) !important;
 }
 
-/* Xóa biến mất hoàn toàn cột checkbox chọn dòng ở bảng Phụ phí & Bồi thường */
-.o_price_catalog_no_selector .o_list_record_selector,
-.o_price_catalog_no_selector th.o_list_record_selector,
-.o_price_catalog_no_selector td.o_list_record_selector,
-.o_price_catalog_no_selector th:first-child:has(input[type="checkbox"]),
-.o_price_catalog_no_selector td:first-child:has(input[type="checkbox"]) {
-    display: none !important;
-    width: 0 !important;
-    max-width: 0 !important;
-    min-width: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    border: none !important;
-    visibility: hidden !important;
-    pointer-events: none !important;
+/* 2. Style cho tab biên lai trong popup xuất biên lai */
+.o_form_view .nav-tabs .nav-link {
+    font-weight: 500;
+    font-size: 13.5px;
 }
 
+.o_form_view .nav-tabs .nav-link.active {
+    font-weight: 700;
+    color: #0d6efd !important;
+    border-bottom: 2px solid #0d6efd !important;
+}
 
+/* 3. ĐẢM BẢO TIÊU ĐỀ CÁCH NHAU ÍT NHẤT 3PX & KHÔNG ĐÈ LÊN NHAU */
+
+/* Vách ngăn cách giữa mỗi cột tiêu đề tối thiểu 3px (đường phân cách 3px rõ ràng) */
+.o_list_table th {
+    vertical-align: middle !important;
+    padding: 8px 12px !important;
+    border-right: 3px solid #dee2e6 !important; /* Đảm bảo mỗi tiêu đề cách nhau ít nhất 3px */
+    position: relative !important;
+    box-sizing: border-box !important;
+    background-clip: padding-box !important;
+}
+
+/* Khoảng cách lề (margin) tối thiểu 3px cho từng tiêu đề để nội dung không chạm mép */
+.o_list_table th .o_column_title,
+.o_list_table th .o_list_header_title,
+.o_list_table th span.text-truncate,
+.o_list_table th .o_column_sortable,
+.o_list_table th div.d-flex {
+    margin-right: 3px !important;
+    margin-left: 3px !important;
+    display: inline-block !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    font-weight: 600 !important;
+    vertical-align: middle !important;
+}
+
+/* 4. DỮ LIỆU CÁC Ô (TD) - CHỐNG ĐÈ CHỮ, CÁCH BIỆT RÕ RÀNG */
+.o_list_table td {
+    padding: 7px 10px !important;
+    vertical-align: middle !important;
+    border-right: 1px solid #edf2f7 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}
+
+/* 5. CHO PHÉP CUỘN NGANG KHI BẢNG CÓ NHIỀU CỘT - KHÔNG BỊ ÉP CO RÚT LÀM ĐÈ CHỮ */
+.o_field_widget[name="vehicle_detail_ids"] .o_list_renderer,
+.o_field_widget[name="incident_ids"] .o_list_renderer,
+.o_field_widget[name="waiting_vehicle_ids"] .o_list_renderer,
+.o_field_widget[name="delivering_vehicle_ids"] .o_list_renderer,
+.o_field_widget[name="renting_vehicle_ids"] .o_list_renderer,
+.o_field_widget[name="returned_vehicle_ids"] .o_list_renderer,
+.o_field_widget[name="receipt_ids"] .o_list_renderer,
+div[name="receipt_ids"] .o_list_renderer,
+.o_field_widget[name="return_receipt_ids"] .o_list_renderer,
+div[name="return_receipt_ids"] .o_list_renderer,
+.o_view_controller:has(.o_rental_ticket_list_table) .o_list_renderer,
+.o_list_renderer:has(.o_rental_ticket_list_table),
+.o_view_controller:has(.o_rental_incident_list_table) .o_list_renderer,
+.o_list_renderer:has(.o_rental_incident_list_table),
+.o_view_controller:has(.o_rental_receipt_list_table) .o_list_renderer,
+.o_list_renderer:has(.o_rental_receipt_list_table) {
+    overflow-x: auto !important;
+    display: block !important;
+    width: 100% !important;
+}
+
+/* 6. ĐỘ RỘNG TỔNG THỂ TỐI THIỂU CHO TỪNG BẢNG */
+.o_field_widget[name="vehicle_detail_ids"] .o_list_table,
+.o_field_widget[name="waiting_vehicle_ids"] .o_list_table,
+.o_field_widget[name="delivering_vehicle_ids"] .o_list_table,
+.o_field_widget[name="renting_vehicle_ids"] .o_list_table,
+.o_field_widget[name="returned_vehicle_ids"] .o_list_table {
+    min-width: 1750px !important;
+}
+
+.o_field_widget[name="incident_ids"] .o_list_table {
+    min-width: 1400px !important;
+}
+
+.o_field_widget[name="receipt_ids"] .o_list_table,
+div[name="receipt_ids"] .o_list_table,
+.o_field_widget[name="return_receipt_ids"] .o_list_table,
+div[name="return_receipt_ids"] .o_list_table {
+    min-width: 1800px !important;
+    width: 100% !important;
+}
+
+.o_rental_ticket_list_table,
+.o_list_table.o_rental_ticket_list_table,
+.o_list_renderer:has(th[data-name="waiting_count"]) .o_list_table,
+.o_list_renderer:has(th[data-name="quick_delivery_location"]) .o_list_table {
+    min-width: 1750px !important;
+}
+
+.o_rental_incident_list_table,
+.o_list_table.o_rental_incident_list_table,
+.o_list_renderer:has(th[data-name="price_catalog_id"]) .o_list_table {
+    min-width: 1450px !important;
+}
+
+.o_rental_receipt_list_table,
+.o_list_table.o_rental_receipt_list_table {
+    min-width: 1550px !important;
+}
+
+/* 7. ĐỘ RỘNG TỪNG CỘT CỤ THỂ ĐẢM BẢO KHÔNG BỊ TRÀN HAY CHÈN ÉP */
+
+/* Cột checkbox */
+td[name="is_selected"],
+th[data-name="is_selected"],
+.o_ticket_select_checkbox {
+    min-width: 55px !important;
+    width: 55px !important;
+    text-align: center !important;
+}
+
+/* Cột mã / tên */
+td[name="name"],
+th[data-name="name"] {
+    min-width: 140px !important;
+}
+
+/* Cột hợp đồng / mã tham chiếu */
+td[name="contract_id"],
+th[data-name="contract_id"],
+td[name="rental_order_ref"],
+th[data-name="rental_order_ref"] {
+    min-width: 160px !important;
+}
+
+/* Cột khách hàng & SĐT */
+td[name="customer_id"],
+th[data-name="customer_id"] {
+    min-width: 180px !important;
+}
+
+td[name="customer_phone"],
+th[data-name="customer_phone"] {
+    min-width: 130px !important;
+}
+
+/* Cột số lượng đếm xe theo trạng thái ở Tree View */
+td[name="waiting_count"],
+th[data-name="waiting_count"],
+td[name="delivering_count"],
+th[data-name="delivering_count"],
+td[name="renting_count"],
+th[data-name="renting_count"],
+td[name="returned_count"],
+th[data-name="returned_count"] {
+    min-width: 100px !important;
+    text-align: center !important;
+}
+
+/* Cột ngày tháng: hiển thị đầy đủ ngày giờ, không cắt cụt, không tràn lấn */
+td[name="date_checkout"],
+td[name="actual_delivery_date"],
+td[name="date_checkin"],
+td[name="actual_return_date"],
+td[name="date_reported"],
+td[name="expected_checkout"],
+td[name="expected_checkin"],
+td[name="delivery_date"],
+th[data-name="date_checkout"],
+th[data-name="actual_delivery_date"],
+th[data-name="date_checkin"],
+th[data-name="actual_return_date"],
+th[data-name="date_reported"],
+th[data-name="expected_checkout"],
+th[data-name="expected_checkin"],
+th[data-name="delivery_date"] {
+    min-width: 175px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+/* Cột vị trí giao / thu hồi xe */
+td[name="delivery_location"],
+td[name="return_location"],
+td[name="quick_delivery_location"],
+th[data-name="delivery_location"],
+th[data-name="return_location"],
+th[data-name="quick_delivery_location"] {
+    min-width: 220px !important;
+}
+
+/* Cột giờ giao */
+td[name="delivery_time"],
+th[data-name="delivery_time"] {
+    min-width: 120px !important;
+    white-space: nowrap !important;
+}
+
+/* Cột xe */
+td[name="vehicle_id"],
+th[data-name="vehicle_id"] {
+    min-width: 180px !important;
+}
+
+/* Cột danh sách xe bàn giao trong biên lai */
+td[name="vehicle_ids"],
+th[data-name="vehicle_ids"] {
+    min-width: 280px !important;
+}
+
+/* Các cột phụ kiện bàn giao kèm xe */
+td[name="qty_helmet"],
+th[data-name="qty_helmet"],
+td[name="qty_charger"],
+th[data-name="qty_charger"] {
+    min-width: 130px !important;
+    text-align: center !important;
+}
+
+td[name="qty_raincoat"],
+th[data-name="qty_raincoat"] {
+    min-width: 120px !important;
+    text-align: center !important;
+}
+
+td[name="qty_phone_holder"],
+th[data-name="qty_phone_holder"] {
+    min-width: 160px !important;
+    text-align: center !important;
+}
+
+td[name="delivery_visual_note"],
+th[data-name="delivery_visual_note"] {
+    min-width: 240px !important;
+}
+
+/* Bảng sự cố */
+td[name="ticket_id"],
+th[data-name="ticket_id"] {
+    min-width: 160px !important;
+}
+
+td[name="price_catalog_id"],
+th[data-name="price_catalog_id"] {
+    min-width: 180px !important;
+}
+
+td[name="quantity"],
+th[data-name="quantity"] {
+    min-width: 140px !important;
+}
+
+td[name="unit"],
+th[data-name="unit"] {
+    min-width: 90px !important;
+}
+
+td[name="fault_party"],
+th[data-name="fault_party"] {
+    min-width: 150px !important;
+}
+
+td[name="needs_repair"],
+th[data-name="needs_repair"] {
+    min-width: 120px !important;
+    text-align: center !important;
+}
+
+td[name="service_id"],
+th[data-name="service_id"] {
+    min-width: 170px !important;
+}
+
+td[name="damage_description"],
+th[data-name="damage_description"] {
+    min-width: 260px !important;
+}
+
+/* Cột nút bấm in biên lai trong bảng */
+th.o_list_button,
+td.o_list_button {
+    min-width: 140px !important;
+    white-space: nowrap !important;
+}
+
+/* Cột trạng thái */
+td[name="status"],
+th[data-name="status"],
+td[name="state"],
+th[data-name="state"] {
+    min-width: 140px !important;
+    white-space: nowrap !important;
+}

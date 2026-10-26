@@ -10,12 +10,13 @@
         <field name="name">motorbike.rental.price.catalog.list</field>
         <field name="model">motorbike.rental.price.catalog</field>
         <field name="arch" type="xml">
-            <list string="Bảng giá" class="o_price_catalog_no_selector">
+            <list string="Bảng giá">
+                <field name="currency_id" column_invisible="1"/>
+                <field name="incident_code" string="Mã sự cố" width="120px"/>
+                <field name="code" string="Ký hiệu" width="130px"/>
                 <field name="name"/>
-                <field name="code"/>
                 <field name="category"/>
                 <field name="unit_price"/>
-                <field name="currency_id"/>
                 <field name="unit"/>
                 <field name="effective_from" optional="show"/>
                 <field name="effective_to" optional="show"/>
@@ -30,8 +31,9 @@
             <form string="Bảng giá">
                 <sheet>
                     <group string="Thông tin chung">
+                        <field name="incident_code" readonly="1" force_save="1"/>
+                        <field name="code" string="Ký hiệu"/>
                         <field name="name"/>
-                        <field name="code" readonly="1" force_save="1"/>
                         <field name="category"/>
                     </group>
                     <group string="Thông tin giá">
@@ -57,8 +59,9 @@
         <field name="model">motorbike.rental.price.catalog</field>
         <field name="arch" type="xml">
             <search string="Tìm kiếm bảng giá">
+                <field name="incident_code" string="Mã sự cố"/>
+                <field name="code" string="Ký hiệu"/>
                 <field name="name"/>
-                <field name="code"/>
                 <filter name="filter_compensation" string="Bồi thường" domain="[('category','=','compensation')]"/>
                 <filter name="filter_surcharge" string="Phụ phí" domain="[('category','=','surcharge')]"/>
                 <filter name="filter_service" string="Dịch vụ" domain="[('category','=','service')]"/>

@@ -1,0 +1,28 @@
+{
+  "demo_version": "18.0.1.2.1",
+  "fleet_version_required": "18.0.5.8.0",
+  "date": "2026-10-18",
+  "new_vehicles": 8,
+  "total_vehicles": 14,
+  "new_services": 4,
+  "total_services_in_current_database": 10,
+  "old_contracts_retained": 3,
+  "old_operation_tickets_retained": 2,
+  "tests": {
+    "clone_passed": 5,
+    "demo_passed": 5
+  },
+  "initial_scenarios": {
+    "XE00014": "ok",
+    "XE00015": "soon",
+    "XE00016": "due",
+    "XE00017": "overdue",
+    "XE00018": "soon",
+    "XE00019": "overdue",
+    "XE00020": "missing_baseline",
+    "XE00021": "overdue; maintenance running"
+  },
+  "policy_disclaimer": "Illustrative shop policy, not manufacturer recommendation",
+  "backup": "archive/before-periodic-demo-20261018-102230",
+  "github_pushed": false
+}

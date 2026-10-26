@@ -16,9 +16,7 @@ class TestWeek7Fleet(TransactionCase):
 
     def service(self, **values):
         return self.env['fleet.vehicle.log.services'].create({
-            'vehicle_id': self.vehicle.id, 'date': '2026-10-09',
-            'scheduled_start': '2026-10-09 02:00:00',
-            'scheduled_end': '2026-10-09 06:00:00', **values})
+            'vehicle_id': self.vehicle.id, 'date': '2026-10-09', **values})
 
     def user(self, login, group):
         return self.env['res.users'].create({'name': login, 'login': login,
@@ -36,7 +34,10 @@ class TestWeek7Fleet(TransactionCase):
             form.block_reason = 'Kiểm kê'
         self.assertEqual(vehicle.operational_status, 'available')
         self.assertTrue(vehicle.technical_ready)
-        vehicle.unlink()
+        with self.assertRaises(UserError):
+            vehicle.unlink()
+        vehicle.active = False
+        self.assertFalse(vehicle.active)
 
     def test_service_form_crud(self):
         with Form(self.env['fleet.vehicle.log.services'].with_context(motorbike_only=True)) as form:
@@ -61,20 +62,18 @@ class TestWeek7Fleet(TransactionCase):
         self.assertTrue(self.vehicle.rental_blocked)
 
     def test_service_validation(self):
-        for values in [{'amount': -1}, {'scheduled_end': '2026-10-08 06:00:00'},
-                       {'scheduled_start': False}, {'actual_end': '2026-10-09 06:00:00'},
+        for values in [{'amount': -1}, {'actual_end': '2026-10-09 06:00:00'},
                        {'actual_start': '2026-10-09 06:00:00', 'actual_end': '2026-10-09 02:00:00'},
                        {'next_service_date': '2026-10-09'}]:
             with self.assertRaises(ValidationError), self.cr.savepoint():
                 self.service(**values)
         self.assertEqual(self.service(amount=0).cost, 0)
-        with self.assertRaises(ValidationError), self.cr.savepoint():
+        with self.assertRaises(ValueError), self.cr.savepoint():
             self.env['fleet.vehicle.log.services'].create({'vehicle_id': self.vehicle.id, 'state': 'scheduled'})
 
     def test_workflow_and_next_date(self):
         self.vehicle.action_confirm_technical_ready()
         service = self.service(result='Đã sửa', next_service_date='2026-12-01')
-        service.action_schedule()
         self.assertEqual(self.vehicle.operational_status, 'available')
         service.action_start()
         self.assertTrue(service.actual_start)
@@ -86,8 +85,8 @@ class TestWeek7Fleet(TransactionCase):
             self.vehicle.write({'technical_ready': True, 'operational_status': 'available'})
         service.action_done()
         self.assertTrue(service.actual_end)
-        self.assertEqual(self.vehicle.operational_status, 'pending_inspection')
-        self.assertFalse(self.vehicle.technical_ready)
+        self.assertEqual(self.vehicle.operational_status, 'available')
+        self.assertTrue(self.vehicle.technical_ready)
         self.assertEqual(str(self.vehicle.next_service_date), '2026-12-01')
         self.vehicle.action_confirm_technical_ready()
         self.assertEqual(self.vehicle.operational_status, 'available')
@@ -102,7 +101,7 @@ class TestWeek7Fleet(TransactionCase):
         second.action_cancel()
         self.assertEqual(self.vehicle.operational_status, 'pending_inspection')
 
-    def test_nonblocking_and_cancel_scheduled(self):
+    def test_nonblocking_and_cancel_draft(self):
         self.vehicle.action_confirm_technical_ready()
         service = self.service(blocks_rental=False, result='Kiểm tra')
         service.action_start()
@@ -110,7 +109,6 @@ class TestWeek7Fleet(TransactionCase):
         self.assertEqual(self.vehicle.operational_status, 'available')
         self.assertTrue(self.vehicle.technical_ready)
         planned = self.service()
-        planned.action_schedule()
         planned.action_cancel()
         self.assertFalse(planned.actual_start)
         self.assertFalse(planned.actual_end)
@@ -197,6 +195,8 @@ class TestWeek7Fleet(TransactionCase):
             service.with_user(officer).action_start()
         service.action_start()
         service.action_done()
+        self.env['motorbike.service.complete.wizard'].with_user(tech).create({
+            'service_id': service.id, 'result': 'Đã sửa'}).action_complete()
         with self.assertRaises(AccessError), self.cr.savepoint():
             service.unlink()
         service.with_user(manager).unlink()
@@ -250,7 +250,7 @@ class TestWeek7Fleet(TransactionCase):
         else:
             groups = vehicles.read_group([('id', '=', self.vehicle.id)], ['operational_status'], ['operational_status'])
         self.assertEqual({g['operational_status'] for g in groups},
-                         {'available', 'renting', 'pending_inspection', 'maintenance'})
+                         {'available', 'renting', 'pending_inspection', 'maintenance', 'inactive'})
         for model in ['motorbike.battery', 'motorbike.battery.assignment', 'motorbike.maintenance.plan']:
             self.assertNotIn(model, self.env.registry)
         for method in ['check_availability', 'action_mark_rented', 'action_return_for_inspection']:

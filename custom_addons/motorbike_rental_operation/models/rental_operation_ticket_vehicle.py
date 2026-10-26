@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
-from odoo import models, fields, api
-from odoo.exceptions import UserError
+from odoo import models, fields, api, _
+from odoo.exceptions import UserError, ValidationError
 
 class RentalOperationTicketVehicle(models.Model):
     _name = 'rental.operation.ticket.vehicle'
@@ -12,6 +11,15 @@ class RentalOperationTicketVehicle(models.Model):
     # Ô tick chọn phục vụ thao tác hàng loạt
     is_selected = fields.Boolean(string='Chọn', default=False)
 
+    @api.onchange('is_selected')
+    def _onchange_is_selected(self):
+        if self.ticket_id:
+            if self.ticket_id.state == 'done' or (self.ticket_id.contract_id and self.ticket_id.contract_id.state == 'done'):
+                self.is_selected = False
+                self.ticket_id.has_selected_vehicles = False
+                return
+            self.ticket_id.has_selected_vehicles = any(self.ticket_id.vehicle_detail_ids.mapped('is_selected'))
+
     # Tiền tệ kế thừa từ phiếu tổng
     currency_id = fields.Many2one(
         'res.currency',
@@ -22,15 +30,20 @@ class RentalOperationTicketVehicle(models.Model):
     )
 
     vehicle_id = fields.Many2one('fleet.vehicle', string='Xe', required=True)
+    license_plate = fields.Char(string='Biển số xe', related='vehicle_id.license_plate', readonly=True)
     vehicle_price = fields.Monetary(string='Giá tiền xe', default=0.0, currency_field='currency_id')
 
     # Thông tin vận chuyển - Mặc định lấy từ địa điểm chung của hợp đồng/phiếu
-    delivery_location = fields.Char(string='Vị trí giao xe', default='Tại cửa hàng')
-    return_location = fields.Char(string='Vị trí nhận xe', default='Tại cửa hàng')
+    delivery_location = fields.Char(string='Vị trí giao', default='Tại cửa hàng')
+    return_location = fields.Char(string='Vị trí thu hồi', default='Tại cửa hàng')
+    delivery_time = fields.Char(string='Giờ giao xe', default=False, help='Thời gian dự kiến giao xe (VD: 08:30)')
+    return_time = fields.Char(string='Giờ thu hồi xe', default=False, help='Thời gian dự kiến thu hồi xe (VD: 18:00)')
 
-    # Đánh dấu người dùng đã chỉnh riêng địa điểm (không bị ghi đè khi đổi địa điểm chung)
+    # Đánh dấu người dùng đã chỉnh riêng địa điểm / thời gian (không bị ghi đè khi đổi giá trị chung)
     is_custom_delivery_location = fields.Boolean(string='Chỉnh địa điểm giao riêng', default=False)
-    is_custom_return_location = fields.Boolean(string='Chỉnh địa điểm nhận riêng', default=False)
+    is_custom_return_location = fields.Boolean(string='Chỉnh địa điểm thu hồi riêng', default=False)
+    is_custom_delivery_time = fields.Boolean(string='Chỉnh giờ giao riêng', default=False)
+    is_custom_return_time = fields.Boolean(string='Chỉnh giờ thu hồi riêng', default=False)
 
     @api.onchange('delivery_location')
     def _onchange_delivery_location(self):
@@ -44,13 +57,133 @@ class RentalOperationTicketVehicle(models.Model):
     def _onchange_return_location(self):
         if self.status == 'returned':
             name = self._get_vehicle_label()
-            raise UserError(f'Xe {name} đã được thu hồi hoàn tất, không được phép chỉnh sửa Địa chỉ nhận xe!')
+            raise UserError(f'Xe {name} đã được thu hồi hoàn tất, không được phép chỉnh sửa Địa chỉ thu hồi xe!')
         if self.ticket_id and self.return_location != self.ticket_id.quick_return_location:
             self.is_custom_return_location = True
 
-    # Lịch trình
-    date_checkout = fields.Datetime(string='Ngày Giao Xe')
-    date_checkin = fields.Datetime(string='Ngày Trả Xe')
+    @api.onchange('delivery_time')
+    def _onchange_delivery_time(self):
+        if self.status in ('renting', 'returned'):
+            name = self._get_vehicle_label()
+            raise UserError(f'Xe {name} đã được bàn giao (hoặc đã thu hồi), không được phép chỉnh sửa Giờ giao xe!')
+        if self.ticket_id and hasattr(self.ticket_id, 'quick_delivery_time') and self.delivery_time != self.ticket_id.quick_delivery_time:
+            self.is_custom_delivery_time = True
+
+    @api.onchange('return_time')
+    def _onchange_return_time(self):
+        if self.status == 'returned':
+            name = self._get_vehicle_label()
+            raise UserError(f'Xe {name} đã được thu hồi hoàn tất, không được phép chỉnh sửa Giờ thu hồi xe!')
+        if self.ticket_id and hasattr(self.ticket_id, 'quick_return_time') and self.return_time != self.ticket_id.quick_return_time:
+            self.is_custom_return_time = True
+
+    # Thông tin Biên lai bàn giao xe & Phụ kiện đi kèm (lưu vết phục vụ khi Thu hồi xe)
+    delivery_receipt_id = fields.Many2one('rental.delivery.receipt', string='Biên lai giao xe', readonly=True)
+    delivery_receipt_issued = fields.Boolean(string='Đã xuất biên lai', default=False, readonly=True)
+    receipt_printed_at = fields.Datetime(string='Thời điểm xuất biên lai', readonly=True)
+
+    # Thông tin Biên lai thu hồi xe & Tình trạng khi trả
+    return_receipt_id = fields.Many2one('rental.return.receipt', string='Biên lai thu hồi xe', readonly=True)
+    return_receipt_issued = fields.Boolean(string='Đã xuất biên lai thu hồi', default=False, readonly=True)
+    return_receipt_printed_at = fields.Datetime(string='Thời điểm xuất biên lai thu hồi', readonly=True)
+    return_visual_note = fields.Text(
+        string='Ngoại quan khi thu hồi',
+        default='Xe hoàn trả đầy đủ, ngoại quan bình thường, không trầy xước phát sinh.'
+    )
+
+    # 4 món phụ kiện đi kèm cố định (mặc định 2 mũ, 2 áo mưa, 1 giá đt, 1 sạc/xe)
+    qty_helmet = fields.Integer(string='Mũ bảo hiểm', default=2)
+    qty_raincoat = fields.Integer(string='Áo mưa', default=2)
+    qty_phone_holder = fields.Integer(string='Giá đỡ điện thoại', default=1)
+    qty_charger = fields.Integer(string='Bộ sạc xe', default=1)
+
+    # Tình trạng ngoại quan lúc giao xe
+    delivery_visual_note = fields.Text(
+        string='Ngoại quan khi giao',
+        default='Ngoại quan của xe không có vấn đề'
+    )
+
+    @api.model
+    def _get_vehicle_exterior_condition(self, vehicle):
+        """
+        Lấy thông tin ngoại quan xe từ trường description trên fleet.vehicle (tab 'Mô tả tình trạng').
+        Nếu không có giá trị gì, mặc định là: 'Ngoại quan của xe không có vấn đề'
+        """
+        default_val = 'Ngoại quan của xe không có vấn đề'
+        if not vehicle:
+            return default_val
+
+        if isinstance(vehicle, int):
+            vehicle = self.env['fleet.vehicle'].browse(vehicle)
+        if not vehicle.exists():
+            return default_val
+
+        v_sudo = vehicle.sudo()
+        note = False
+        for field_name in ('description', 'exterior_condition', 'visual_notes'):
+            if hasattr(v_sudo, field_name):
+                raw_val = getattr(v_sudo, field_name)
+                if raw_val:
+                    if isinstance(raw_val, str) and ('<' in raw_val and '>' in raw_val):
+                        from odoo.tools import html2plaintext
+                        cleaned = html2plaintext(raw_val).strip()
+                    else:
+                        cleaned = str(raw_val).strip()
+                    if cleaned:
+                        note = cleaned
+                        break
+        return note or default_val
+
+    def _get_display_visual_note(self):
+        """Lấy tình trạng ngoại quan chuẩn xác nhất để hiển thị và xuất báo cáo PDF"""
+        self.ensure_one()
+        note = (self.delivery_visual_note or '').strip()
+        # Nếu đã có ghi chú cụ thể khác các câu mặc định
+        if note and note not in (
+            'Ngoại quan của xe không có vấn đề',
+            'Xe vận hành tốt, ngoại quan bình thường, không trầy xước phát sinh.'
+        ):
+            return note
+
+        # Nếu chưa có hoặc chỉ là câu mặc định, ưu tiên lấy từ 'Mô tả tình trạng' của fleet.vehicle
+        if self.vehicle_id:
+            veh_cond = self._get_vehicle_exterior_condition(self.vehicle_id)
+            if veh_cond and veh_cond != 'Ngoại quan của xe không có vấn đề':
+                return veh_cond
+
+        return note or 'Ngoại quan của xe không có vấn đề'
+
+    @api.onchange('vehicle_id')
+    def _onchange_vehicle_id_exterior(self):
+        if self.vehicle_id:
+            veh_note = self._get_vehicle_exterior_condition(self.vehicle_id)
+            if not self.delivery_visual_note or self.delivery_visual_note in (
+                'Xe vận hành tốt, ngoại quan bình thường, không trầy xước phát sinh.',
+                'Ngoại quan của xe không có vấn đề'
+            ) or (veh_note and veh_note != 'Ngoại quan của xe không có vấn đề'):
+                self.delivery_visual_note = veh_note
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('vehicle_id'):
+                vehicle = self.env['fleet.vehicle'].browse(vals['vehicle_id'])
+                veh_condition = self._get_vehicle_exterior_condition(vehicle)
+                note_in_vals = (vals.get('delivery_visual_note') or '').strip()
+                if not note_in_vals or note_in_vals in (
+                    'Ngoại quan của xe không có vấn đề',
+                    'Xe vận hành tốt, ngoại quan bình thường, không trầy xước phát sinh.'
+                ):
+                    vals['delivery_visual_note'] = veh_condition
+                elif veh_condition and veh_condition != 'Ngoại quan của xe không có vấn đề' and note_in_vals == 'Ngoại quan của xe không có vấn đề':
+                    vals['delivery_visual_note'] = veh_condition
+        return super(RentalOperationTicketVehicle, self).create(vals_list)
+
+    # Lịch trình & Thời gian thực tế (cho phép chỉnh sửa)
+    date_checkout = fields.Datetime(string='Thời gian giao dự kiến')
+    actual_delivery_date = fields.Datetime(string='Thời gian giao thực tế')
+    date_checkin = fields.Datetime(string='Thời gian thu hồi dự kiến')
+    actual_return_date = fields.Datetime(string='Thời gian thu hồi thực tế')
 
     status = fields.Selection([
         ('waiting', 'Chưa giao'),
@@ -65,84 +198,268 @@ class RentalOperationTicketVehicle(models.Model):
             return self.vehicle_id.display_name or self.vehicle_id.name or 'N/A'
         return 'không xác định'
 
-    odo_start = fields.Float(string='ODO lúc giao (km)', copy=False)
-    odo_end = fields.Float(string='ODO lúc nhận (km)', copy=False)
+    def _check_fleet_delivery_eligibility(self):
+        """Kiểm tra xe có đủ điều kiện từ Fleet để giao hay không trước khi giao xe cho khách"""
+        for rec in self:
+            vehicle = rec.vehicle_id
+            if not vehicle:
+                continue
+
+            # Kiểm tra trạng thái hợp đồng: Không được giao xe khi hợp đồng ở trạng thái Nháp
+            contract = rec.ticket_id.contract_id if rec.ticket_id else False
+            if contract and contract.state == 'draft':
+                raise UserError(_('Không thể giao xe khi hợp đồng đang ở trạng thái Nháp! Vui lòng xác nhận hợp đồng trước.'))
+
+            # 1. Trạng thái vận hành phải là 'available' nếu xe chưa xuất phát đi giao ('waiting')
+            if rec.status == 'waiting' and vehicle.operational_status != 'available':
+                name = rec._get_vehicle_label()
+                status_labels = dict(vehicle._fields['operational_status'].selection) if hasattr(vehicle, '_fields') and 'operational_status' in vehicle._fields else {}
+                current_st = status_labels.get(vehicle.operational_status, vehicle.operational_status)
+                raise ValidationError(_(
+                    'Xe "%(name)s" không ở trạng thái sẵn sàng để bàn giao (Trạng thái hiện tại của xe: "%(status)s").'
+                ) % {'name': name, 'status': current_st})
+
+            # 2. Lấy khoảng thời gian thuê để kiểm tra với Fleet
+            start = rec.date_checkout or (contract.start_date if contract else False)
+            end = rec.date_checkin or (contract.end_date if contract else False)
+
+            if not start or not end or start >= end:
+                now = fields.Datetime.now()
+                start = now
+                end = fields.Datetime.add(now, hours=1)
+
+            # 3. Sử dụng trực tiếp hàm kiểm tra của Fleet: check_fleet_availability
+            if hasattr(vehicle, 'check_fleet_availability'):
+                availability = vehicle.check_fleet_availability(start, end)
+                if availability and not availability[0].get('fleet_ok'):
+                    reasons = availability[0].get('reasons', [])
+                    reason_map = {
+                        'rental_blocked': _('Xe đang bị khóa thuê (Lý do: %s)') % (vehicle.block_reason or _('Không có lý do cụ thể')),
+                        'not_technical_ready': _('Xe chưa đạt tiêu chuẩn kỹ thuật (technical_ready = False)'),
+                        'blocking_maintenance': _('Xe đang có lịch bảo dưỡng/sửa chữa chưa hoàn tất'),
+                        'not_electric_motorbike': _('Xe không phải là xe máy điện hợp lệ'),
+                        'archived': _('Xe đã bị lưu trữ (archived)'),
+                        'inactive_catalog': _('Dòng xe hoặc hãng xe đang bị tạm ngưng'),
+                    }
+                    details = [str(reason_map.get(r, r)) for r in reasons]
+                    name = rec._get_vehicle_label()
+                    raise ValidationError(_(
+                        'Xe "%(name)s" chưa đủ điều kiện Fleet để giao:\n- %(reasons)s'
+                    ) % {
+                        'name': name,
+                        'reasons': '\n- '.join(details),
+                    })
+            elif getattr(vehicle, 'rental_blocked', False) or not getattr(vehicle, 'technical_ready', True):
+                name = rec._get_vehicle_label()
+                reasons = []
+                if getattr(vehicle, 'rental_blocked', False):
+                    reasons.append(_('Xe đang bị khóa thuê (Lý do: %s)') % (getattr(vehicle, 'block_reason', '') or _('Không có lý do cụ thể')))
+                if not getattr(vehicle, 'technical_ready', True):
+                    reasons.append(_('Xe chưa đạt tiêu chuẩn kỹ thuật'))
+                raise ValidationError(_(
+                    'Xe "%(name)s" chưa đủ điều kiện Fleet để giao:\n- %(reasons)s'
+                ) % {
+                    'name': name,
+                    'reasons': '\n- '.join(reasons),
+                })
+
+    def action_start_delivery(self):
+        """Bắt đầu giao xe cho từng chiếc - Cập nhật xe bên Bắc sang Đang cho thuê (renting)"""
+        for rec in self:
+            if rec.ticket_id and rec.ticket_id.state == 'contract_cancelled':
+                raise UserError(_('Phiếu vận hành đã ở trạng thái "Hợp đồng bị hủy" và đã bị khóa!'))
+        self._check_fleet_delivery_eligibility()
+        for rec in self:
+            name = rec._get_vehicle_label()
+            if rec.status == 'returned':
+                raise UserError(f'Xe {name} đã được thu hồi!')
+            if rec.status == 'renting':
+                raise UserError(f'Xe {name} đã được giao!')
+            rec.write({
+                'status': 'delivering',
+                'is_selected': False,
+            })
+            if rec.vehicle_id:
+                rec.vehicle_id.write({'operational_status': 'renting'})
+        self._sync_delivery_receipt_state()
 
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
-            if vals.get('status', 'waiting') != 'waiting':
-                raise UserError('Xe mới trong phiếu phải ở trạng thái Chưa giao.')
-            if vals.get('vehicle_id'):
-                vehicle = self.env['fleet.vehicle'].browse(vals['vehicle_id'])
-                vals.setdefault('odo_start', vehicle.odometer)
-                vals.setdefault('odo_end', vehicle.odometer)
-        return super().create(vals_list)
+            ticket_id = vals.get('ticket_id')
+            if ticket_id:
+                ticket = self.env['rental.operation.ticket'].browse(ticket_id)
+                if ticket.state == 'contract_cancelled':
+                    raise UserError(_('Phiếu vận hành đã ở trạng thái "Hợp đồng bị hủy" và đã bị khóa, không thể thêm xe!'))
+        records = super(RentalOperationTicketVehicle, self).create(vals_list)
+        for rec in records:
+            if rec.status in ('delivering', 'renting'):
+                rec._check_fleet_delivery_eligibility()
+            if rec.status == 'renting':
+                rec._sync_contract_in_progress()
+                if rec.vehicle_id:
+                    rec.vehicle_id.write({'operational_status': 'renting'})
+        return records
 
-    def action_start_delivery(self):
-        if any(rec.status != 'waiting' for rec in self):
-            raise UserError('Chỉ bắt đầu giao xe đang Chưa giao.')
-        return self.write({'status': 'delivering', 'is_selected': False})
+    def _sync_delivery_receipt_state(self):
+        """Đồng bộ trạng thái biên lai giao xe khi xe chuyển trạng thái"""
+        receipts = self.mapped('delivery_receipt_id') | self.mapped('ticket_id.receipt_ids')
+        if receipts:
+            receipts._compute_state()
+
+    def _sync_return_receipt_state(self):
+        """Đồng bộ trạng thái biên lai thu hồi xe khi xe chuyển trạng thái"""
+        receipts = self.mapped('return_receipt_id') | self.mapped('ticket_id.return_receipt_ids')
+        if receipts:
+            receipts._compute_state()
+
+    def _sync_contract_in_progress(self):
+        """Khi có xe trong bản ghi giao xe được giao ('renting'), chuyển hợp đồng sang Đang thuê ('in_progress')"""
+        for rec in self:
+            contract = rec.ticket_id.contract_id if rec.ticket_id else False
+            if contract and contract.state == 'confirmed':
+                contract.sudo().write({'state': 'in_progress'})
 
     def action_confirm_delivery(self):
-        if any(rec.status not in ('waiting', 'delivering') for rec in self):
-            raise UserError('Xe đã bàn giao hoặc đã thu hồi.')
-        return self.write({'status': 'renting', 'is_selected': False})
+        """Xác nhận đã bàn giao xe thành công cho khách - Xe bên Bắc ở trạng thái Đang cho thuê (renting)"""
+        for rec in self:
+            if rec.ticket_id and rec.ticket_id.state == 'contract_cancelled':
+                raise UserError(_('Phiếu vận hành đã ở trạng thái "Hợp đồng bị hủy" và đã bị khóa!'))
+        self._check_fleet_delivery_eligibility()
+        for rec in self:
+            name = rec._get_vehicle_label()
+            if rec.status == 'returned':
+                raise UserError(f'Xe {name} đã được thu hồi!')
+            if rec.status == 'renting':
+                raise UserError(f'Xe {name} đã được giao!')
+            vals = {
+                'status': 'renting',
+                'is_selected': False,
+            }
+            if not rec.actual_delivery_date:
+                vals['actual_delivery_date'] = fields.Datetime.now()
+            rec.write(vals)
+            if rec.ticket_id and not rec.ticket_id.actual_delivery_date:
+                rec.ticket_id.actual_delivery_date = fields.Datetime.now()
+            rec._sync_contract_in_progress()
+            if rec.vehicle_id:
+                rec.vehicle_id.write({'operational_status': 'renting'})
+        self._sync_delivery_receipt_state()
+        self._sync_return_receipt_state()
 
     def action_confirm_return(self):
-        if any(rec.status != 'renting' for rec in self):
-            raise UserError('Chỉ thu hồi xe đang cho thuê, mỗi lần thuê nhận trả một lần.')
-        return self.write({'status': 'returned', 'is_selected': False})
+        """Xác nhận thu hồi xe từ khách - Mặc định xe bên Bắc chuyển sang Chờ kiểm tra (pending_inspection)"""
+        for rec in self:
+            if rec.ticket_id and rec.ticket_id.state == 'contract_cancelled':
+                raise UserError(_('Phiếu vận hành đã ở trạng thái "Hợp đồng bị hủy" và đã bị khóa!'))
+        for rec in self:
+            name = rec._get_vehicle_label()
+            if rec.status in ('waiting', 'delivering'):
+                raise UserError(f'Xe {name} chưa được bàn giao!')
+            if rec.status == 'returned':
+                raise UserError(f'Xe {name} đã được thu hồi!')
+            vals = {
+                'status': 'returned',
+                'is_selected': False,
+            }
+            if not rec.actual_return_date:
+                vals['actual_return_date'] = fields.Datetime.now()
+            rec.write(vals)
+            if rec.ticket_id:
+                all_returned = all(v.status == 'returned' for v in rec.ticket_id.vehicle_detail_ids)
+                if all_returned:
+                    if not rec.ticket_id.actual_return_date:
+                        rec.ticket_id.actual_return_date = fields.Datetime.now()
+            if rec.vehicle_id:
+                rec.vehicle_id.write({
+                    'operational_status': 'pending_inspection',
+                    'technical_ready': False,
+                })
+        self._sync_delivery_receipt_state()
+        self._sync_return_receipt_state()
 
     def write(self, vals):
-        transitions = {'waiting': {'delivering', 'renting'},
-                       'delivering': {'renting'}, 'renting': {'returned'}, 'returned': set()}
         for rec in self:
-            if (rec.status != 'waiting' or vals.get('status', 'waiting') != 'waiting') and any(
-                    key in vals and vals[key] != rec[key].id for key in ('vehicle_id', 'ticket_id')):
-                raise UserError('Không đổi xe hoặc phiếu sau khi bắt đầu giao.')
-            if 'delivery_location' in vals and rec.status in ('renting', 'returned') and vals['delivery_location'] != rec.delivery_location:
-                raise UserError('Không đổi địa chỉ giao sau khi bàn giao.')
-            if 'return_location' in vals and rec.status == 'returned' and vals['return_location'] != rec.return_location:
-                raise UserError('Không đổi địa chỉ nhận sau khi thu hồi.')
-            for key, locked in [('odo_start', rec.status != 'waiting'), ('odo_end', rec.status == 'returned')]:
-                if key in vals and locked and vals[key] != rec[key]:
-                    raise UserError('Không sửa ODO của lần giao/nhận đã xác nhận.')
-            target = vals.get('status')
-            if target is None or target == rec.status:
-                continue
-            if target not in transitions.get(rec.status, set()):
-                raise UserError('Chuyển trạng thái giao/nhận không hợp lệ hoặc đã thực hiện.')
-            contract = rec.ticket_id.contract_id
-            if contract.state not in ('confirmed', 'in_progress'):
-                raise UserError('Hợp đồng phải được xác nhận hoặc đang thuê để giao/nhận xe.')
-            if rec.vehicle_id not in contract.line_ids.mapped('vehicle_id'):
-                raise UserError('Xe giao/nhận phải thuộc hợp đồng.')
-            now = fields.Datetime.now()
-            if rec.status == 'waiting':
-                contract._check_vehicle_availability()
-                rec.vehicle_id.action_deliver_vehicle(
-                    contract.start_date, contract.end_date,
-                    odometer_start=vals.get('odo_start', rec.odo_start), checkout_at=now)
-                super(RentalOperationTicketVehicle, rec).write({'date_checkout': now})
-            elif target == 'renting':
-                if rec.vehicle_id.operational_status != 'renting':
-                    raise UserError('Trạng thái Fleet không còn khớp với xe đang giao.')
-            elif target == 'returned':
-                rec.vehicle_id.action_return_vehicle(
-                    'pending', odometer_end=vals.get('odo_end', rec.odo_end), checkin_at=now)
-                super(RentalOperationTicketVehicle, rec).write({'date_checkin': now})
-        return super().write(vals)
+            if rec.ticket_id and rec.ticket_id.state == 'contract_cancelled':
+                raise UserError(_('Phiếu vận hành đã ở trạng thái "Hợp đồng bị hủy" và đã bị khóa, không được phép chỉnh sửa chi tiết xe!'))
+        if 'status' in vals and vals['status'] in ('delivering', 'renting'):
+            self._check_fleet_delivery_eligibility()
+        if 'delivery_location' in vals:
+            for rec in self:
+                if rec.status in ('renting', 'returned') and vals['delivery_location'] != rec.delivery_location:
+                    name = rec._get_vehicle_label()
+                    raise UserError(f'Xe {name} đã được bàn giao cho khách (hoặc đã thu hồi), không được phép chỉnh sửa Địa chỉ giao xe!')
+        if 'delivery_time' in vals:
+            for rec in self:
+                if rec.status in ('renting', 'returned') and vals['delivery_time'] != rec.delivery_time:
+                    name = rec._get_vehicle_label()
+                    raise UserError(f'Xe {name} đã được bàn giao cho khách (hoặc đã thu hồi), không được phép chỉnh sửa Giờ giao xe!')
+        if 'return_location' in vals:
+            for rec in self:
+                if rec.status == 'returned' and vals['return_location'] != rec.return_location:
+                    name = rec._get_vehicle_label()
+                    raise UserError(f'Xe {name} đã được thu hồi hoàn tất, không được phép chỉnh sửa Địa chỉ thu hồi xe!')
+        if 'return_time' in vals:
+            for rec in self:
+                if rec.status == 'returned' and vals['return_time'] != rec.return_time:
+                    name = rec._get_vehicle_label()
+                    raise UserError(f'Xe {name} đã được thu hồi hoàn tất, không được phép chỉnh sửa Giờ thu hồi xe!')
+
+        res = super(RentalOperationTicketVehicle, self).write(vals)
+        if 'status' in vals:
+            for rec in self:
+                if rec.vehicle_id:
+                    if vals['status'] in ('delivering', 'renting'):
+                        rec.vehicle_id.write({'operational_status': 'renting'})
+                    elif vals['status'] == 'returned':
+                        rec.vehicle_id.write({
+                            'operational_status': 'pending_inspection',
+                            'technical_ready': False,
+                        })
+                # Khi xe ở trạng thái đã giao xe ('renting'), hợp đồng chuyển sang trạng thái Đang thuê ('in_progress')
+                if vals['status'] == 'renting':
+                    rec._sync_contract_in_progress()
+            self._sync_delivery_receipt_state()
+            self._sync_return_receipt_state()
+
+        if 'delivery_location' in vals or 'delivery_time' in vals:
+            for rec in self:
+                if rec.delivery_receipt_id and rec.delivery_receipt_id.state != 'delivered':
+                    r_vals = {}
+                    if 'delivery_location' in vals and vals['delivery_location']:
+                        r_vals['delivery_location'] = vals['delivery_location']
+                    if 'delivery_time' in vals:
+                        r_vals['delivery_time'] = vals['delivery_time']
+                    if r_vals:
+                        rec.delivery_receipt_id.write(r_vals)
+
+        if 'return_location' in vals or 'return_time' in vals:
+            for rec in self:
+                if rec.return_receipt_id and rec.return_receipt_id.state != 'returned':
+                    r_vals = {}
+                    if 'return_location' in vals and vals['return_location']:
+                        r_vals['return_location'] = vals['return_location']
+                    if 'return_time' in vals:
+                        r_vals['return_time'] = vals['return_time']
+                    if r_vals:
+                        rec.return_receipt_id.write(r_vals)
+
+        return res
 
     def action_reset_waiting(self):
-        if any(rec.status != 'waiting' for rec in self):
-            raise UserError('Không đặt lại xe đã bắt đầu giao; cần xử lý theo nghiệp vụ nhận trả.')
-        return True
+        """Khôi phục về trạng thái chưa giao"""
+        for rec in self:
+            if rec.ticket_id and rec.ticket_id.state == 'contract_cancelled':
+                raise UserError(_('Phiếu vận hành đã ở trạng thái "Hợp đồng bị hủy" và đã bị khóa!'))
+            rec.write({
+                'status': 'waiting',
+                'is_selected': False,
+            })
 
     def unlink(self):
         for rec in self:
-            if rec.status != 'waiting':
-                raise UserError('Không xóa lịch sử xe đã bắt đầu giao hoặc đã thu hồi.')
+            if rec.ticket_id and rec.ticket_id.state == 'contract_cancelled':
+                raise UserError(_('Phiếu vận hành đã ở trạng thái "Hợp đồng bị hủy" và đã bị khóa, không thể xóa chi tiết xe!'))
             if rec.ticket_id and not self.env.context.get('delete_ticket'):
                 raise UserError('Không được phép xóa xe khỏi phiếu bàn giao! Danh sách xe được lấy theo hợp đồng thuê.')
         return super(RentalOperationTicketVehicle, self).unlink()

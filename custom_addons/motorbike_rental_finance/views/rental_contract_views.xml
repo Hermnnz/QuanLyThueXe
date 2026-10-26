@@ -9,13 +9,28 @@
         <field name="inherit_id" ref="motorbike_rental_core.view_rental_contract_form"/>
         <field name="arch" type="xml">
 
-            <!-- 1. Chèn nút Quyết toán vào Header trước nút Hoàn tất -->
-            <xpath expr="//header/button[@name='action_done']" position="before">
-                <button name="action_settlement" 
-                        type="object" 
-                        string="Quyết toán thanh toán" 
-                        class="oe_highlight" 
-                        invisible="state != 'in_progress' or settlement_status == 'settled'"/>
+            <!-- 1. Nhân viên kết thúc hợp đồng bằng nút Xác nhận hóa đơn, không bấm Hoàn tất riêng.
+                 xpath tìm nút action_done trong header (thanh nút phía trên) của giao diện Core.
+                 position="attributes" sửa thuộc tính nút đã có, không tạo hoặc xóa nút trong Core.
+                 invisible = 1 nghĩa là luôn ẩn nút Hoàn tất trên form hợp đồng khi có module Finance.
+                 Hàm write trong rental_contract.py vẫn kiểm tra ở server để không thể bỏ qua bằng code. -->
+            <xpath expr="//header/button[@name='action_done']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <!-- Chỉ hiện nút Hủy khi hợp đồng còn nháp hoặc đã ký nhưng chưa bắt đầu thuê.
+                 Với hợp đồng đã ký, Python còn kiểm tra từng dòng xe trước khi mở phiếu hoàn cọc. -->
+            <xpath expr="//header/button[@name='action_cancel']" position="attributes">
+                <attribute name="invisible">state not in ('draft', 'confirmed')</attribute>
+            </xpath>
+
+            <!-- Một ô xác nhận đã nhận cả cọc và tiền thuê; bắt buộc tích trước khi ký hợp đồng. -->
+            <xpath expr="//sheet/group[1]" position="after">
+                <group string="Tiền đã nhận" invisible="state != 'draft'">
+                    <field name="upfront_received_check"/>
+                    <!-- Nhân viên chọn một phương thức cho cả cọc và tiền thuê trước khi ký hợp đồng. -->
+                    <field name="upfront_payment_method" required="upfront_received_check"/>
+                </group>
             </xpath>
 
             <!-- 2. Chèn 2 Tab hiển thị Phụ phí và Lịch sử thanh toán vào dưới Sheet -->

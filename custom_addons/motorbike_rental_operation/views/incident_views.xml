@@ -10,19 +10,21 @@
         <field name="name">rental.operation.incident.log.list</field>
         <field name="model">rental.operation.incident.log</field>
         <field name="arch" type="xml">
-            <list string="Sự cố">
+            <list string="Sự cố" class="o_rental_incident_list_table" create="0" edit="0" delete="0">
                 <field name="currency_id" column_invisible="1"/>
-                <field name="name"/>
-                <field name="ticket_id"/>
-                <field name="vehicle_id"/>
-                <field name="price_catalog_id"/>
-                <field name="fault_party"/>
-                <field name="damage_description"/>
-                <field name="date_reported"/>
-                <field name="status" widget="badge" 
-                       decoration-info="status == 'new'" 
-                       decoration-warning="status == 'processing'" 
-                       decoration-success="status == 'resolved'"/>
+                <field name="needs_repair" column_invisible="1"/>
+                <field name="name" width="130px"/>
+                <field name="ticket_id" width="160px"/>
+                <field name="vehicle_id" width="180px"/>
+                <field name="price_catalog_id" width="200px"/>
+                <field name="quantity" width="110px" string="Số lượng / Số giờ"/>
+                <field name="unit" width="80px"/>
+                <field name="fault_party" width="150px"/>
+                <field name="needs_repair_display" string="Cần sửa chữa?" width="150px"/>
+                <field name="status" widget="badge" decoration-warning="status == 'processing'" decoration-success="status == 'resolved'" width="130px"/>
+                <field name="service_id" column_invisible="1"/>
+                <field name="damage_description" width="280px"/>
+                <field name="date_reported" width="175px"/>
             </list>
         </field>
     </record>
@@ -31,45 +33,38 @@
         <field name="name">rental.operation.incident.log.form</field>
         <field name="model">rental.operation.incident.log</field>
         <field name="arch" type="xml">
-            <form string="Sự cố">
+            <form string="Sự cố" create="0" edit="0" delete="0">
                 <header>
-                    <button name="action_start_processing" 
-                            type="object" 
-                            string="Xác nhận xử lý" 
-                            class="oe_highlight" 
-                            invisible="status != 'new'"
-                            confirm="Bạn có chắc chắn muốn bắt đầu xử lý sự cố này?"/>
-                    <button name="action_resolve" 
-                            type="object" 
-                            string="Xác nhận hoàn tất" 
-                            class="btn-success" 
-                            invisible="status != 'processing'"
-                            confirm="Bạn có chắc chắn sự cố này đã được xử lý/khắc phục hoàn tất?"/>
-                    <button name="action_reset_new" 
-                            type="object" 
-                            string="Đặt lại Mới" 
-                            invisible="status == 'new'"/>
-                    <field name="status" widget="statusbar" statusbar_visible="new,processing,resolved"/>
+                    <button name="action_open_fleet_service" type="object" string="Xem phiếu Bảo dưỡng &amp; Sửa chữa" class="btn-secondary" invisible="not service_id"/>
+                    <field name="status" widget="statusbar" statusbar_visible="processing,resolved"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
-                        <h1><field name="name" force_save="1"/></h1>
+                        <h1><field name="name" readonly="1"/></h1>
                     </div>
                     <group>
-                        <group>
+                        <group string="Thông tin xe &amp; thời gian">
                             <field name="available_vehicle_ids" invisible="1"/>
                             <field name="currency_id" invisible="1"/>
-                            <field name="ticket_id"/>
-                            <field name="vehicle_id"/>
-                            <field name="date_reported"/>
+                            <field name="needs_repair" invisible="1"/>
+                            <field name="ticket_id" readonly="1"/>
+                            <field name="vehicle_id" readonly="1"/>
+                            <field name="date_reported" readonly="1"/>
                         </group>
-                        <group>
-                            <field name="fault_party"/>
-                            <field name="price_catalog_id" options="{'no_create': True, 'no_open': True}"/>
+                        <group string="Phân loại sự cố &amp; Trách nhiệm">
+                            <field name="fault_party" readonly="1"/>
+                            <field name="price_catalog_id" readonly="1" options="{'no_create': True, 'no_open': True}"/>
+                            <label for="quantity" string="Số lượng / Số giờ"/>
+                            <div class="o_row">
+                                <field name="quantity" class="oe_inline" readonly="1"/>
+                                <field name="unit" class="oe_inline ms-2" readonly="1"/>
+                            </div>
+                            <field name="needs_repair_display" string="Cần sửa chữa?" readonly="1"/>
+                            <field name="service_id" readonly="1" invisible="not service_id"/>
                         </group>
                     </group>
                     <group string="Mô tả lỗi / Hư hỏng">
-                        <field name="damage_description" nolabel="1" placeholder="Nhập mô tả chi tiết lỗi hoặc hư hỏng của xe..."/>
+                        <field name="damage_description" readonly="1" nolabel="1" placeholder="Nhập mô tả chi tiết lỗi hoặc hư hỏng của xe..."/>
                     </group>
                 </sheet>
             </form>
@@ -85,11 +80,14 @@
                 <field name="vehicle_id"/>
                 <field name="ticket_id"/>
                 <field name="fault_party"/>
-                <filter string="Mới" name="new" domain="[('status','=','new')]"/>
-                <filter string="Đang xử lý" name="processing" domain="[('status','=','processing')]"/>
-                <filter string="Đã giải quyết" name="resolved" domain="[('status','=','resolved')]"/>
+                <filter string="Cần sửa chữa" name="needs_repair" domain="[('needs_repair','=',True)]"/>
+                <filter string="Không cần sửa chữa" name="no_needs_repair" domain="[('needs_repair','=',False)]"/>
+                <separator/>
+                <filter string="Đang thực hiện" name="processing" domain="[('status','=','processing')]"/>
+                <filter string="Hoàn tất" name="resolved" domain="[('status','=','resolved')]"/>
                 <group expand="0" string="Nhóm theo">
                     <filter string="Trạng thái" name="group_by_status" context="{'group_by':'status'}"/>
+                    <filter string="Cần sửa chữa" name="group_by_needs_repair" context="{'group_by':'needs_repair'}"/>
                     <filter string="Lỗi thuộc về" name="group_by_fault_party" context="{'group_by':'fault_party'}"/>
                 </group>
             </search>
@@ -100,13 +98,13 @@
         <field name="name">rental.operation.incident.log.kanban</field>
         <field name="model">rental.operation.incident.log</field>
         <field name="arch" type="xml">
-            <kanban default_group_by="status" class="o_kanban_small_column">
+            <kanban default_group_by="needs_repair" class="o_kanban_small_column" create="0">
                 <field name="id"/>
                 <field name="name"/>
                 <field name="vehicle_id"/>
                 <field name="ticket_id"/>
                 <field name="fault_party"/>
-                <field name="status"/>
+                <field name="needs_repair"/>
                 <templates>
                     <t t-name="kanban-box">
                         <div class="oe_kanban_global_click">

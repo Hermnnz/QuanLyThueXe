@@ -62,12 +62,11 @@ class TestFleetSourceAudit(TransactionCase):
         with self.assertRaises(UserError), self.cr.savepoint():
             copied.action_done()
 
-    def test_blocking_schedule_requires_positive_duration(self):
-        service = self.service(scheduled_start='2026-12-01 02:00:00',
-                               scheduled_end='2026-12-01 02:00:00')
-        with self.assertRaises(ValidationError), self.cr.savepoint():
-            service.action_schedule()
-        service.blocks_rental = False
-        service.action_schedule()
-        with self.assertRaises(ValidationError), self.cr.savepoint():
-            service.blocks_rental = True
+    def test_planned_fields_and_scheduled_state_removed(self):
+        Service = self.env['fleet.vehicle.log.services']
+        self.assertNotIn('scheduled_start', Service._fields)
+        self.assertNotIn('scheduled_end', Service._fields)
+        self.assertNotIn('scheduled', dict(Service._fields['state']._description_selection(self.env)))
+        self.assertFalse(hasattr(Service, 'action_schedule'))
+        self.assertEqual(Service._fields['actual_start'].string, 'Ngày bắt đầu')
+        self.assertEqual(Service._fields['actual_end'].string, 'Ngày kết thúc')

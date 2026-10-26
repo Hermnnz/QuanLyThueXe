@@ -1,0 +1,33 @@
+{
+  "started_utc": "2026-10-18T03:37:35Z",
+  "finished_utc": "2026-10-18T03:43:35.081325+00:00",
+  "elapsed_to_live_verification_seconds": 332,
+  "fleet_version": "18.0.5.9.0",
+  "demo_version": "18.0.1.2.2",
+  "backup": "C:\\Users\\bac\\Documents\\Codex\\2026-09-25\\too\\outputs\\QuanLyThueXe-fleet\\archive\\before-per-vehicle-policy-20261018-103808",
+  "clone_tests": 16,
+  "live_tests": 21,
+  "live_http_check": "passed",
+  "tools_serena_calls": 0,
+  "tools_dbhub_calls": 0,
+  "odoo_clone_upgrade_seconds_from_log": 18.47,
+  "odoo_live_upgrade_seconds_from_log": 18.24,
+  "test_execution_seconds_clone": 1.61,
+  "test_execution_seconds_live": 1.82,
+  "timing_notes": [
+    "Wall time includes inspection, implementation, documentation, tool round trips and data comparisons.",
+    "Data comparison needed correction for technical write audit fields and the actual Operations line table name.",
+    "Upgrade completed but process remained alive with browser WebSocket activity; stopped only the completed upgrade process and relaunched normal server."
+  ],
+  "business_preservation": {
+    "fleet_vehicle": 14,
+    "fleet_vehicle_model": 18,
+    "fleet_vehicle_log_services": 10,
+    "fleet_vehicle_odometer": 3,
+    "rental_contract": 3,
+    "rental_contract_line": 3,
+    "rental_operation_ticket": 2,
+    "rental_operation_ticket_vehicle": 2
+  },
+  "github_pushed": false
+}

@@ -5,6 +5,26 @@ from odoo.exceptions import ValidationError
 from odoo.http import request
 
 
+_VEHICLE_MODEL_IMAGES = {
+    'evo200': 'evo.jpg',
+    'evo200 lite': 'evo.jpg',
+    'feliz': 'feliz.webp',
+    'feliz s': 'feliz.webp',
+    'klara s (2022)': 'Vinfast_Klara_S2022.jpg',
+    'vento s': 'Vinfast_Vento_S.jpg',
+    'theon s': 'Vinfast_Theon_S.jpg',
+    'ludo': 'Vinfast_Ludo.jpg',
+    'weaver': 'Dat_bike_weaver.jpg',
+    'weaver 200': 'Dat_bike_weaver200.jpg',
+    'weaver++': 'Dat_bike_weaver++.jpg',
+    'quantum': 'Dat_bike_Quantum.jpg',
+    'quantum s1': 'Dat_bike_Quantum_S1.jpg',
+    'quantum s2': 'Dat_bike_Quantum_S2.jpg',
+    'quantum s3': 'Dat_bike_Quantum_S3.jpg',
+    'era': 'Dat_bikee_ERA.webp',
+}
+
+
 class RentalWebsite(http.Controller):
 
     @http.route(
@@ -70,6 +90,21 @@ class RentalWebsite(http.Controller):
             availability_start = start_default_datetime
             availability_end = end_default_datetime
         options = self._get_available_vehicles(availability_start, availability_end)
+        try:
+            current_vehicle_page = max(0, int(post.get('vehicle_page', 0)))
+        except (TypeError, ValueError):
+            current_vehicle_page = 0
+        vehicles_per_page = 6
+        vehicle_page_count = (
+            (len(options) + vehicles_per_page - 1) // vehicles_per_page
+        )
+        if vehicle_page_count:
+            current_vehicle_page = min(
+                current_vehicle_page, vehicle_page_count - 1
+            )
+        else:
+            current_vehicle_page = 0
+
         selected_vehicles = []
         allocated_vehicle_ids = set()
         quantities = {}
@@ -112,28 +147,13 @@ class RentalWebsite(http.Controller):
             if not selected_vehicles:
                 errors.append(_('Vui lòng chọn ít nhất một xe.'))
 
-            rental_users = request.env.ref(
-                'motorbike_rental_core.group_rental_user'
-            ).sudo().users.filtered('active')
-            if not rental_users:
-                errors.append(
-                    _(
-                        'Chưa có nhân viên được cấp quyền Nhân viên thuê xe để nhận thông báo đặt xe.'
-                    )
-                )
-
             if not errors and selected_vehicles:
                 try:
                     with request.env.cr.savepoint():
-                        customer = request.env['res.partner'].sudo().create({
-                            'name': form_values['customer_name'],
+                        request.env['rental.booking.request'].sudo().create({
+                            'customer_name': form_values['customer_name'],
                             'phone': form_values['phone'],
                             'email': form_values['email'],
-                            'is_rental_customer': True,
-                        })
-                        contract = request.env['rental.contract'].sudo().create({
-                            'customer_id': customer.id,
-                            'currency_id': request.website.company_id.currency_id.id,
                             'start_date': start_date,
                             'end_date': end_date,
                             'notes': form_values['notes'],
@@ -141,22 +161,10 @@ class RentalWebsite(http.Controller):
                                 (0, 0, {
                                     'vehicle_id': vehicle.id,
                                     'vehicle_type_id': vehicle_type.id,
-                                    'daily_rate': vehicle_type.daily_rate,
                                 })
                                 for vehicle, vehicle_type in selected_vehicles
                             ],
                         })
-                        for rental_user in rental_users:
-                            customer.sudo().activity_schedule(
-                                'mail.mail_activity_data_todo',
-                                summary=_('Yêu cầu thuê xe mới'),
-                                note=_(
-                                    'Khách đã gửi yêu cầu thuê xe trên website. '
-                                    'Vui lòng kiểm tra hợp đồng %(contract)s '
-                                    'và xác nhận nếu thông tin hợp lệ.'
-                                ) % {'contract': contract.name},
-                                user_id=rental_user.id,
-                            )
                 except ValidationError as error:
                     errors.append(str(error))
                 else:
@@ -174,6 +182,18 @@ class RentalWebsite(http.Controller):
             'quantities': quantities,
             'start_default': start_default,
             'end_default': end_default,
+            'vehicles_per_page': vehicles_per_page,
+            'vehicle_count': len(options),
+            'vehicle_page_count': vehicle_page_count,
+            'current_vehicle_page': current_vehicle_page,
+            'vehicle_page_start': (
+                current_vehicle_page * vehicles_per_page + 1
+                if options else 0
+            ),
+            'vehicle_page_end': min(
+                (current_vehicle_page + 1) * vehicles_per_page,
+                len(options),
+            ),
             'success': request.params.get('sent') == '1',
         })
 
@@ -188,11 +208,11 @@ class RentalWebsite(http.Controller):
 
     @staticmethod
     def _get_available_vehicles(start_date, end_date):
-        company_currency = request.website.company_id.currency_id
+        rental_currency = request.env.ref('base.VND')
         rental_types = request.env['rental.vehicle.type'].sudo().search(
             [
                 ('active', '=', True),
-                ('currency_id', '=', company_currency.id),
+                ('currency_id', '=', rental_currency.id),
                 ('model_id.vehicle_type', '=', 'bike'),
             ],
             order='name, id',
@@ -207,54 +227,51 @@ class RentalWebsite(http.Controller):
             ],
             order='license_plate, id',
         )
-        available_vehicles = all_vehicles
-        if start_date and end_date and end_date > start_date:
-            busy_lines = request.env['rental.contract.line'].sudo().search([
-                ('contract_id.state', 'in', ['confirmed', 'in_progress']),
-                ('contract_id.start_date', '<', end_date),
-                ('contract_id.end_date', '>', start_date),
-            ])
-            busy_vehicle_ids = set(busy_lines.mapped('vehicle_id').ids)
-            available_vehicles = all_vehicles.filtered(
-                lambda vehicle: vehicle.id not in busy_vehicle_ids
-            )
+        fleet_availability = all_vehicles.check_fleet_availability(
+            start_date, end_date
+        )
+        fleet_ready_ids = {
+            item['vehicle_id']
+            for item in fleet_availability
+            if item['fleet_ok']
+        }
+        fleet_ready_vehicles = all_vehicles.filtered(
+            lambda vehicle: vehicle.id in fleet_ready_ids
+        )
+
+        busy_lines = request.env['rental.contract.line'].sudo().search([
+            ('contract_id.state', 'in', ['confirmed', 'in_progress']),
+            ('contract_id.start_date', '<', end_date),
+            ('contract_id.end_date', '>', start_date),
+        ])
+        busy_vehicle_ids = set(busy_lines.mapped('vehicle_id').ids)
+        available_vehicles = fleet_ready_vehicles.filtered(
+            lambda vehicle: vehicle.id not in busy_vehicle_ids
+        )
 
         options = []
         for rental_type in rental_types:
             model_vehicles = all_vehicles.filtered(
                 lambda vehicle: vehicle.model_id == rental_type.model_id
             )
-            if model_vehicles:
-                model_available_vehicles = available_vehicles.filtered(
-                    lambda vehicle: vehicle.model_id == rental_type.model_id
+            model_available_vehicles = available_vehicles.filtered(
+                lambda vehicle: vehicle.model_id == rental_type.model_id
+            )
+            model_name = rental_type.model_id.name.casefold()
+            image = _VEHICLE_MODEL_IMAGES.get(model_name)
+            if not image and rental_type.model_id.image_128:
+                image_url = (
+                    f'/web/image/fleet.vehicle.model/'
+                    f'{rental_type.model_id.id}/image_512'
                 )
-                model_name = rental_type.model_id.name.casefold()
-                illustration = (
-                    'evo-grand.svg' if 'evo grand' in model_name
-                    else 'evo.svg' if 'evo' in model_name
-                    else 'feliz.svg' if 'feliz' in model_name
-                    else 'electric-scooter.svg'
-                )
-                image = (
-                    'evo-grand.webp' if 'evo grand' in model_name
-                    else 'evo.jpg' if 'evo' in model_name
-                    else 'feliz.webp' if 'feliz' in model_name
-                    else None
-                )
-                options.append({
-                    'vehicle_type': rental_type,
-                    'image_url': (
-                        f'/motorbike_rental_core/static/src/img/{image}'
-                        if image
-                        else (
-                            f'/web/image/fleet.vehicle.model/'
-                            f'{rental_type.model_id.id}/image_512'
-                            if rental_type.model_id.image_128
-                            else f'/motorbike_rental_core/static/src/img/{illustration}'
-                        )
-                    ),
-                    'total_count': len(model_vehicles),
-                    'available_count': len(model_available_vehicles),
-                    'vehicles': model_available_vehicles,
-                })
+            else:
+                fallback = image or 'electric-scooter.svg'
+                image_url = f'/motorbike_rental_core/static/src/img/{fallback}'
+            options.append({
+                'vehicle_type': rental_type,
+                'image_url': image_url,
+                'total_count': len(model_vehicles),
+                'available_count': len(model_available_vehicles),
+                'vehicles': model_available_vehicles,
+            })
         return options

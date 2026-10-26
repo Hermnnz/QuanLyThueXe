@@ -1,7 +1,14 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_rental_operation_ticket,rental.operation.ticket.user,model_rental_operation_ticket,base.group_user,1,1,1,1
+access_rental_operation_ticket,rental.operation.ticket.user,model_rental_operation_ticket,base.group_user,1,1,1,0
 access_rental_operation_ticket_vehicle,rental.operation.ticket.vehicle.user,model_rental_operation_ticket_vehicle,base.group_user,1,1,1,1
 access_rental_incident_log,rental.operation.incident.log.user,model_rental_operation_incident_log,base.group_user,1,1,1,1
 access_motorbike_rental_price_catalog,motorbike.rental.price.catalog.user,model_motorbike_rental_price_catalog,base.group_user,1,1,1,1
 access_rental_operation_confirm_wizard,rental.operation.confirm.wizard.user,model_rental_operation_confirm_wizard,base.group_user,1,1,1,1
-
+access_rental_delivery_receipt,rental.delivery.receipt.user,model_rental_delivery_receipt,base.group_user,1,1,1,1
+access_rental_delivery_receipt_wizard,rental.delivery.receipt.wizard.user,model_rental_delivery_receipt_wizard,base.group_user,1,1,1,1
+access_rental_delivery_receipt_wiz_group,rental.delivery.receipt.wizard.group.user,model_rental_delivery_receipt_wizard_group,base.group_user,1,1,1,1
+access_rental_delivery_receipt_wiz_vehicle,rental.delivery.receipt.wizard.vehicle.user,model_rental_delivery_receipt_wizard_vehicle,base.group_user,1,1,1,1
+access_rental_return_receipt,rental.return.receipt.user,model_rental_return_receipt,base.group_user,1,1,1,1
+access_rental_return_receipt_wizard,rental.return.receipt.wizard.user,model_rental_return_receipt_wizard,base.group_user,1,1,1,1
+access_rental_return_receipt_wiz_vehicle,rental.return.receipt.wizard.vehicle.user,model_rental_return_receipt_wizard_vehicle,base.group_user,1,1,1,1
+access_rental_vehicle_schedule_wizard,rental.vehicle.schedule.wizard.user,model_rental_vehicle_schedule_wizard,base.group_user,1,1,1,1

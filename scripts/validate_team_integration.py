@@ -52,7 +52,7 @@ command = [sys.executable, '-X', 'utf8', str(workspace / 'scripts/run_odoo_local
            '-c', str(folder / 'test.conf'), '-d', args.database,
            '-i', modules, *(['-u', modules] if exists else []), '--without-demo=all',
            *(['--no-http'] if args.install_only else ['--test-enable', '--test-tags',
-               '/motorbike_fleet_management,/motorbike_rental_core,/motorbike_rental_operation']),
+               '/motorbike_fleet_management,/motorbike_rental_core,/motorbike_rental_operation,/motorbike_rental_finance']),
            '--stop-after-init']
 print('Testing all four modules on isolated database:', args.database, flush=True)
 result = subprocess.run(command)

@@ -3,6 +3,10 @@ from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
 
+_VEHICLE_AVAILABILITY_LOCK_NAMESPACE = 0x52434F4E
+_DEFAULT_RENTAL_DEPOSIT = 1_000_000
+
+
 class RentalContract(models.Model):
     _name = 'rental.contract'
     _description = 'Hợp đồng thuê xe'
@@ -24,6 +28,26 @@ class RentalContract(models.Model):
     customer_id = fields.Many2one(
         'res.partner', string='Khách hàng', required=True, ondelete='restrict', index=True
     )
+    customer_name = fields.Char(
+        string='Họ tên khách hàng',
+        related='customer_id.name',
+        readonly=False,
+    )
+    customer_phone = fields.Char(
+        string='Số điện thoại',
+        related='customer_id.phone',
+        readonly=False,
+    )
+    customer_email = fields.Char(
+        string='Email',
+        related='customer_id.email',
+        readonly=False,
+    )
+    customer_id_number = fields.Char(
+        string='Số CCCD/CMND',
+        related='customer_id.rental_id_number',
+        readonly=False,
+    )
     start_date = fields.Datetime(
         string='Ngày giờ bắt đầu', required=True, default=fields.Datetime.now
     )
@@ -32,16 +56,33 @@ class RentalContract(models.Model):
         required=True,
         default=lambda self: fields.Datetime.add(fields.Datetime.now(), days=1),
     )
-    rental_days = fields.Integer(string='Số ngày thuê', compute='_compute_rental_days', store=True)
+    calendar_title = fields.Char(
+        string='Tiêu đề lịch thuê',
+        compute='_compute_calendar_title',
+    )
+    rental_days = fields.Integer(
+        string='Số ngày thuê',
+        compute='_compute_rental_days',
+        inverse='_inverse_rental_days',
+        store=True,
+    )
     currency_id = fields.Many2one(
         'res.currency', string='Tiền tệ', required=True,
-        default=lambda self: self.env.company.currency_id,
+        default=lambda self: self.env.ref('base.VND'),
     )
     deposit_amount = fields.Monetary(
-        string='Tiền đặt cọc', required=True, default=0, currency_field='currency_id'
+        string='Tiền đặt cọc',
+        required=True,
+        default=_DEFAULT_RENTAL_DEPOSIT,
+        currency_field='currency_id',
     )
     line_ids = fields.One2many(
         'rental.contract.line', 'contract_id', string='Xe thuê', copy=True
+    )
+    vehicle_summary = fields.Char(
+        string='Xe thuê',
+        compute='_compute_vehicle_summary',
+        store=True,
     )
     total_amount = fields.Monetary(
         string='Tổng tiền thuê',
@@ -65,6 +106,20 @@ class RentalContract(models.Model):
     )
     notes = fields.Text(string='Ghi chú')
 
+    @api.depends('name', 'start_date', 'end_date')
+    def _compute_calendar_title(self):
+        for contract in self:
+            if not contract.start_date or not contract.end_date:
+                contract.calendar_title = contract.name
+                continue
+            start = fields.Datetime.context_timestamp(contract, contract.start_date)
+            end = fields.Datetime.context_timestamp(contract, contract.end_date)
+            contract.calendar_title = '%s | %s - %s' % (
+                contract.name,
+                start.strftime('%d/%m/%Y %H:%M'),
+                end.strftime('%d/%m/%Y %H:%M'),
+            )
+
     @api.depends('start_date', 'end_date')
     def _compute_rental_days(self):
         for contract in self:
@@ -75,12 +130,34 @@ class RentalContract(models.Model):
                     days = max(1, math.ceil(seconds / 86400))
             contract.rental_days = max(days, 0)
 
+    def _inverse_rental_days(self):
+        for contract in self:
+            if contract.state != 'draft':
+                raise UserError(_('Chỉ hợp đồng nháp mới được chỉnh sửa số ngày thuê.'))
+            if contract.rental_days < 1:
+                raise ValidationError(_('Số ngày thuê phải từ 1 ngày trở lên.'))
+            if contract.start_date:
+                contract.end_date = fields.Datetime.add(
+                    contract.start_date, days=contract.rental_days
+                )
+
     @api.depends('line_ids.subtotal', 'currency_id')
     def _compute_total_amount(self):
         for contract in self:
             total = sum(contract.line_ids.mapped('subtotal'))
             contract.total_amount = (
                 contract.currency_id.round(total) if contract.currency_id else total
+            )
+
+    @api.depends(
+        'line_ids.vehicle_id',
+        'line_ids.vehicle_id.name',
+        'line_ids.vehicle_id.license_plate',
+    )
+    def _compute_vehicle_summary(self):
+        for contract in self:
+            contract.vehicle_summary = ', '.join(
+                contract.line_ids.mapped('vehicle_id.display_name')
             )
 
     @api.model_create_multi
@@ -98,17 +175,28 @@ class RentalContract(models.Model):
     def write(self, vals):
         if vals.get('deposit_amount', 0) < 0:
             raise ValidationError(_('Tiền đặt cọc không được âm.'))
-        if set(vals) - {'state'}:
+        # Ghi chú được sửa sau khi ký; Finance được cập nhật trạng thái quyết toán.
+        # Cả hai trường hợp đều không cho sửa lại hợp đồng đã hủy.
+        if self.filtered(lambda contract: contract.state == 'cancelled') and vals:
+            raise UserError(_('Không thể chỉnh sửa hợp đồng đã hủy.'))
+        if set(vals) - {'state', 'notes', 'settlement_status'}:
             locked_contract = self.filtered(lambda contract: contract.state != 'draft')
             if locked_contract:
                 raise UserError(
                     _('Không thể chỉnh sửa hợp đồng sau khi đã xác nhận hoặc kết thúc.')
                 )
         if 'state' in vals:
+            if vals['state'] == 'cancelled' and self._contracts_with_started_delivery():
+                raise UserError(
+                    _(
+                        'Không thể hủy hợp đồng sau khi đã bắt đầu giao xe. '
+                        'Vui lòng thu hồi xe và hoàn tất hợp đồng theo quy trình hóa đơn.'
+                    )
+                )
             transitions = {
                 'draft': {'confirmed', 'cancelled'},
                 'confirmed': {'in_progress', 'cancelled'},
-                'in_progress': {'done', 'cancelled'},
+                'in_progress': {'done'},
                 'done': set(),
                 'cancelled': set(),
             }
@@ -127,6 +215,20 @@ class RentalContract(models.Model):
                         }
                     )
         return super().write(vals)
+
+    def _contracts_with_started_delivery(self):
+        started_contracts = self.filtered(
+            lambda contract: contract.state == 'in_progress'
+        )
+        if self and 'rental.operation.ticket.vehicle' in self.env.registry:
+            delivery_lines = self.env['rental.operation.ticket.vehicle'].sudo().search(
+                [
+                    ('ticket_id.contract_id', 'in', self.ids),
+                    ('status', 'in', ['delivering', 'renting', 'returned']),
+                ]
+            )
+            started_contracts |= delivery_lines.mapped('ticket_id.contract_id')
+        return started_contracts
 
     def unlink(self):
         if self.filtered(lambda contract: contract.state != 'draft'):
@@ -153,9 +255,14 @@ class RentalContract(models.Model):
 
     def _check_vehicle_availability(self):
         self.ensure_one()
-        vehicle_ids = self.line_ids.mapped('vehicle_id').ids
+        vehicle_ids = sorted(set(self.line_ids.mapped('vehicle_id').ids))
         if not vehicle_ids:
             return
+        for vehicle_id in vehicle_ids:
+            self.env.cr.execute(
+                'SELECT pg_advisory_xact_lock(%s, %s)',
+                (_VEHICLE_AVAILABILITY_LOCK_NAMESPACE, vehicle_id),
+            )
         conflict = self.search(
             [
                 ('id', '!=', self.id),
@@ -179,12 +286,87 @@ class RentalContract(models.Model):
                 _('Xe %s đã được giữ trong hợp đồng %s ở thời gian này.')
                 % (vehicle_name, conflict.name)
             )
+        with self.env.registry.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT contract.name, vehicle.license_plate, vehicle.id
+                  FROM rental_contract AS contract
+                  JOIN rental_contract_line AS line
+                    ON line.contract_id = contract.id
+                  JOIN fleet_vehicle AS vehicle
+                    ON vehicle.id = line.vehicle_id
+                 WHERE contract.id != %s
+                   AND contract.state IN ('confirmed', 'in_progress')
+                   AND contract.start_date < %s
+                   AND contract.end_date > %s
+                   AND line.vehicle_id = ANY(%s)
+                 LIMIT 1
+                """,
+                (self.id, self.end_date, self.start_date, vehicle_ids),
+            )
+            fresh_conflict = cursor.fetchone()
+        if fresh_conflict:
+            contract_name, license_plate, vehicle_id = fresh_conflict
+            vehicle_name = license_plate or str(vehicle_id)
+            raise ValidationError(
+                _('Xe %s đã được giữ trong hợp đồng %s ở thời gian này.')
+                % (vehicle_name, contract_name)
+            )
 
     def action_confirm(self):
         for contract in self:
             if contract.state != 'draft':
                 raise UserError(_('Chỉ hợp đồng nháp mới có thể được xác nhận.'))
+            missing_customer_info = []
+            if not contract.customer_id.name:
+                missing_customer_info.append(_('họ tên'))
+            if not contract.customer_id.phone:
+                missing_customer_info.append(_('số điện thoại'))
+            if not contract.customer_id.email:
+                missing_customer_info.append(_('email'))
+            if not contract.customer_id.rental_id_number:
+                missing_customer_info.append(_('số CCCD/CMND'))
+            if not contract.customer_id.rental_document_ids.filtered('file'):
+                missing_customer_info.append(_('tệp scan'))
+            if missing_customer_info:
+                raise UserError(
+                    _('Vui lòng bổ sung thông tin khách hàng trước khi xác nhận: %s.')
+                    % ', '.join(missing_customer_info)
+                )
+            # Kiểm tra lại từng xe ngay lúc ký vì tình trạng Fleet có thể đã đổi sau khi chọn xe.
+            for vehicle in contract.line_ids.mapped('vehicle_id'):
+                # Fleet kiểm tra kỹ thuật, khóa thuê và lịch bảo dưỡng trong thời gian hợp đồng.
+                fleet_ok = vehicle.check_fleet_availability(contract.start_date, contract.end_date)[0]['fleet_ok']
+                # Chỉ xe đang sẵn sàng và đạt mọi điều kiện Fleet mới được đưa vào hợp đồng đã ký.
+                if vehicle.operational_status != 'available' or not fleet_ok:
+                    raise UserError(_('Xe %s chưa đủ điều kiện để ký hợp đồng.') % vehicle.display_name)
             contract.state = 'confirmed'
+
+    def action_upload_customer_document(self):
+        self.ensure_one()
+        if self.state != 'draft':
+            raise UserError(_('Chỉ hợp đồng nháp mới được tải hồ sơ khách hàng.'))
+        if not self.customer_id:
+            raise UserError(_('Vui lòng chọn khách hàng trước khi tải hồ sơ.'))
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Tải scan thông tin khách hàng'),
+            'res_model': 'rental.customer.document',
+            'views': [(
+                self.env.ref(
+                    'motorbike_rental_core.view_rental_customer_document_form'
+                ).id,
+                'form',
+            )],
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                **self.env.context,
+                'default_customer_id': self.customer_id.id,
+                'default_name': _('Hồ sơ khách hàng - %s') % self.name,
+                'default_notes': _('Tải từ hợp đồng nháp %s') % self.name,
+            },
+        }
 
     def action_start(self):
         for contract in self:
