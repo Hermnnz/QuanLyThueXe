@@ -17,16 +17,25 @@ class TestFleetRentalBridge(TransactionCase):
         cls.price = cls.env['rental.vehicle.type'].create({'name': 'Bridge price', 'model_id': model.id, 'daily_rate': 100})
 
     def contract(self, **values):
-        contract = self.env['rental.contract'].create({
-            'customer_id': self.customer.id, 'start_date': '2026-12-01 08:00:00',
-            'end_date': '2026-12-03 08:00:00', 'line_ids': [(0, 0, {
-                'vehicle_id': self.vehicle.id, 'vehicle_type_id': self.price.id})], **values})
+        vals = {
+            'customer_id': self.customer.id,
+            'start_date': '2026-12-01 08:00:00',
+            'end_date': '2026-12-03 08:00:00',
+            'line_ids': [(0, 0, {
+                'vehicle_id': self.vehicle.id,
+                'vehicle_type_id': self.price.id,
+            })],
+        }
         if 'motorbike.rental.payment' in self.env.registry:
-            contract.payment_ids.action_confirm()
-            self.env['motorbike.rental.payment'].create({
-                'contract_id': contract.id, 'customer_id': contract.customer_id.id,
-                'currency_id': contract.currency_id.id, 'transaction_type': 'rental_payment',
-                'amount': contract.total_amount, 'payment_method': 'cash', 'state': 'confirmed',
+            vals['deposit_amount'] = values.get('deposit_amount', 50)
+            vals['upfront_received_check'] = True
+            vals['upfront_payment_method'] = 'cash'
+        vals.update(values)
+        contract = self.env['rental.contract'].create(vals)
+        if 'motorbike.rental.payment' in self.env.registry:
+            contract.write({
+                'upfront_received_check': True,
+                'upfront_payment_method': 'cash',
             })
         return contract
 
@@ -443,5 +452,43 @@ class TestFleetRentalBridge(TransactionCase):
         })
         with self.assertRaises(UserError):
             incident_independent.write({'ticket_id': ticket.id})
+
+    def test_return_receipt_only_delivered_vehicles_can_be_returned(self):
+        """Kiểm tra Biên lai thu hồi xe chỉ có 2 trạng thái (pending, returned)
+        và chỉ được phép xác nhận thu hồi khi xe đã ở trạng thái đã bàn giao ('renting').
+        """
+        contract = self.contract()
+        contract.action_confirm()
+        veh_detail = self.operation(contract)
+        ticket = veh_detail.ticket_id
+
+        return_receipt = self.env['rental.return.receipt'].create({
+            'ticket_id': ticket.id,
+            'customer_id': contract.partner_id.id,
+            'vehicle_ids': [(6, 0, [veh_detail.id])],
+        })
+        # Trạng thái ban đầu là 'pending' (Chưa thực hiện)
+        self.assertEqual(return_receipt.state, 'pending')
+
+        # 1. Xe đang ở trạng thái 'waiting' (chưa bàn giao) -> Không được phép xác nhận thu hồi
+        self.assertEqual(veh_detail.status, 'waiting')
+        with self.assertRaises(UserError):
+            return_receipt.action_confirm_return()
+        self.assertEqual(return_receipt.state, 'pending')
+
+        # 2. Không cho phép ghi đè trực tiếp state='returned' khi xe chưa bàn giao
+        with self.assertRaises(UserError):
+            return_receipt.write({'state': 'returned'})
+        self.assertEqual(return_receipt.state, 'pending')
+
+        # 3. Bàn giao xe cho khách hàng thành công (status -> 'renting')
+        veh_detail.action_confirm_delivery()
+        self.assertEqual(veh_detail.status, 'renting')
+
+        # 4. Khi xe đã bàn giao -> Xác nhận thu hồi thành công, chuyển sang 'returned'
+        return_receipt.action_confirm_return()
+        self.assertEqual(return_receipt.state, 'returned')
+        self.assertEqual(veh_detail.status, 'returned')
+
 
 

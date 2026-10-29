@@ -29,7 +29,6 @@ services:
 
   cloudflared:
     image: cloudflare/cloudflared:latest
-    container_name: odoo_cloudflared
     restart: unless-stopped
     command: tunnel --no-autoupdate --protocol http2 --url http://web:8069
     depends_on:

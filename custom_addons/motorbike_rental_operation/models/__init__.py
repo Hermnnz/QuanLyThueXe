@@ -10,3 +10,4 @@ from . import rental_return_receipt
 from . import rental_return_receipt_wizard
 from . import rental_vehicle_schedule_wizard
 from . import rental_contract
+from . import rental_vehicle_exchange

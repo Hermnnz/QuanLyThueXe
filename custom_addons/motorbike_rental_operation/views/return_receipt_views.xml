@@ -28,7 +28,6 @@
                 <field name="qty_charger" string="Bộ sạc xe" width="130px"/>
                 <field name="state" widget="badge" 
                        decoration-info="state == 'pending'" 
-                       decoration-primary="state == 'returning'" 
                        decoration-success="state == 'returned'" 
                        width="140px"/>
                 <button name="action_print_receipt" type="object" string="In" icon="fa-print" class="btn btn-sm btn-link text-success" title="In Biên Lai Thu Hồi (PDF)"/>
@@ -61,7 +60,7 @@
                             string="In Biên Lai (PDF)" 
                             class="oe_highlight" 
                             icon="fa-print"/>
-                    <field name="state" widget="statusbar" statusbar_visible="pending,returning,returned"/>
+                    <field name="state" widget="statusbar" statusbar_visible="pending,returned"/>
                 </header>
                 <sheet>
                     <field name="ticket_id" invisible="1"/>

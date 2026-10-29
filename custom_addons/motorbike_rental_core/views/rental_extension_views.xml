@@ -104,6 +104,7 @@
     </record>
 
     <record id="menu_rental_extension" model="ir.ui.menu">
+        <field name="name">Yêu cầu gia hạn</field>
         <field name="active" eval="False"/>
     </record>
 </odoo>

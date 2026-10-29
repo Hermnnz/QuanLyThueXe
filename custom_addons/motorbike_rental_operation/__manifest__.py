@@ -22,6 +22,7 @@
         'views/ticket_views.xml',
         'views/incident_views.xml',
         'views/menu_views.xml',
+    'views/vehicle_exchange_views.xml',
     ],
     'assets': {
         'web.assets_backend': [

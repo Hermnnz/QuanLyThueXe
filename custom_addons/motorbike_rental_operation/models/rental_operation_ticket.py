@@ -113,19 +113,25 @@ class RentalOperationTicket(models.Model):
         for line in self.contract_id.line_ids:
             if line.vehicle_id:
                 has_electric = getattr(line.vehicle_id, 'is_electric_motorbike', False)
+                checkout_date = False
                 checkout_time = False
                 if self.contract_id.start_date:
                     loc_dt = fields.Datetime.context_timestamp(self, self.contract_id.start_date)
+                    checkout_date = loc_dt.date()
                     checkout_time = loc_dt.strftime('%H:%M')
+                checkin_date = False
                 checkin_time = False
                 if self.contract_id.end_date:
                     loc_dt_in = fields.Datetime.context_timestamp(self, self.contract_id.end_date)
+                    checkin_date = loc_dt_in.date()
                     checkin_time = loc_dt_in.strftime('%H:%M')
                 vehicle_vals = {
                     'vehicle_id': line.vehicle_id.id,
                     'vehicle_price': line.daily_rate,
                     'delivery_location': 'Tại cửa hàng',
                     'return_location': 'Tại cửa hàng',
+                    'delivery_date': checkout_date,
+                    'return_date': checkin_date,
                     'delivery_time': checkout_time or False,
                     'return_time': checkin_time or False,
                     'date_checkout': self.contract_id.start_date,
@@ -136,6 +142,8 @@ class RentalOperationTicket(models.Model):
                     'is_selected': False,
                     'is_custom_delivery_location': False,
                     'is_custom_return_location': False,
+                    'is_custom_delivery_date': False,
+                    'is_custom_return_date': False,
                     'is_custom_delivery_time': False,
                     'is_custom_return_time': False,
                     'qty_helmet': 2,
@@ -247,6 +255,79 @@ class RentalOperationTicket(models.Model):
     def _compute_has_selected_return_receipts(self):
         for rec in self:
             rec.has_selected_return_receipts = any(r.is_selected for r in rec.return_receipt_ids)
+
+    vehicle_exchange_ids = fields.One2many(
+        'rental.vehicle.exchange', 'ticket_id', string='Danh sách Đổi xe'
+    )
+    vehicle_exchange_count = fields.Integer(
+        string='Số lượt đổi xe', compute='_compute_vehicle_exchange_count'
+    )
+
+    @api.depends('vehicle_exchange_ids')
+    def _compute_vehicle_exchange_count(self):
+        for rec in self:
+            rec.vehicle_exchange_count = len(rec.vehicle_exchange_ids)
+
+    has_selected_exchanges = fields.Boolean(compute='_compute_has_selected_exchanges')
+
+    @api.depends('vehicle_exchange_ids.is_selected')
+    def _compute_has_selected_exchanges(self):
+        for rec in self:
+            rec.has_selected_exchanges = any(e.is_selected for e in rec.vehicle_exchange_ids)
+
+    def action_select_all_exchanges(self):
+        """Tick chọn tất cả bản ghi đổi xe"""
+        self.ensure_one()
+        self.vehicle_exchange_ids.write({'is_selected': True})
+
+    def action_deselect_all_exchanges(self):
+        """Bỏ tick chọn tất cả bản ghi đổi xe"""
+        self.ensure_one()
+        self.vehicle_exchange_ids.write({'is_selected': False})
+
+    def action_bulk_start_exchanges(self):
+        """Bắt đầu đổi xe cho các bản ghi được tick chọn"""
+        self.ensure_one()
+        selected = self.vehicle_exchange_ids.filtered(lambda e: e.is_selected)
+        if not selected:
+            raise UserError(_('Vui lòng tick chọn ít nhất một bản ghi đổi xe!'))
+        drafts = selected.filtered(lambda e: e.status == 'draft')
+        if not drafts:
+            raise UserError(_('Không có bản ghi nào ở trạng thái "Chưa thực hiện" trong số các mục đã chọn!'))
+        drafts.action_start()
+
+    def action_bulk_done_exchanges(self):
+        """Hoàn thành đổi xe cho các bản ghi được tick chọn"""
+        self.ensure_one()
+        selected = self.vehicle_exchange_ids.filtered(lambda e: e.is_selected)
+        if not selected:
+            raise UserError(_('Vui lòng tick chọn ít nhất một bản ghi đổi xe!'))
+        in_progress = selected.filtered(lambda e: e.status == 'in_progress')
+        if not in_progress:
+            raise UserError(_('Không có bản ghi nào ở trạng thái "Đang thực hiện" trong số các mục đã chọn!'))
+        in_progress.action_done()
+
+    def action_bulk_cancel_exchanges(self):
+        """Hủy đổi xe cho các bản ghi được tick chọn"""
+        self.ensure_one()
+        selected = self.vehicle_exchange_ids.filtered(lambda e: e.is_selected)
+        if not selected:
+            raise UserError(_('Vui lòng tick chọn ít nhất một bản ghi đổi xe!'))
+        cancellable = selected.filtered(lambda e: e.status in ('draft', 'in_progress'))
+        if not cancellable:
+            raise UserError(_('Không có bản ghi nào có thể hủy trong số các mục đã chọn!'))
+        cancellable.action_cancel()
+
+    def action_view_vehicle_exchanges(self):
+        self.ensure_one()
+        return {
+            'name': _('Đổi Xe'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'rental.vehicle.exchange',
+            'view_mode': 'list,form',
+            'domain': [('ticket_id', '=', self.id)],
+            'context': {'default_ticket_id': self.id},
+        }
 
     # Trạng thái phiếu tự động cập nhật theo các xe con
     state = fields.Selection([
@@ -361,7 +442,7 @@ class RentalOperationTicket(models.Model):
             rec.has_selected_vehicles = False
 
     def action_bulk_update_schedule(self):
-        """Mở popup cập nhật địa điểm và thời gian giao xe cho các xe được chọn"""
+        """Mở popup cập nhật địa điểm và thời gian giao/thu hồi xe cho các xe được chọn"""
         self.ensure_one()
         if self.state in ('done', 'contract_cancelled') or (self.contract_id and self.contract_id.state == 'done'):
             raise UserError('Hợp đồng / Phiếu vận hành đã hoàn tất hoặc đã bị khóa, không thể thực hiện thao tác này!')
@@ -371,12 +452,37 @@ class RentalOperationTicket(models.Model):
 
         first_line = selected_lines[0]
         default_loc = first_line.delivery_location or 'Tại cửa hàng'
+        default_deliv_date = first_line.delivery_date
+        if not default_deliv_date and first_line.date_checkout:
+            default_deliv_date = fields.Datetime.context_timestamp(self, first_line.date_checkout).date()
+        elif not default_deliv_date and self.expected_checkout:
+            default_deliv_date = fields.Datetime.context_timestamp(self, self.expected_checkout).date()
+        elif not default_deliv_date and self.contract_id and self.contract_id.start_date:
+            default_deliv_date = fields.Datetime.context_timestamp(self, self.contract_id.start_date).date()
+
         default_time = first_line.delivery_time or ''
+        if not default_time and first_line.date_checkout:
+            default_time = fields.Datetime.context_timestamp(self, first_line.date_checkout).strftime('%H:%M')
+        elif not default_time and self.expected_checkout:
+            default_time = fields.Datetime.context_timestamp(self, self.expected_checkout).strftime('%H:%M')
+
         default_ret_loc = first_line.return_location or 'Tại cửa hàng'
+        default_ret_date = first_line.return_date
+        if not default_ret_date and first_line.date_checkin:
+            default_ret_date = fields.Datetime.context_timestamp(self, first_line.date_checkin).date()
+        elif not default_ret_date and self.expected_checkin:
+            default_ret_date = fields.Datetime.context_timestamp(self, self.expected_checkin).date()
+        elif not default_ret_date and self.contract_id and self.contract_id.end_date:
+            default_ret_date = fields.Datetime.context_timestamp(self, self.contract_id.end_date).date()
+
         default_ret_time = first_line.return_time or ''
+        if not default_ret_time and first_line.date_checkin:
+            default_ret_time = fields.Datetime.context_timestamp(self, first_line.date_checkin).strftime('%H:%M')
+        elif not default_ret_time and self.expected_checkin:
+            default_ret_time = fields.Datetime.context_timestamp(self, self.expected_checkin).strftime('%H:%M')
 
         return {
-            'name': 'Cập nhật Địa điểm & Giờ Giao / Thu hồi xe',
+            'name': 'Cập nhật Địa điểm & Thời gian Giao / Thu hồi xe',
             'type': 'ir.actions.act_window',
             'res_model': 'rental.vehicle.schedule.wizard',
             'view_mode': 'form',
@@ -385,8 +491,10 @@ class RentalOperationTicket(models.Model):
                 'default_ticket_id': self.id,
                 'default_vehicle_ids': [(6, 0, selected_lines.ids)],
                 'default_delivery_location': default_loc,
+                'default_delivery_date': default_deliv_date,
                 'default_delivery_time': default_time,
                 'default_return_location': default_ret_loc,
+                'default_return_date': default_ret_date,
                 'default_return_time': default_ret_time,
             }
         }
@@ -684,11 +792,19 @@ class RentalOperationTicket(models.Model):
             if not target_lines:
                 raise UserError(_('Tất cả các xe trong phiếu đã được bàn giao thành công! Không có xe nào cần xuất biên lai giao xe.'))
 
-        # 2. Phân nhóm xe: chung 1 người nhận, 1 thời gian, 1 địa điểm -> 1 biên lai
+        # 2. Phân nhóm xe: chung 1 người nhận, 1 ngày giao, 1 giờ giao, 1 địa điểm -> 1 biên lai
         groups_dict = {}
         for line in target_lines:
             cust = self.customer_id
             loc = (line.delivery_location or 'Tại cửa hàng').strip()
+            deliv_date = line.delivery_date
+            if not deliv_date and line.date_checkout:
+                deliv_date = fields.Datetime.context_timestamp(self, line.date_checkout).date()
+            elif not deliv_date and self.expected_checkout:
+                deliv_date = fields.Datetime.context_timestamp(self, self.expected_checkout).date()
+            elif not deliv_date and self.contract_id and self.contract_id.start_date:
+                deliv_date = fields.Datetime.context_timestamp(self, self.contract_id.start_date).date()
+
             raw_time = (line.delivery_time or '').strip()
             if not raw_time and line.date_checkout:
                 raw_time = fields.Datetime.context_timestamp(self, line.date_checkout).strftime('%H:%M')
@@ -697,13 +813,15 @@ class RentalOperationTicket(models.Model):
             elif not raw_time and hasattr(self, 'quick_delivery_time') and self.quick_delivery_time:
                 raw_time = (self.quick_delivery_time or '').strip()
 
+            dt_str = deliv_date.isoformat() if deliv_date else ''
             tm = raw_time or ''
-            key = f"{cust.id}_{loc}_{tm}"
+            key = f"{cust.id}_{loc}_{dt_str}_{tm}"
             if key not in groups_dict:
                 groups_dict[key] = {
                     'customer_id': cust.id,
                     'customer_phone': self.customer_phone or (cust.phone or cust.mobile or ''),
                     'location': loc,
+                    'date': deliv_date,
                     'time': tm,
                     'lines': []
                 }
@@ -724,18 +842,14 @@ class RentalOperationTicket(models.Model):
         for key, g in groups_dict.items():
             tab_idx = min(group_idx, 6)
             veh_count = len(g['lines'])
+            grp_deliv_date = g['date']
             time_display = g['time'] if g['time'] else '......'
-            grp_name = f"Biên lai {group_idx}: Giờ giao {time_display} ({veh_count} xe)" if total_groups > 1 else f"Biên lai: Giờ giao {time_display} ({veh_count} xe)"
-
-            grp_deliv_date = False
-            for vline in g['lines']:
-                if vline.date_checkout:
-                    grp_deliv_date = fields.Datetime.context_timestamp(self, vline.date_checkout).date()
-                    break
-            if not grp_deliv_date and self.expected_checkout:
-                grp_deliv_date = fields.Datetime.context_timestamp(self, self.expected_checkout).date()
-            elif not grp_deliv_date and self.contract_id and self.contract_id.start_date:
-                grp_deliv_date = fields.Datetime.context_timestamp(self, self.contract_id.start_date).date()
+            date_display = f" - {grp_deliv_date.strftime('%d/%m/%Y')}" if grp_deliv_date else ""
+            grp_name = (
+                f"Biên lai {group_idx}: Giờ giao {time_display}{date_display} ({veh_count} xe)"
+                if total_groups > 1
+                else f"Biên lai: Giờ giao {time_display}{date_display} ({veh_count} xe)"
+            )
 
             electric_count = sum(1 for vl in g['lines'] if getattr(vl.vehicle_id, 'is_electric_motorbike', False))
 
@@ -754,11 +868,15 @@ class RentalOperationTicket(models.Model):
                 if vl.delivery_receipt_id and vl.delivery_receipt_id in candidate_receipts and vl.delivery_receipt_id.id not in used_receipt_ids:
                     existing_receipt = vl.delivery_receipt_id
                     break
-            # Ưu tiên 2: Biên lai chưa giao thành công khớp vị trí và giờ giao
+            # Ưu tiên 2: Biên lai chưa giao thành công khớp vị trí, ngày và giờ giao
             if not existing_receipt:
                 for cr in candidate_receipts:
                     if cr.id not in used_receipt_ids and cr.customer_id.id == g['customer_id']:
-                        if (cr.delivery_location or '').strip() == g['location'] and (cr.delivery_time or '').strip() == g['time']:
+                        if (
+                            (cr.delivery_location or '').strip() == g['location']
+                            and (cr.delivery_time or '').strip() == g['time']
+                            and cr.delivery_date == grp_deliv_date
+                        ):
                             existing_receipt = cr
                             break
             # Ưu tiên 3: Bất kỳ biên lai chưa giao thành công nào còn trống
@@ -842,11 +960,19 @@ class RentalOperationTicket(models.Model):
             if not target_lines:
                 raise UserError(_('Tất cả các xe trong phiếu đã được thu hồi hoàn tất! Không có xe nào cần xuất biên lai thu hồi.'))
 
-        # 2. Phân nhóm xe: chung 1 người trả, 1 thời gian, 1 địa điểm -> 1 biên lai
+        # 2. Phân nhóm xe: chung 1 người trả, 1 ngày thu hồi, 1 giờ thu hồi, 1 địa điểm -> 1 biên lai
         groups_dict = {}
         for line in target_lines:
             cust = self.customer_id
             loc = (line.return_location or 'Tại cửa hàng').strip()
+            ret_date = line.return_date
+            if not ret_date and line.date_checkin:
+                ret_date = fields.Datetime.context_timestamp(self, line.date_checkin).date()
+            elif not ret_date and self.expected_checkin:
+                ret_date = fields.Datetime.context_timestamp(self, self.expected_checkin).date()
+            elif not ret_date and self.contract_id and self.contract_id.end_date:
+                ret_date = fields.Datetime.context_timestamp(self, self.contract_id.end_date).date()
+
             raw_time = (line.return_time or '').strip()
             if not raw_time and line.date_checkin:
                 raw_time = fields.Datetime.context_timestamp(self, line.date_checkin).strftime('%H:%M')
@@ -855,13 +981,15 @@ class RentalOperationTicket(models.Model):
             elif not raw_time and hasattr(self, 'quick_return_time') and self.quick_return_time:
                 raw_time = (self.quick_return_time or '').strip()
 
+            dt_str = ret_date.isoformat() if ret_date else ''
             tm = raw_time or ''
-            key = f"{cust.id}_{loc}_{tm}"
+            key = f"{cust.id}_{loc}_{dt_str}_{tm}"
             if key not in groups_dict:
                 groups_dict[key] = {
                     'customer_id': cust.id,
                     'customer_phone': self.customer_phone or (cust.phone or cust.mobile or ''),
                     'location': loc,
+                    'date': ret_date,
                     'time': tm,
                     'lines': []
                 }
@@ -882,18 +1010,14 @@ class RentalOperationTicket(models.Model):
         for key, g in groups_dict.items():
             tab_idx = min(group_idx, 6)
             veh_count = len(g['lines'])
+            grp_ret_date = g['date']
             time_display = g['time'] if g['time'] else '......'
-            grp_name = f"Biên lai thu hồi {group_idx}: Giờ {time_display} ({veh_count} xe)" if total_groups > 1 else f"Biên lai thu hồi: Giờ {time_display} ({veh_count} xe)"
-
-            grp_ret_date = False
-            for vline in g['lines']:
-                if vline.date_checkin:
-                    grp_ret_date = fields.Datetime.context_timestamp(self, vline.date_checkin).date()
-                    break
-            if not grp_ret_date and self.expected_checkin:
-                grp_ret_date = fields.Datetime.context_timestamp(self, self.expected_checkin).date()
-            elif not grp_ret_date and self.contract_id and self.contract_id.end_date:
-                grp_ret_date = fields.Datetime.context_timestamp(self, self.contract_id.end_date).date()
+            date_display = f" - {grp_ret_date.strftime('%d/%m/%Y')}" if grp_ret_date else ""
+            grp_name = (
+                f"Biên lai thu hồi {group_idx}: Giờ {time_display}{date_display} ({veh_count} xe)"
+                if total_groups > 1
+                else f"Biên lai thu hồi: Giờ {time_display}{date_display} ({veh_count} xe)"
+            )
 
             electric_count = sum(1 for vl in g['lines'] if getattr(vl.vehicle_id, 'is_electric_motorbike', False))
 
@@ -911,11 +1035,15 @@ class RentalOperationTicket(models.Model):
                 if vl.return_receipt_id and vl.return_receipt_id in candidate_receipts and vl.return_receipt_id.id not in used_receipt_ids:
                     existing_receipt = vl.return_receipt_id
                     break
-            # Ưu tiên 2: Biên lai chưa thu hồi thành công khớp vị trí và giờ thu hồi
+            # Ưu tiên 2: Biên lai chưa thu hồi thành công khớp vị trí, ngày và giờ thu hồi
             if not existing_receipt:
                 for cr in candidate_receipts:
                     if cr.id not in used_receipt_ids and cr.customer_id.id == g['customer_id']:
-                        if (cr.return_location or '').strip() == g['location'] and (cr.return_time or '').strip() == g['time']:
+                        if (
+                            (cr.return_location or '').strip() == g['location']
+                            and (cr.return_time or '').strip() == g['time']
+                            and cr.return_date == grp_ret_date
+                        ):
                             existing_receipt = cr
                             break
             # Ưu tiên 3: Bất kỳ biên lai chưa thu hồi thành công nào còn trống
