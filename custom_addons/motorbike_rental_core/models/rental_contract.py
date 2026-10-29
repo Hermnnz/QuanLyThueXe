@@ -79,6 +79,9 @@ class RentalContract(models.Model):
     line_ids = fields.One2many(
         'rental.contract.line', 'contract_id', string='Xe thuê', copy=True
     )
+    extension_ids = fields.One2many(
+        'rental.extension', 'contract_id', string='Yêu cầu gia hạn', copy=False
+    )
     vehicle_summary = fields.Char(
         string='Xe thuê',
         compute='_compute_vehicle_summary',
@@ -179,7 +182,10 @@ class RentalContract(models.Model):
         # Cả hai trường hợp đều không cho sửa lại hợp đồng đã hủy.
         if self.filtered(lambda contract: contract.state == 'cancelled') and vals:
             raise UserError(_('Không thể chỉnh sửa hợp đồng đã hủy.'))
-        if set(vals) - {'state', 'notes', 'settlement_status'}:
+        allowed_after_confirmation = {'state', 'notes', 'settlement_status'}
+        if self._is_approved_extension_update(vals):
+            allowed_after_confirmation.add('end_date')
+        if set(vals) - allowed_after_confirmation:
             locked_contract = self.filtered(lambda contract: contract.state != 'draft')
             if locked_contract:
                 raise UserError(
@@ -215,6 +221,28 @@ class RentalContract(models.Model):
                         }
                     )
         return super().write(vals)
+
+    def _is_approved_extension_update(self, vals):
+        extension_id = self.env.context.get('rental_extension_id')
+        if (
+            set(vals) != {'end_date'}
+            or not extension_id
+            or len(self) != 1
+        ):
+            return False
+        extension = self.env['rental.extension'].sudo().browse(extension_id).exists()
+        return bool(
+            extension
+            and extension.state == 'approved'
+            and extension.contract_id == self
+            and extension.requested_end_date == vals['end_date']
+            and (
+                extension.requested_by == self.env.user
+                or self.env.user.has_group(
+                    'motorbike_rental_core.group_rental_manager'
+                )
+            )
+        )
 
     def _contracts_with_started_delivery(self):
         started_contracts = self.filtered(
@@ -253,8 +281,9 @@ class RentalContract(models.Model):
                     raise ValidationError(_('Hợp đồng phải có ít nhất một xe để xác nhận.'))
                 contract._check_vehicle_availability()
 
-    def _check_vehicle_availability(self):
+    def _check_vehicle_availability(self, end_date=None):
         self.ensure_one()
+        end_date = end_date or self.end_date
         vehicle_ids = sorted(set(self.line_ids.mapped('vehicle_id').ids))
         if not vehicle_ids:
             return
@@ -267,7 +296,7 @@ class RentalContract(models.Model):
             [
                 ('id', '!=', self.id),
                 ('state', 'in', ['confirmed', 'in_progress']),
-                ('start_date', '<', self.end_date),
+                ('start_date', '<', end_date),
                 ('end_date', '>', self.start_date),
                 ('line_ids.vehicle_id', 'in', vehicle_ids),
             ],
@@ -302,7 +331,7 @@ class RentalContract(models.Model):
                    AND line.vehicle_id = ANY(%s)
                  LIMIT 1
                 """,
-                (self.id, self.end_date, self.start_date, vehicle_ids),
+                (self.id, end_date, self.start_date, vehicle_ids),
             )
             fresh_conflict = cursor.fetchone()
         if fresh_conflict:
@@ -312,6 +341,22 @@ class RentalContract(models.Model):
                 _('Xe %s đã được giữ trong hợp đồng %s ở thời gian này.')
                 % (vehicle_name, contract_name)
             )
+
+    def action_create_extension(self):
+        self.ensure_one()
+        if self.state != 'in_progress':
+            raise UserError(_('Chỉ hợp đồng đang thuê mới có thể yêu cầu gia hạn.'))
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Tạo yêu cầu gia hạn'),
+            'res_model': 'rental.extension',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                **self.env.context,
+                'default_contract_id': self.id,
+            },
+        }
 
     def action_confirm(self):
         for contract in self:

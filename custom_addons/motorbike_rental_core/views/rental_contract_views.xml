@@ -44,6 +44,7 @@
                 <header>
                     <button name="action_confirm" type="object" string="Xác nhận" class="btn-primary" invisible="state != 'draft'"/>
                     <button name="action_upload_customer_document" type="object" string="Tải scan khách hàng" invisible="state != 'draft' or not customer_id"/>
+                    <button name="action_create_extension" type="object" string="Yêu cầu gia hạn" invisible="state != 'in_progress'"/>
                     <button name="action_done" type="object" string="Hoàn tất" class="btn-primary" invisible="state != 'in_progress'"/>
                     <button name="action_cancel" type="object" string="Hủy" invisible="state in ('done', 'cancelled')"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,in_progress,done,cancelled" readonly="1"/>
@@ -88,6 +89,19 @@
                                 <field name="vehicle_id" string="Xe thuê" domain="[('active', '=', True), ('model_id', '=', vehicle_model_id)]" options="{'no_create': True}"/>
                                 <field name="daily_rate" readonly="1"/>
                                 <field name="subtotal" readonly="1"/>
+                            </list>
+                        </field>
+                    </group>
+                    <group string="Lịch sử gia hạn">
+                        <field name="extension_ids" readonly="1">
+                            <list create="0" delete="0">
+                                <field name="name"/>
+                                <field name="requested_by"/>
+                                <field name="requested_at"/>
+                                <field name="requested_end_date"/>
+                                <field name="additional_days"/>
+                                <field name="additional_amount"/>
+                                <field name="state" widget="badge"/>
                             </list>
                         </field>
                     </group>
