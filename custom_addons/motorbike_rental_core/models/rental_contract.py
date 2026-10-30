@@ -477,6 +477,7 @@ class RentalContractLine(models.Model):
     subtotal = fields.Monetary(
         string='Thành tiền', compute='_compute_subtotal', store=True, currency_field='currency_id'
     )
+    notes = fields.Text(string='Ghi chú')
 
     @api.depends('contract_id.rental_days', 'daily_rate', 'currency_id')
     def _compute_subtotal(self):

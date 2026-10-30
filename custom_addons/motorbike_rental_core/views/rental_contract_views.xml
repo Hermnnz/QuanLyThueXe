@@ -89,6 +89,7 @@
                                 <field name="vehicle_id" string="Xe thuê" domain="[('active', '=', True), ('model_id', '=', vehicle_model_id)]" options="{'no_create': True}"/>
                                 <field name="daily_rate" readonly="1"/>
                                 <field name="subtotal" readonly="1"/>
+                                <field name="notes" string="Ghi chú"/>
                             </list>
                         </field>
                     </group>
