@@ -44,3 +44,27 @@ class RentalContract(models.Model):
                 tickets = self.env['rental.operation.ticket'].search([('contract_id', '=', contract.id)])
                 tickets.action_contract_cancelled()
         return res
+
+
+class RentalContractLine(models.Model):
+    _inherit = 'rental.contract.line'
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        if self.env.context.get('allow_vehicle_exchange'):
+            for vals in vals_list:
+                if vals.get('vehicle_type_id') and 'daily_rate' not in vals:
+                    vehicle_type = self.env['rental.vehicle.type'].browse(vals['vehicle_type_id'])
+                    vals['daily_rate'] = vehicle_type.daily_rate
+            return models.Model.create(self, vals_list)
+        return super().create(vals_list)
+
+    def write(self, vals):
+        if self.env.context.get('allow_vehicle_exchange'):
+            return models.Model.write(self, vals)
+        return super().write(vals)
+
+    def unlink(self):
+        if self.env.context.get('allow_vehicle_exchange'):
+            return models.Model.unlink(self)
+        return super().unlink()

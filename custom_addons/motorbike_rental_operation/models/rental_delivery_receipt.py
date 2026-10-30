@@ -98,7 +98,7 @@ class RentalDeliveryReceipt(models.Model):
             })
             for v in rec.vehicle_ids:
                 if v.vehicle_id:
-                    v.vehicle_id.write({'operational_status': 'renting'})
+                    v.vehicle_id.sudo().write({'operational_status': 'renting'})
 
             # 3. Cập nhật biên lai
             rec.write({
@@ -154,6 +154,7 @@ class RentalDeliveryReceipt(models.Model):
                 'state': 'delivered',
                 'is_selected': False,
             })
+            rec.vehicle_ids._check_and_sync_vehicle_exchanges()
         return True
 
     @api.model_create_multi
@@ -178,6 +179,10 @@ class RentalDeliveryReceipt(models.Model):
             if rec.ticket_id and rec.ticket_id.state == 'contract_cancelled':
                 raise UserError(_('Phiếu vận hành đã ở trạng thái "Hợp đồng bị hủy" và đã bị khóa, không thể chỉnh sửa biên lai!'))
 
+        if 'state' in vals and vals['state'] in ('delivering', 'delivered'):
+            for rec in self:
+                rec.vehicle_ids._check_fleet_delivery_eligibility()
+
         # Nếu có cập nhật các trường thông tin biên lai (ngoài is_selected và state)
         if any(k not in ('is_selected', 'state') for k in vals.keys()):
             delivered_recs = self.filtered(lambda r: r.state == 'delivered')
@@ -194,16 +199,24 @@ class RentalDeliveryReceipt(models.Model):
         return super(RentalDeliveryReceipt, self).write(vals)
 
     def action_open_receipt_detail(self):
-        """Mở chi tiết biên lai giao xe dạng modal popup"""
+        """Mở chi tiết biên lai giao xe dạng modal popup (chỉ xem)"""
         self.ensure_one()
+        view_id = self.env.ref('motorbike_rental_operation.view_rental_delivery_receipt_form', raise_if_not_found=False)
         return {
             'name': _('Chi Tiết Biên Lai: %s') % (self.name or ''),
             'type': 'ir.actions.act_window',
             'res_model': 'rental.delivery.receipt',
             'res_id': self.id,
+            'views': [(view_id.id, 'form')] if view_id else [(False, 'form')],
             'view_mode': 'form',
             'target': 'new',
-            'context': {'default_ticket_id': self.ticket_id.id},
+            'flags': {'mode': 'readonly'},
+            'context': {
+                'default_ticket_id': self.ticket_id.id,
+                'create': False,
+                'edit': False,
+                'delete': False,
+            },
         }
 
     def action_save_changes(self):
@@ -217,6 +230,9 @@ class RentalDeliveryReceipt(models.Model):
         for veh in self.vehicle_ids:
             if veh.status in ('waiting', 'delivering'):
                 v_vals = {}
+                if self.delivery_date and veh.delivery_date != self.delivery_date:
+                    v_vals['delivery_date'] = self.delivery_date
+                    v_vals['is_custom_delivery_date'] = True
                 if self.delivery_time and veh.delivery_time != self.delivery_time:
                     v_vals['delivery_time'] = self.delivery_time
                     v_vals['is_custom_delivery_time'] = True
@@ -228,16 +244,9 @@ class RentalDeliveryReceipt(models.Model):
 
         return {'type': 'ir.actions.act_window_close'}
 
-    def action_discard_changes(self):
-        """Đóng màn hình chi tiết biên lai"""
-        return {'type': 'ir.actions.act_window_close'}
-
     def unlink(self):
-        for rec in self:
-            if rec.ticket_id and rec.ticket_id.state == 'contract_cancelled':
-                raise UserError(_('Phiếu vận hành đã ở trạng thái "Hợp đồng bị hủy" và đã bị khóa, không thể xóa biên lai!'))
-            if rec.state == 'delivered':
-                raise UserError(_('Biên lai "%s" đã giao thành công, không thể xóa!') % (rec.name or ''))
+        if not self.env.context.get('allow_wizard_cleanup'):
+            raise UserError(_('Biên lai chỉ được phép xem, không được phép xóa!'))
         return super(RentalDeliveryReceipt, self).unlink()
 
     def action_print_receipt(self):

@@ -290,33 +290,52 @@ class RentalOperationTicket(models.Model):
         self.ensure_one()
         selected = self.vehicle_exchange_ids.filtered(lambda e: e.is_selected)
         if not selected:
-            raise UserError(_('Vui lòng tick chọn ít nhất một bản ghi đổi xe!'))
+            selected = self.vehicle_exchange_ids.filtered(lambda e: e.status != 'cancelled')
+            if not selected:
+                raise UserError(_('Không có bản ghi đổi xe nào để hủy!'))
         drafts = selected.filtered(lambda e: e.status == 'draft')
         if not drafts:
             raise UserError(_('Không có bản ghi nào ở trạng thái "Chưa thực hiện" trong số các mục đã chọn!'))
         drafts.action_start()
+
+        selected.write({'is_selected': False})
 
     def action_bulk_done_exchanges(self):
         """Hoàn thành đổi xe cho các bản ghi được tick chọn"""
         self.ensure_one()
         selected = self.vehicle_exchange_ids.filtered(lambda e: e.is_selected)
         if not selected:
-            raise UserError(_('Vui lòng tick chọn ít nhất một bản ghi đổi xe!'))
+            selected = self.vehicle_exchange_ids.filtered(lambda e: e.status != 'cancelled')
+            if not selected:
+                raise UserError(_('Không có bản ghi đổi xe nào để hủy!'))
         in_progress = selected.filtered(lambda e: e.status == 'in_progress')
         if not in_progress:
             raise UserError(_('Không có bản ghi nào ở trạng thái "Đang thực hiện" trong số các mục đã chọn!'))
         in_progress.action_done()
+
+        selected.write({'is_selected': False})
 
     def action_bulk_cancel_exchanges(self):
         """Hủy đổi xe cho các bản ghi được tick chọn"""
         self.ensure_one()
         selected = self.vehicle_exchange_ids.filtered(lambda e: e.is_selected)
         if not selected:
-            raise UserError(_('Vui lòng tick chọn ít nhất một bản ghi đổi xe!'))
-        cancellable = selected.filtered(lambda e: e.status in ('draft', 'in_progress'))
+            selected = self.vehicle_exchange_ids.filtered(lambda e: e.status != 'cancelled')
+            if not selected:
+                raise UserError(_('Không có bản ghi đổi xe nào để hủy!'))
+        cancellable = selected.filtered(lambda e: e.status == 'confirmed')
+
+
         if not cancellable:
-            raise UserError(_('Không có bản ghi nào có thể hủy trong số các mục đã chọn!'))
-        cancellable.action_cancel()
+            selected.write({'is_selected': False})
+            self.has_selected_exchanges = False
+            if any(e.status == 'done' for e in selected):
+                raise UserError(_('Không thể hủy yêu cầu đổi xe đã hoàn thành!'))
+            return True
+
+        if cancellable:
+            cancellable.action_cancel()
+        selected.write({'is_selected': False})
 
     def action_view_vehicle_exchanges(self):
         self.ensure_one()
@@ -366,7 +385,8 @@ class RentalOperationTicket(models.Model):
                 rec._sync_contract_in_progress()
 
     def _inverse_state(self):
-        pass
+
+        selected.write({'is_selected': False})
 
     # Các trường tách bảng riêng theo trạng thái để dễ quan sát
     waiting_vehicle_ids = fields.Many2many(

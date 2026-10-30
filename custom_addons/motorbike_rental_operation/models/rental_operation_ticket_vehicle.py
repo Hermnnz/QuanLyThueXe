@@ -35,6 +35,8 @@ class RentalOperationTicketVehicle(models.Model):
 
     # Thông tin vận chuyển - Mặc định lấy từ địa điểm chung của hợp đồng/phiếu
     delivery_location = fields.Char(string='Vị trí giao', default='Tại cửa hàng')
+    delivery_date = fields.Date(string='Ngày giao xe')
+    return_date = fields.Date(string='Ngày thu hồi xe')
     return_location = fields.Char(string='Vị trí thu hồi', default='Tại cửa hàng')
     delivery_time = fields.Char(string='Giờ giao xe', default=False, help='Thời gian dự kiến giao xe (VD: 08:30)')
     return_time = fields.Char(string='Giờ thu hồi xe', default=False, help='Thời gian dự kiến thu hồi xe (VD: 18:00)')
@@ -44,6 +46,8 @@ class RentalOperationTicketVehicle(models.Model):
     is_custom_return_location = fields.Boolean(string='Chỉnh địa điểm thu hồi riêng', default=False)
     is_custom_delivery_time = fields.Boolean(string='Chỉnh giờ giao riêng', default=False)
     is_custom_return_time = fields.Boolean(string='Chỉnh giờ thu hồi riêng', default=False)
+    is_custom_delivery_date = fields.Boolean(string='Chỉnh ngày giao riêng', default=False)
+    is_custom_return_date = fields.Boolean(string='Chỉnh ngày thu hồi riêng', default=False)
 
     @api.onchange('delivery_location')
     def _onchange_delivery_location(self):
@@ -76,6 +80,20 @@ class RentalOperationTicketVehicle(models.Model):
             raise UserError(f'Xe {name} đã được thu hồi hoàn tất, không được phép chỉnh sửa Giờ thu hồi xe!')
         if self.ticket_id and hasattr(self.ticket_id, 'quick_return_time') and self.return_time != self.ticket_id.quick_return_time:
             self.is_custom_return_time = True
+
+    @api.onchange('delivery_date')
+    def _onchange_delivery_date(self):
+        if self.status in ('renting', 'returned'):
+            name = self._get_vehicle_label()
+            raise UserError(f'Xe {name} đã được bàn giao (hoặc đã thu hồi), không được phép chỉnh sửa Ngày giao xe!')
+        self.is_custom_delivery_date = True
+
+    @api.onchange('return_date')
+    def _onchange_return_date(self):
+        if self.status == 'returned':
+            name = self._get_vehicle_label()
+            raise UserError(f'Xe {name} đã được thu hồi hoàn tất, không được phép chỉnh sửa Ngày thu hồi xe!')
+        self.is_custom_return_date = True
 
     # Thông tin Biên lai bàn giao xe & Phụ kiện đi kèm (lưu vết phục vụ khi Thu hồi xe)
     delivery_receipt_id = fields.Many2one('rental.delivery.receipt', string='Biên lai giao xe', readonly=True)
@@ -138,14 +156,12 @@ class RentalOperationTicketVehicle(models.Model):
         """Lấy tình trạng ngoại quan chuẩn xác nhất để hiển thị và xuất báo cáo PDF"""
         self.ensure_one()
         note = (self.delivery_visual_note or '').strip()
-        # Nếu đã có ghi chú cụ thể khác các câu mặc định
         if note and note not in (
             'Ngoại quan của xe không có vấn đề',
             'Xe vận hành tốt, ngoại quan bình thường, không trầy xước phát sinh.'
         ):
             return note
 
-        # Nếu chưa có hoặc chỉ là câu mặc định, ưu tiên lấy từ 'Mô tả tình trạng' của fleet.vehicle
         if self.vehicle_id:
             veh_cond = self._get_vehicle_exterior_condition(self.vehicle_id)
             if veh_cond and veh_cond != 'Ngoại quan của xe không có vấn đề':
@@ -198,6 +214,31 @@ class RentalOperationTicketVehicle(models.Model):
             return self.vehicle_id.display_name or self.vehicle_id.name or 'N/A'
         return 'không xác định'
 
+    def _is_confirmed_exchange_vehicle_b(self):
+        """Kiểm tra xe có phải là xe đem đi đổi (xe B) trong bảng Đổi xe hay không.
+        Đặc biệt: Bắt buộc phải nằm ở bản ghi Xác nhận (confirmed),
+        không được nằm ở bản ghi Hủy (cancelled) hoặc Đã thực hiện / Hoàn thành (done).
+        """
+        self.ensure_one()
+        vehicle = self.vehicle_id
+        if not vehicle:
+            return False
+
+        exchanges = self.env['rental.vehicle.exchange']
+        if self.ticket_id and self.ticket_id.vehicle_exchange_ids:
+            exchanges = self.ticket_id.vehicle_exchange_ids.filtered(lambda e: e.vehicle_b_id == vehicle or e.vehicle_a_id == vehicle)
+        if not exchanges:
+            contract = self.ticket_id.contract_id if self.ticket_id else False
+            domain = ['|', ('vehicle_b_id', '=', vehicle.id), ('vehicle_a_id', '=', vehicle.id)]
+            if contract:
+                domain.append(('ticket_id.contract_id', '=', contract.id))
+            exchanges = self.env['rental.vehicle.exchange'].sudo().search(domain)
+        if not exchanges:
+            return False
+
+        # Đặc biệt: Bắt buộc phải nằm ở bản ghi Xác nhận (confirmed), không được nằm trong Hủy (cancelled) hoặc Đã thực hiện (done)
+        return bool(exchanges.filtered(lambda e: e.status == 'confirmed'))
+
     def _check_fleet_delivery_eligibility(self):
         """Kiểm tra xe có đủ điều kiện từ Fleet để giao hay không trước khi giao xe cho khách"""
         for rec in self:
@@ -210,7 +251,16 @@ class RentalOperationTicketVehicle(models.Model):
             if contract and contract.state == 'draft':
                 raise UserError(_('Không thể giao xe khi hợp đồng đang ở trạng thái Nháp! Vui lòng xác nhận hợp đồng trước.'))
 
+            # Kiểm tra xe có phải là xe đem đi đổi trong bảng Đổi xe đang Xác nhận (confirmed)
+            # Đặc biệt: Phải nằm ở bản ghi Xác nhận (confirmed), không được nằm trong Hủy (cancelled) hoặc Đã thực hiện (done)
+            # Nếu nằm ở trường hợp này thì vẫn cho phép chuyển trạng thái giao (bỏ qua điều kiện kiểm tra kỹ thuật / Fleet)
+            if rec._is_confirmed_exchange_vehicle_b():
+                continue
+
             # 1. Trạng thái vận hành phải là 'available' nếu xe chưa xuất phát đi giao ('waiting')
+
+
+
             if rec.status == 'waiting' and vehicle.operational_status != 'available':
                 name = rec._get_vehicle_label()
                 status_labels = dict(vehicle._fields['operational_status'].selection) if hasattr(vehicle, '_fields') and 'operational_status' in vehicle._fields else {}
@@ -320,6 +370,28 @@ class RentalOperationTicketVehicle(models.Model):
             if contract and contract.state == 'confirmed':
                 contract.sudo().write({'state': 'in_progress'})
 
+    def _check_and_sync_vehicle_exchanges(self):
+        """Tự động kiểm tra và cập nhật hoàn thành cho bản ghi đổi xe:
+        Khi Xe B đã giao thành công (status in ('renting', 'returned')).
+        Đồng thời chuyển xe A sang 'maintenance'.
+        """
+        tickets = self.mapped('ticket_id')
+        for ticket in tickets:
+            active_exchanges = ticket.vehicle_exchange_ids.filtered(lambda e: e.status == 'confirmed')
+            for ex in active_exchanges:
+                line_a = ticket.vehicle_detail_ids.filtered(lambda l: l.vehicle_id == ex.vehicle_a_id)
+                line_b = ticket.vehicle_detail_ids.filtered(lambda l: l.vehicle_id == ex.vehicle_b_id)
+
+                is_b_delivered = bool(line_b and all(l.status in ('renting', 'returned') for l in line_b))
+
+                if is_b_delivered:
+                    ex.write({'status': 'done'})
+                    if ex.vehicle_a_id:
+                        ex.vehicle_a_id.sudo().write({
+                            'operational_status': 'maintenance',
+                            'technical_ready': False,
+                        })
+
     def action_confirm_delivery(self):
         """Xác nhận đã bàn giao xe thành công cho khách - Xe bên Bắc ở trạng thái Đang cho thuê (renting)"""
         for rec in self:
@@ -346,6 +418,7 @@ class RentalOperationTicketVehicle(models.Model):
                 rec.vehicle_id.write({'operational_status': 'renting'})
         self._sync_delivery_receipt_state()
         self._sync_return_receipt_state()
+        self._check_and_sync_vehicle_exchanges()
 
     def action_confirm_return(self):
         """Xác nhận thu hồi xe từ khách - Mặc định xe bên Bắc chuyển sang Chờ kiểm tra (pending_inspection)"""
@@ -372,11 +445,12 @@ class RentalOperationTicketVehicle(models.Model):
                         rec.ticket_id.actual_return_date = fields.Datetime.now()
             if rec.vehicle_id:
                 rec.vehicle_id.write({
-                    'operational_status': 'pending_inspection',
+                    'operational_status': 'maintenance' if (rec.ticket_id and rec.ticket_id.vehicle_exchange_ids.filtered(lambda e: e.vehicle_a_id == rec.vehicle_id and e.status in ('confirmed', 'done'))) else 'pending_inspection',
                     'technical_ready': False,
                 })
         self._sync_delivery_receipt_state()
         self._sync_return_receipt_state()
+        self._check_and_sync_vehicle_exchanges()
 
     def write(self, vals):
         for rec in self:
@@ -413,7 +487,7 @@ class RentalOperationTicketVehicle(models.Model):
                         rec.vehicle_id.write({'operational_status': 'renting'})
                     elif vals['status'] == 'returned':
                         rec.vehicle_id.write({
-                            'operational_status': 'pending_inspection',
+                            'operational_status': 'maintenance' if (rec.ticket_id and rec.ticket_id.vehicle_exchange_ids.filtered(lambda e: e.vehicle_a_id == rec.vehicle_id and e.status in ('confirmed', 'done'))) else 'pending_inspection',
                             'technical_ready': False,
                         })
                 # Khi xe ở trạng thái đã giao xe ('renting'), hợp đồng chuyển sang trạng thái Đang thuê ('in_progress')
@@ -421,6 +495,7 @@ class RentalOperationTicketVehicle(models.Model):
                     rec._sync_contract_in_progress()
             self._sync_delivery_receipt_state()
             self._sync_return_receipt_state()
+        self._check_and_sync_vehicle_exchanges()
 
         if 'delivery_location' in vals or 'delivery_time' in vals:
             for rec in self:
@@ -460,6 +535,6 @@ class RentalOperationTicketVehicle(models.Model):
         for rec in self:
             if rec.ticket_id and rec.ticket_id.state == 'contract_cancelled':
                 raise UserError(_('Phiếu vận hành đã ở trạng thái "Hợp đồng bị hủy" và đã bị khóa, không thể xóa chi tiết xe!'))
-            if rec.ticket_id and not self.env.context.get('delete_ticket'):
+            if rec.ticket_id and not self.env.context.get('delete_ticket') and not self.env.context.get('allow_vehicle_exchange'):
                 raise UserError('Không được phép xóa xe khỏi phiếu bàn giao! Danh sách xe được lấy theo hợp đồng thuê.')
         return super(RentalOperationTicketVehicle, self).unlink()

@@ -431,8 +431,8 @@
                             <div class="mb-3 d-flex flex-wrap align-items-center gap-2">
                                 <button name="action_select_all_exchanges" type="object" string="Chọn tất cả" class="btn btn-secondary btn-sm" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done'"/>
                                 <button name="action_deselect_all_exchanges" type="object" string="Bỏ chọn" class="btn btn-secondary btn-sm" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done'"/>
-                                <button name="action_bulk_start_exchanges" type="object" string="Bắt đầu đổi xe" class="btn btn-primary btn-sm ms-4" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done' or not has_selected_exchanges"/>
-                                <button name="action_bulk_done_exchanges" type="object" string="Xác nhận hoàn thành" class="btn btn-success btn-sm" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done' or not has_selected_exchanges"/>
+
+
                                 <button name="action_bulk_cancel_exchanges" type="object" string="Hủy đổi xe" class="btn btn-danger btn-sm" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done' or not has_selected_exchanges"/>
                             </div>
                             <field name="vehicle_exchange_ids" readonly="state in ('done', 'contract_cancelled')" context="{'default_ticket_id': id}">
@@ -440,13 +440,13 @@
                                     <field name="is_selected" string="Chọn" width="45px" class="o_ticket_select_checkbox"/>
                                     <field name="name" string="Mã đổi xe" readonly="1" force_save="1" width="130px"/>
                                     <button name="action_open_exchange_detail" type="object" string="Chi tiết" icon="fa-eye" class="btn btn-sm btn-link text-primary" width="90px"/>
-                                    <field name="vehicle_a_id" string="Xe hỏng (A)" readonly="status != 'draft'" options="{'no_create': True, 'no_open': True}" width="160px"/>
-                                    <field name="vehicle_b_id" string="Xe thay thế (B)" readonly="status != 'draft'" options="{'no_create': True, 'no_open': True}" width="160px"/>
+                                    <field name="vehicle_a_id" string="Xe hỏng (A)" readonly="status != 'confirmed'" options="{'no_create': True, 'no_open': True}" width="160px"/>
+                                    <field name="vehicle_b_id" string="Xe thay thế (B)" readonly="status != 'confirmed'" options="{'no_create': True, 'no_open': True}" width="160px"/>
                                     <field name="request_date" string="Thời gian yêu cầu" readonly="1" width="150px"/>
                                     <field name="error_by" string="Lỗi thuộc phía" readonly="status in ('done', 'cancelled')" width="130px"/>
                                     <field name="reason" string="Lý do đổi xe" readonly="status in ('done', 'cancelled')" width="220px"/>
                                     <field name="status" widget="badge" readonly="1"
-                                           decoration-info="status == 'draft'"
+                                           decoration-info="status == 'confirmed'"
                                            decoration-warning="status == 'in_progress'"
                                            decoration-success="status == 'done'"
                                            decoration-danger="status == 'cancelled'"
@@ -455,10 +455,10 @@
                                 </list>
                                 <form string="Chi Tiết Đổi Xe">
                                     <header>
-                                        <button name="action_start" type="object" string="Bắt đầu đổi xe" class="btn-primary" invisible="status != 'draft'"/>
-                                        <button name="action_done" type="object" string="Xác nhận hoàn thành" class="btn-success" invisible="status != 'in_progress'"/>
+
+
                                         <button name="action_cancel" type="object" string="Hủy yêu cầu" class="btn-secondary" invisible="status in ('done', 'cancelled')"/>
-                                        <field name="status" widget="statusbar" statusbar_visible="draft,in_progress,done" readonly="1"/>
+                                        <field name="status" widget="statusbar" statusbar_visible="confirmed,done" readonly="1"/>
                                     </header>
                                     <sheet>
                                         <field name="available_vehicle_ids" invisible="1"/>

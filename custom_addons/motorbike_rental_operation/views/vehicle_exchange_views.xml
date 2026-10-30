@@ -24,9 +24,7 @@
         <field name="arch" type="xml">
             <list string="Đổi Xe">
                 <header>
-                    <button name="action_start" type="object" string="Bắt đầu đổi xe" class="btn-primary"/>
-                    <button name="action_done" type="object" string="Xác nhận hoàn thành" class="btn-success"/>
-                    <button name="action_cancel" type="object" string="Hủy yêu cầu" class="btn-secondary"/>
+                    <button name="action_cancel" type="object" string="Hủy yêu cầu" class="btn-danger"/>
                 </header>
                 <field name="is_selected" string="Chọn" width="45px"/>
                 <field name="name" string="Mã đổi xe" width="130px"/>
@@ -34,8 +32,7 @@
                 <field name="vehicle_a_id" string="Xe hỏng (A)" width="160px"/>
                 <field name="vehicle_b_id" string="Xe thay thế (B)" width="160px"/>
                 <field name="status" widget="badge" readonly="1"
-                       decoration-info="status == 'draft'"
-                       decoration-warning="status == 'in_progress'"
+                       decoration-info="status == 'confirmed'"
                        decoration-success="status == 'done'"
                        decoration-danger="status == 'cancelled'"
                        width="140px"/>
@@ -53,10 +50,8 @@
         <field name="arch" type="xml">
             <form string="Chi Tiết Đổi Xe">
                 <header>
-                    <button name="action_start" type="object" string="Bắt đầu đổi xe" class="btn-primary" invisible="status != 'draft'"/>
-                    <button name="action_done" type="object" string="Xác nhận hoàn thành" class="btn-success" invisible="status != 'in_progress'"/>
                     <button name="action_cancel" type="object" string="Hủy yêu cầu" class="btn-secondary" invisible="status in ('done', 'cancelled')"/>
-                    <field name="status" widget="statusbar" statusbar_visible="draft,in_progress,done" readonly="1"/>
+                    <field name="status" widget="statusbar" statusbar_visible="confirmed,done" readonly="1"/>
                 </header>
                 <sheet>
                     <field name="available_vehicle_ids" invisible="1"/>
@@ -66,11 +61,11 @@
                     </div>
                     <group>
                         <group string="Thông tin xe đổi">
-                            <field name="vehicle_a_id" string="Xe hỏng (A)" required="1" readonly="status != 'draft'" options="{'no_create': True}"/>
-                            <field name="vehicle_b_id" string="Xe thay thế (B)" required="1" readonly="status != 'draft'" options="{'no_create': True}"/>
+                            <field name="vehicle_a_id" string="Xe hỏng (A)" required="1" readonly="status != 'confirmed'" options="{'no_create': True}"/>
+                            <field name="vehicle_b_id" string="Xe thay thế (B)" required="1" readonly="status != 'confirmed'" options="{'no_create': True}"/>
                         </group>
                         <group string="Chi tiết yêu cầu">
-                            <field name="ticket_id" string="Phiếu vận hành" readonly="status != 'draft'"/>
+                            <field name="ticket_id" string="Phiếu vận hành" readonly="status != 'confirmed'"/>
                             <field name="request_date" string="Thời gian yêu cầu" readonly="1"/>
                             <field name="error_by" string="Lỗi thuộc phía" readonly="status in ('done', 'cancelled')"/>
                             <field name="reason" string="Lý do đổi xe" widget="text" readonly="status in ('done', 'cancelled')"/>
