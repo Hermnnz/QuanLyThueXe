@@ -11,3 +11,5 @@ access_rental_booking_request_user,rental.booking.request user,model_rental_book
 access_rental_booking_request_manager,rental.booking.request manager,model_rental_booking_request,motorbike_rental_core.group_rental_manager,1,1,1,1
 access_rental_booking_request_line_user,rental.booking.request.line user,model_rental_booking_request_line,motorbike_rental_core.group_rental_user,1,1,1,0
 access_rental_booking_request_line_manager,rental.booking.request.line manager,model_rental_booking_request_line,motorbike_rental_core.group_rental_manager,1,1,1,1
+access_rental_extension_user,rental.extension user,model_rental_extension,motorbike_rental_core.group_rental_user,1,1,1,0
+access_rental_extension_manager,rental.extension manager,model_rental_extension,motorbike_rental_core.group_rental_manager,1,1,1,0

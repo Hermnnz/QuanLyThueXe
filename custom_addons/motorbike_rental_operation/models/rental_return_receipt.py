@@ -60,8 +60,7 @@ class RentalReturnReceipt(models.Model):
 
     state = fields.Selection([
         ('pending', 'Chưa thực hiện'),
-        ('returning', 'Đang thu hồi'),
-        ('returned', 'Đã thu hồi thành công'),
+        ('returned', 'Đã thu hồi'),
     ], string='Trạng thái', default='pending', compute='_compute_state', store=True, readonly=False)
 
     @api.depends('vehicle_ids.status')
@@ -73,29 +72,11 @@ class RentalReturnReceipt(models.Model):
             statuses = rec.vehicle_ids.mapped('status')
             if all(s == 'returned' for s in statuses):
                 rec.state = 'returned'
-            elif any(s == 'returned' for s in statuses):
-                rec.state = 'returning'
             else:
-                if rec.state not in ('pending', 'returning'):
-                    rec.state = 'pending'
-
-    def action_start_return(self):
-        """Bắt đầu thu hồi xe: chuyển biên lai sang Đang thu hồi"""
-        for rec in self:
-            if rec.ticket_id and rec.ticket_id.state == 'contract_cancelled':
-                raise UserError(_('Phiếu vận hành đã ở trạng thái "Hợp đồng bị hủy" và đã bị khóa!'))
-            if rec.state == 'returned':
-                if len(self) == 1:
-                    raise UserError(_('Biên lai "%s" đã thu hồi hoàn tất!') % (rec.name or ''))
-                continue
-            rec.write({
-                'state': 'returning',
-                'is_selected': False,
-            })
-        return True
+                rec.state = 'pending'
 
     def action_confirm_return(self):
-        """Xác nhận đã thu hồi xe: chuyển biên lai sang Đã thu hồi thành công và cập nhật các xe"""
+        """Xác nhận đã thu hồi xe: chuyển biên lai sang Đã thu hồi và cập nhật các xe"""
         now = fields.Datetime.now()
         for rec in self:
             if rec.ticket_id and rec.ticket_id.state == 'contract_cancelled':
@@ -106,6 +87,18 @@ class RentalReturnReceipt(models.Model):
                 continue
             if not rec.vehicle_ids:
                 raise UserError(_('Biên lai "%s" chưa có danh sách xe thu hồi!') % (rec.name or ''))
+
+            # Rule: Chỉ những xe đang ở trạng thái đã bàn giao ('renting') mới có thể thu hồi
+            not_delivered = rec.vehicle_ids.filtered(lambda v: v.status != 'renting')
+            if not_delivered:
+                names = ', '.join(not_delivered.mapped(lambda v: v._get_vehicle_label()))
+                raise UserError(_(
+                    'Biên lai "%(receipt)s" không thể chuyển sang trạng thái "Đã thu hồi" vì các xe sau chưa ở trạng thái đã bàn giao:\n%(names)s\n'
+                    'Vui lòng chỉ thu hồi những xe đã được bàn giao cho khách hàng!'
+                ) % {
+                    'receipt': rec.name or '',
+                    'names': names,
+                })
 
             # 1. Cập nhật các xe con trong biên lai
             for vline in rec.vehicle_ids:
@@ -161,6 +154,19 @@ class RentalReturnReceipt(models.Model):
             if rec.ticket_id and rec.ticket_id.state == 'contract_cancelled':
                 raise UserError(_('Phiếu vận hành đã ở trạng thái "Hợp đồng bị hủy" và đã bị khóa, không thể chỉnh sửa biên lai!'))
 
+        # Rule: Không cho phép chuyển trực tiếp state sang returned nếu có xe chưa bàn giao
+        if vals.get('state') == 'returned':
+            for rec in self:
+                not_delivered = rec.vehicle_ids.filtered(lambda v: v.status not in ('renting', 'returned'))
+                if not_delivered:
+                    names = ', '.join(not_delivered.mapped(lambda v: v._get_vehicle_label()))
+                    raise UserError(_(
+                        'Biên lai "%(receipt)s" không thể chuyển sang trạng thái "Đã thu hồi" vì các xe sau chưa ở trạng thái đã bàn giao:\n%(names)s'
+                    ) % {
+                        'receipt': rec.name or '',
+                        'names': names,
+                    })
+
         # Nếu có cập nhật các trường thông tin biên lai (ngoài is_selected và state)
         if any(k not in ('is_selected', 'state') for k in vals.keys()):
             returned_recs = self.filtered(lambda r: r.state == 'returned')
@@ -177,16 +183,24 @@ class RentalReturnReceipt(models.Model):
         return super(RentalReturnReceipt, self).write(vals)
 
     def action_open_receipt_detail(self):
-        """Mở chi tiết biên lai thu hồi xe dạng modal popup"""
+        """Mở chi tiết biên lai thu hồi xe dạng modal popup (chỉ xem)"""
         self.ensure_one()
+        view_id = self.env.ref('motorbike_rental_operation.view_rental_return_receipt_form', raise_if_not_found=False)
         return {
             'name': _('Chi Tiết Biên Lai Thu Hồi: %s') % (self.name or ''),
             'type': 'ir.actions.act_window',
             'res_model': 'rental.return.receipt',
             'res_id': self.id,
+            'views': [(view_id.id, 'form')] if view_id else [(False, 'form')],
             'view_mode': 'form',
             'target': 'new',
-            'context': {'default_ticket_id': self.ticket_id.id},
+            'flags': {'mode': 'readonly'},
+            'context': {
+                'default_ticket_id': self.ticket_id.id,
+                'create': False,
+                'edit': False,
+                'delete': False,
+            },
         }
 
     def action_save_changes(self):
@@ -200,6 +214,9 @@ class RentalReturnReceipt(models.Model):
         for veh in self.vehicle_ids:
             if veh.status != 'returned':
                 v_vals = {}
+                if self.return_date and hasattr(veh, 'return_date') and veh.return_date != self.return_date:
+                    v_vals['return_date'] = self.return_date
+                    v_vals['is_custom_return_date'] = True
                 if self.return_time and hasattr(veh, 'return_time') and veh.return_time != self.return_time:
                     v_vals['return_time'] = self.return_time
                     v_vals['is_custom_return_time'] = True
@@ -211,16 +228,9 @@ class RentalReturnReceipt(models.Model):
 
         return {'type': 'ir.actions.act_window_close'}
 
-    def action_discard_changes(self):
-        """Đóng màn hình chi tiết biên lai"""
-        return {'type': 'ir.actions.act_window_close'}
-
     def unlink(self):
-        for rec in self:
-            if rec.ticket_id and rec.ticket_id.state == 'contract_cancelled':
-                raise UserError(_('Phiếu vận hành đã ở trạng thái "Hợp đồng bị hủy" và đã bị khóa, không thể xóa biên lai!'))
-            if rec.state == 'returned':
-                raise UserError(_('Biên lai "%s" đã thu hồi hoàn tất, không thể xóa!') % (rec.name or ''))
+        if not self.env.context.get('allow_wizard_cleanup'):
+            raise UserError(_('Biên lai chỉ được phép xem, không được phép xóa!'))
         return super(RentalReturnReceipt, self).unlink()
 
     def action_print_receipt(self):

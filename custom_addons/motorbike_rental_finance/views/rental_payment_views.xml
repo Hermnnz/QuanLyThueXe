@@ -3,7 +3,8 @@
         <field name="name">motorbike.rental.payment.list</field>
         <field name="model">motorbike.rental.payment</field>
         <field name="arch" type="xml">
-            <list string="Thanh toán">
+            <!-- Ngày thanh toán mới nhất lên đầu; cùng ngày thì phiếu tạo sau lên trước. -->
+            <list string="Thanh toán" default_order="payment_date desc, id desc">
                 <field name="name"/>
                 <field name="customer_id"/>
                 <field name="contract_id"/>

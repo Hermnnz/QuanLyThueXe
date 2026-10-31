@@ -1,0 +1,21 @@
+// Chỉ áp dụng cho phần xác nhận đã nhận tiền trên hợp đồng thuê xe.
+.o_rental_upfront_payment {
+    // Nhãn xác nhận, nhãn phương thức và tên ba lựa chọn đều lớn hơn 30% so với 18px cũ.
+    label {
+        color: #000;
+        font-size: 23.4px;
+    }
+
+    // Tăng độ dày viền ô xác nhận; không đổi viền của ba nút chọn phương thức.
+    .o_field_boolean .form-check-input[type="checkbox"] {
+        border-width: 3px;
+    }
+}
+
+// Chỉ phóng to ô xác nhận đã hoàn tiền trên hóa đơn, không tác động đến các ô tích khác.
+.o_rental_refund_confirmation.o_field_boolean .form-check-input[type="checkbox"] {
+    width: 21px;
+    height: 21px;
+    border: 3px solid #4b5563;
+    cursor: pointer;
+}

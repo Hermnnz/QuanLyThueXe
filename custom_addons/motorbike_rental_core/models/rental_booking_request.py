@@ -129,6 +129,15 @@ class RentalBookingRequest(models.Model):
             return '0' + digits[2:]
         return digits
 
+    def _matches_customer_identity(self, customer):
+        self.ensure_one()
+        return (
+            self._normalize_customer_name(customer.name)
+            == self._normalize_customer_name(self.customer_name)
+            and self._normalize_customer_phone(customer.phone)
+            == self._normalize_customer_phone(self.phone)
+        )
+
     @api.constrains('start_date', 'end_date', 'line_ids')
     def _check_request(self):
         for request in self:
@@ -143,6 +152,35 @@ class RentalBookingRequest(models.Model):
             self.customer_name = self.customer_id.name
             self.phone = self.customer_id.phone
             self.email = self.customer_id.email
+
+    @api.onchange('customer_name', 'phone')
+    def _onchange_customer_identity(self):
+        for booking_request in self:
+            if (
+                booking_request.customer_id
+                and not booking_request._matches_customer_identity(
+                    booking_request.customer_id
+                )
+            ):
+                booking_request.customer_id = False
+
+    def _resolve_customer(self):
+        self.ensure_one()
+        customer = self.customer_id
+        if customer and not self._matches_customer_identity(customer):
+            customer = self.env['res.partner']
+        if not customer:
+            customer = self._find_existing_rental_customer(
+                self.customer_name, self.phone
+            )
+        if not customer:
+            customer = self.env['res.partner'].create({
+                'name': self.customer_name,
+                'phone': self.phone,
+                'email': self.email,
+                'is_rental_customer': True,
+            })
+        return customer
 
     def action_create_draft_contract(self):
         self.ensure_one()
@@ -194,16 +232,7 @@ class RentalBookingRequest(models.Model):
                 % conflict.vehicle_id.display_name
             )
 
-        customer = self.customer_id or self._find_existing_rental_customer(
-            self.customer_name, self.phone
-        )
-        if not customer:
-            customer = self.env['res.partner'].create({
-                'name': self.customer_name,
-                'phone': self.phone,
-                'email': self.email,
-                'is_rental_customer': True,
-            })
+        customer = self._resolve_customer()
 
         currency = self.line_ids[0].vehicle_type_id.currency_id
         contract = self.env['rental.contract'].create({

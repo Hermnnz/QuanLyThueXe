@@ -41,11 +41,11 @@
                                             <div class="row g-3 align-items-end">
                                                 <div class="col-md-5">
                                                     <label for="rental_start" class="form-label">Nhận xe</label>
-                                                    <input id="rental_start" name="start_local" type="datetime-local" class="form-control" required="required" t-att-value="form_values.get('start_local')" t-att-data-default="start_default"/>
+                                                    <input id="rental_start" name="start_local" type="text" class="form-control" placeholder="dd/mm/yyyy hh:mm" autocomplete="off" required="required" t-att-value="form_values.get('start_local')" t-att-data-default="start_default"/>
                                                 </div>
                                                 <div class="col-md-5">
                                                     <label for="rental_end" class="form-label">Trả xe dự kiến</label>
-                                                    <input id="rental_end" name="end_local" type="datetime-local" class="form-control" required="required" t-att-value="form_values.get('end_local')" t-att-data-default="end_default"/>
+                                                    <input id="rental_end" name="end_local" type="text" class="form-control" placeholder="dd/mm/yyyy hh:mm" autocomplete="off" required="required" t-att-value="form_values.get('end_local')" t-att-data-default="end_default"/>
                                                 </div>
                                                 <div class="col-md-2 d-grid">
                                                     <button type="submit" name="check_availability" value="1" formnovalidate="formnovalidate" class="btn btn-outline-primary">Tìm xe</button>
@@ -287,34 +287,83 @@
                         showVehiclePage(currentPage);
                     }
 
-                    function toLocalValue(value) {
+                    function pad(value) {
+                        return String(value).padStart(2, '0');
+                    }
+
+                    function toLocalDisplay(value) {
                         var date = new Date(value.replace(' ', 'T') + 'Z');
-                        return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
-                            .toISOString().slice(0, 16);
+                        if (Number.isNaN(date.getTime())) {
+                            return '';
+                        }
+                        return pad(date.getDate()) + '/' + pad(date.getMonth() + 1) + '/' +
+                            date.getFullYear() + ' ' + pad(date.getHours()) + ':' +
+                            pad(date.getMinutes());
+                    }
+
+                    function normalizeDisplayValue(value) {
+                        var isoMatch = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
+                        if (!isoMatch) {
+                            return value;
+                        }
+                        return isoMatch[3] + '/' + isoMatch[2] + '/' + isoMatch[1] +
+                            ' ' + isoMatch[4] + ':' + isoMatch[5];
                     }
 
                     function toUtcValue(value) {
-                        if (!value) {
+                        var match = /^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})$/.exec(value);
+                        if (!match) {
                             return '';
                         }
-                        var date = new Date(value);
-                        if (Number.isNaN(date.getTime())) {
+                        var day = Number(match[1]);
+                        var month = Number(match[2]);
+                        var year = Number(match[3]);
+                        var hour = Number(match[4]);
+                        var minute = Number(match[5]);
+                        var date = new Date(year, month - 1, day, hour, minute);
+                        if (
+                            date.getFullYear() !== year ||
+                            date.getMonth() !== month - 1 ||
+                            date.getDate() !== day ||
+                            date.getHours() !== hour ||
+                            date.getMinutes() !== minute
+                        ) {
                             return '';
                         }
                         return date.toISOString().slice(0, 19).replace('T', ' ');
                     }
 
                     if (!start.value) {
-                        start.value = toLocalValue(start.dataset.default);
+                        start.value = toLocalDisplay(start.dataset.default);
+                    } else {
+                        start.value = normalizeDisplayValue(start.value);
                     }
                     if (!end.value) {
-                        end.value = toLocalValue(end.dataset.default);
+                        end.value = toLocalDisplay(end.dataset.default);
+                    } else {
+                        end.value = normalizeDisplayValue(end.value);
                     }
-                    form.addEventListener('submit', function () {
-                        document.querySelector('input[name="start_utc"]').value =
-                            toUtcValue(start.value);
-                        document.querySelector('input[name="end_utc"]').value =
-                            toUtcValue(end.value);
+                    start.addEventListener('input', function () {
+                        start.setCustomValidity('');
+                    });
+                    end.addEventListener('input', function () {
+                        end.setCustomValidity('');
+                    });
+                    form.addEventListener('submit', function (event) {
+                        var startUtc = toUtcValue(start.value.trim());
+                        var endUtc = toUtcValue(end.value.trim());
+                        if (!startUtc || !endUtc) {
+                            event.preventDefault();
+                            (startUtc ? end : start).setCustomValidity(
+                                'Nhập ngày giờ theo định dạng ngày/tháng/năm giờ:phút.'
+                            );
+                            (startUtc ? end : start).reportValidity();
+                            return;
+                        }
+                        start.setCustomValidity('');
+                        end.setCustomValidity('');
+                        document.querySelector('input[name="start_utc"]').value = startUtc;
+                        document.querySelector('input[name="end_utc"]').value = endUtc;
                     });
                 }());
             </script>

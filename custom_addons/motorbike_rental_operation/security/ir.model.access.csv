@@ -12,3 +12,4 @@ access_rental_return_receipt,rental.return.receipt.user,model_rental_return_rece
 access_rental_return_receipt_wizard,rental.return.receipt.wizard.user,model_rental_return_receipt_wizard,base.group_user,1,1,1,1
 access_rental_return_receipt_wiz_vehicle,rental.return.receipt.wizard.vehicle.user,model_rental_return_receipt_wizard_vehicle,base.group_user,1,1,1,1
 access_rental_vehicle_schedule_wizard,rental.vehicle.schedule.wizard.user,model_rental_vehicle_schedule_wizard,base.group_user,1,1,1,1
+access_rental_vehicle_exchange,rental.vehicle.exchange.user,model_rental_vehicle_exchange,base.group_user,1,1,1,1
