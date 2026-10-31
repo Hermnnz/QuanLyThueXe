@@ -57,6 +57,8 @@
                          == là so sánh bằng; nếu số dư bằng 0 thì không có khoản thu/hoàn nên ẩn trường.
                          readonly nghĩa là chỉ đọc: sau khi rời trạng thái draft (nháp) thì không sửa trên form. -->
                     <field name="rental_payment_method"
+                           widget="radio"
+                           options="{'horizontal': true}"
                            invisible="rental_balance == 0"
                            readonly="state != 'draft'"/>
 
@@ -73,6 +75,7 @@
                          Khi số dư bằng 0 thì cả hai ô xác nhận đều ẩn và không bắt buộc tích. -->
                     <field name="rental_money_confirmed"
                            string="Tôi xác nhận đã hoàn đủ tiền cho khách"
+                           class="o_rental_refund_confirmation"
                            invisible="rental_balance &gt;= 0"
                            readonly="state != 'draft'"/>
                 </group>

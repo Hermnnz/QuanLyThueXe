@@ -1,2 +1,2 @@
-from . import test_rental_contract
-from . import test_rental_website
+from . import test_rental_booking_request
+from . import test_rental_extension

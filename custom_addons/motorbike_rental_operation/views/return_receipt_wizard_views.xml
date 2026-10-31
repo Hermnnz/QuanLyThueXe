@@ -1,0 +1,390 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_rental_return_receipt_wizard_form" model="ir.ui.view">
+        <field name="name">rental.return.receipt.wizard.form</field>
+        <field name="model">rental.return.receipt.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Xác Nhận &amp; Xuất Biên Lai Thu Hồi Xe">
+                <sheet>
+                    <field name="ticket_id" invisible="1"/>
+                    <field name="receipt_1_visible" invisible="1"/>
+                    <field name="receipt_2_visible" invisible="1"/>
+                    <field name="receipt_3_visible" invisible="1"/>
+                    <field name="receipt_4_visible" invisible="1"/>
+                    <field name="receipt_5_visible" invisible="1"/>
+                    <field name="receipt_6_visible" invisible="1"/>
+
+                    <field name="receipt_1_receipt_id" invisible="1"/>
+                    <field name="receipt_2_receipt_id" invisible="1"/>
+                    <field name="receipt_3_receipt_id" invisible="1"/>
+                    <field name="receipt_4_receipt_id" invisible="1"/>
+                    <field name="receipt_5_receipt_id" invisible="1"/>
+                    <field name="receipt_6_receipt_id" invisible="1"/>
+
+                    <notebook>
+                        <!-- TAB BIÊN LAI 1 -->
+                        <page string="Biên lai 1" name="tab_receipt_1" invisible="not receipt_1_visible">
+                            <field name="receipt_1_state" invisible="1"/>
+                            <div class="alert alert-warning py-1 mb-2 d-flex align-items-center" invisible="receipt_1_state != 'returned'" role="alert">
+                                <i class="fa fa-lock fa-lg me-2 text-warning"/>
+                                <div>
+                                    <strong>Biên lai này đã thu hồi hoàn tất!</strong> Thông tin biên lai được giữ nguyên (không cho phép sửa đổi).
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <h5 class="text-success fw-bold mb-1">
+                                    <field name="receipt_1_name" readonly="1"/>
+                                </h5>
+                            </div>
+                            <group>
+                                <group string="Khách hàng bàn giao lại xe">
+                                    <field name="receipt_1_customer_id" string="Khách hàng" readonly="receipt_1_state == 'returned'"/>
+                                    <field name="receipt_1_customer_phone" string="Số điện thoại" widget="phone" readonly="receipt_1_state == 'returned'"/>
+                                </group>
+                                <group string="Thời gian &amp; Địa điểm thu hồi">
+                                    <field name="receipt_1_return_time" string="Giờ thu hồi xe" readonly="receipt_1_state == 'returned'"/>
+                                    <field name="receipt_1_return_date" string="Ngày thu hồi xe" readonly="receipt_1_state == 'returned'"/>
+                                    <field name="receipt_1_return_location" string="Địa điểm thu hồi xe" readonly="receipt_1_state == 'returned'"/>
+                                </group>
+                            </group>
+
+                            <div class="o_horizontal_separator text-uppercase fw-bold mt-2 mb-2" style="font-size: 12px; color: #495057;">
+                                <i class="fa fa-cubes me-1"/> Phụ kiện thu hồi thực tế
+                            </div>
+                            <group>
+                                <group>
+                                    <field name="receipt_1_qty_helmet" string="Mũ bảo hiểm (cái)" readonly="receipt_1_state == 'returned'"/>
+                                    <field name="receipt_1_qty_raincoat" string="Áo mưa (cái)" readonly="receipt_1_state == 'returned'"/>
+                                </group>
+                                <group>
+                                    <field name="receipt_1_qty_phone_holder" string="Giá đỡ ĐT / Màn hình (cái)" readonly="receipt_1_state == 'returned'"/>
+                                    <field name="receipt_1_qty_charger" string="Bộ sạc xe (bộ)" readonly="receipt_1_state == 'returned'"/>
+                                </group>
+                            </group>
+
+                            <group string="Tình trạng ngoại quan / Hư hại khi nhận lại">
+                                <field name="receipt_1_return_visual_note" string="Ghi chú ngoại quan" readonly="receipt_1_state == 'returned'"/>
+                            </group>
+
+                            <div class="o_horizontal_separator text-uppercase fw-bold mt-3 mb-2" style="font-size: 12px; color: #495057;">
+                                <i class="fa fa-motorcycle me-1"/> Danh sách xe thu hồi &amp; Tình trạng xe
+                            </div>
+                            <field name="receipt_1_vehicle_ids" readonly="receipt_1_state == 'returned'">
+                                <list editable="bottom" create="0" delete="0">
+                                    <field name="vehicle_id" string="Xe" readonly="1"/>
+                                    <field name="license_plate" string="Biển số" readonly="1"/>
+                                    <field name="return_time" string="Giờ thu hồi" readonly="1"/>
+                                    <field name="return_location" string="Vị trí thu hồi" readonly="1" optional="show"/>
+                                    <field name="return_visual_note" string="Tình trạng xe khi nhận lại" readonly="parent.receipt_1_state == 'returned'"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <!-- TAB BIÊN LAI 2 -->
+                        <page string="Biên lai 2" name="tab_receipt_2" invisible="not receipt_2_visible">
+                            <field name="receipt_2_state" invisible="1"/>
+                            <div class="alert alert-warning py-1 mb-2 d-flex align-items-center" invisible="receipt_2_state != 'returned'" role="alert">
+                                <i class="fa fa-lock fa-lg me-2 text-warning"/>
+                                <div>
+                                    <strong>Biên lai này đã thu hồi hoàn tất!</strong> Thông tin biên lai được giữ nguyên (không cho phép sửa đổi).
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <h5 class="text-success fw-bold mb-1">
+                                    <field name="receipt_2_name" readonly="1"/>
+                                </h5>
+                            </div>
+                            <group>
+                                <group string="Khách hàng bàn giao lại xe">
+                                    <field name="receipt_2_customer_id" string="Khách hàng" readonly="receipt_2_state == 'returned'"/>
+                                    <field name="receipt_2_customer_phone" string="Số điện thoại" widget="phone" readonly="receipt_2_state == 'returned'"/>
+                                </group>
+                                <group string="Thời gian &amp; Địa điểm thu hồi">
+                                    <field name="receipt_2_return_time" string="Giờ thu hồi xe" readonly="receipt_2_state == 'returned'"/>
+                                    <field name="receipt_2_return_date" string="Ngày thu hồi xe" readonly="receipt_2_state == 'returned'"/>
+                                    <field name="receipt_2_return_location" string="Địa điểm thu hồi xe" readonly="receipt_2_state == 'returned'"/>
+                                </group>
+                            </group>
+
+                            <div class="o_horizontal_separator text-uppercase fw-bold mt-2 mb-2" style="font-size: 12px; color: #495057;">
+                                <i class="fa fa-cubes me-1"/> Phụ kiện thu hồi thực tế
+                            </div>
+                            <group>
+                                <group>
+                                    <field name="receipt_2_qty_helmet" string="Mũ bảo hiểm (cái)" readonly="receipt_2_state == 'returned'"/>
+                                    <field name="receipt_2_qty_raincoat" string="Áo mưa (cái)" readonly="receipt_2_state == 'returned'"/>
+                                </group>
+                                <group>
+                                    <field name="receipt_2_qty_phone_holder" string="Giá đỡ ĐT / Màn hình (cái)" readonly="receipt_2_state == 'returned'"/>
+                                    <field name="receipt_2_qty_charger" string="Bộ sạc xe (bộ)" readonly="receipt_2_state == 'returned'"/>
+                                </group>
+                            </group>
+
+                            <group string="Tình trạng ngoại quan / Hư hại khi nhận lại">
+                                <field name="receipt_2_return_visual_note" string="Ghi chú ngoại quan" readonly="receipt_2_state == 'returned'"/>
+                            </group>
+
+                            <div class="o_horizontal_separator text-uppercase fw-bold mt-3 mb-2" style="font-size: 12px; color: #495057;">
+                                <i class="fa fa-motorcycle me-1"/> Danh sách xe thu hồi &amp; Tình trạng xe
+                            </div>
+                            <field name="receipt_2_vehicle_ids" readonly="receipt_2_state == 'returned'">
+                                <list editable="bottom" create="0" delete="0">
+                                    <field name="vehicle_id" string="Xe" readonly="1"/>
+                                    <field name="license_plate" string="Biển số" readonly="1"/>
+                                    <field name="return_time" string="Giờ thu hồi" readonly="1"/>
+                                    <field name="return_location" string="Vị trí thu hồi" readonly="1" optional="show"/>
+                                    <field name="return_visual_note" string="Tình trạng xe khi nhận lại" readonly="parent.receipt_2_state == 'returned'"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <!-- TAB BIÊN LAI 3 -->
+                        <page string="Biên lai 3" name="tab_receipt_3" invisible="not receipt_3_visible">
+                            <field name="receipt_3_state" invisible="1"/>
+                            <div class="alert alert-warning py-1 mb-2 d-flex align-items-center" invisible="receipt_3_state != 'returned'" role="alert">
+                                <i class="fa fa-lock fa-lg me-2 text-warning"/>
+                                <div>
+                                    <strong>Biên lai này đã thu hồi hoàn tất!</strong> Thông tin biên lai được giữ nguyên (không cho phép sửa đổi).
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <h5 class="text-success fw-bold mb-1">
+                                    <field name="receipt_3_name" readonly="1"/>
+                                </h5>
+                            </div>
+                            <group>
+                                <group string="Khách hàng bàn giao lại xe">
+                                    <field name="receipt_3_customer_id" string="Khách hàng" readonly="receipt_3_state == 'returned'"/>
+                                    <field name="receipt_3_customer_phone" string="Số điện thoại" widget="phone" readonly="receipt_3_state == 'returned'"/>
+                                </group>
+                                <group string="Thời gian &amp; Địa điểm thu hồi">
+                                    <field name="receipt_3_return_time" string="Giờ thu hồi xe" readonly="receipt_3_state == 'returned'"/>
+                                    <field name="receipt_3_return_date" string="Ngày thu hồi xe" readonly="receipt_3_state == 'returned'"/>
+                                    <field name="receipt_3_return_location" string="Địa điểm thu hồi xe" readonly="receipt_3_state == 'returned'"/>
+                                </group>
+                            </group>
+
+                            <div class="o_horizontal_separator text-uppercase fw-bold mt-2 mb-2" style="font-size: 12px; color: #495057;">
+                                <i class="fa fa-cubes me-1"/> Phụ kiện thu hồi thực tế
+                            </div>
+                            <group>
+                                <group>
+                                    <field name="receipt_3_qty_helmet" string="Mũ bảo hiểm (cái)" readonly="receipt_3_state == 'returned'"/>
+                                    <field name="receipt_3_qty_raincoat" string="Áo mưa (cái)" readonly="receipt_3_state == 'returned'"/>
+                                </group>
+                                <group>
+                                    <field name="receipt_3_qty_phone_holder" string="Giá đỡ ĐT / Màn hình (cái)" readonly="receipt_3_state == 'returned'"/>
+                                    <field name="receipt_3_qty_charger" string="Bộ sạc xe (bộ)" readonly="receipt_3_state == 'returned'"/>
+                                </group>
+                            </group>
+
+                            <group string="Tình trạng ngoại quan / Hư hại khi nhận lại">
+                                <field name="receipt_3_return_visual_note" string="Ghi chú ngoại quan" readonly="receipt_3_state == 'returned'"/>
+                            </group>
+
+                            <div class="o_horizontal_separator text-uppercase fw-bold mt-3 mb-2" style="font-size: 12px; color: #495057;">
+                                <i class="fa fa-motorcycle me-1"/> Danh sách xe thu hồi &amp; Tình trạng xe
+                            </div>
+                            <field name="receipt_3_vehicle_ids" readonly="receipt_3_state == 'returned'">
+                                <list editable="bottom" create="0" delete="0">
+                                    <field name="vehicle_id" string="Xe" readonly="1"/>
+                                    <field name="license_plate" string="Biển số" readonly="1"/>
+                                    <field name="return_time" string="Giờ thu hồi" readonly="1"/>
+                                    <field name="return_location" string="Vị trí thu hồi" readonly="1" optional="show"/>
+                                    <field name="return_visual_note" string="Tình trạng xe khi nhận lại" readonly="parent.receipt_3_state == 'returned'"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <!-- TAB BIÊN LAI 4 -->
+                        <page string="Biên lai 4" name="tab_receipt_4" invisible="not receipt_4_visible">
+                            <field name="receipt_4_state" invisible="1"/>
+                            <div class="alert alert-warning py-1 mb-2 d-flex align-items-center" invisible="receipt_4_state != 'returned'" role="alert">
+                                <i class="fa fa-lock fa-lg me-2 text-warning"/>
+                                <div>
+                                    <strong>Biên lai này đã thu hồi hoàn tất!</strong> Thông tin biên lai được giữ nguyên (không cho phép sửa đổi).
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <h5 class="text-success fw-bold mb-1">
+                                    <field name="receipt_4_name" readonly="1"/>
+                                </h5>
+                            </div>
+                            <group>
+                                <group string="Khách hàng bàn giao lại xe">
+                                    <field name="receipt_4_customer_id" string="Khách hàng" readonly="receipt_4_state == 'returned'"/>
+                                    <field name="receipt_4_customer_phone" string="Số điện thoại" widget="phone" readonly="receipt_4_state == 'returned'"/>
+                                </group>
+                                <group string="Thời gian &amp; Địa điểm thu hồi">
+                                    <field name="receipt_4_return_time" string="Giờ thu hồi xe" readonly="receipt_4_state == 'returned'"/>
+                                    <field name="receipt_4_return_date" string="Ngày thu hồi xe" readonly="receipt_4_state == 'returned'"/>
+                                    <field name="receipt_4_return_location" string="Địa điểm thu hồi xe" readonly="receipt_4_state == 'returned'"/>
+                                </group>
+                            </group>
+
+                            <div class="o_horizontal_separator text-uppercase fw-bold mt-2 mb-2" style="font-size: 12px; color: #495057;">
+                                <i class="fa fa-cubes me-1"/> Phụ kiện thu hồi thực tế
+                            </div>
+                            <group>
+                                <group>
+                                    <field name="receipt_4_qty_helmet" string="Mũ bảo hiểm (cái)" readonly="receipt_4_state == 'returned'"/>
+                                    <field name="receipt_4_qty_raincoat" string="Áo mưa (cái)" readonly="receipt_4_state == 'returned'"/>
+                                </group>
+                                <group>
+                                    <field name="receipt_4_qty_phone_holder" string="Giá đỡ ĐT / Màn hình (cái)" readonly="receipt_4_state == 'returned'"/>
+                                    <field name="receipt_4_qty_charger" string="Bộ sạc xe (bộ)" readonly="receipt_4_state == 'returned'"/>
+                                </group>
+                            </group>
+
+                            <group string="Tình trạng ngoại quan / Hư hại khi nhận lại">
+                                <field name="receipt_4_return_visual_note" string="Ghi chú ngoại quan" readonly="receipt_4_state == 'returned'"/>
+                            </group>
+
+                            <div class="o_horizontal_separator text-uppercase fw-bold mt-3 mb-2" style="font-size: 12px; color: #495057;">
+                                <i class="fa fa-motorcycle me-1"/> Danh sách xe thu hồi &amp; Tình trạng xe
+                            </div>
+                            <field name="receipt_4_vehicle_ids" readonly="receipt_4_state == 'returned'">
+                                <list editable="bottom" create="0" delete="0">
+                                    <field name="vehicle_id" string="Xe" readonly="1"/>
+                                    <field name="license_plate" string="Biển số" readonly="1"/>
+                                    <field name="return_time" string="Giờ thu hồi" readonly="1"/>
+                                    <field name="return_location" string="Vị trí thu hồi" readonly="1" optional="show"/>
+                                    <field name="return_visual_note" string="Tình trạng xe khi nhận lại" readonly="parent.receipt_4_state == 'returned'"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <!-- TAB BIÊN LAI 5 -->
+                        <page string="Biên lai 5" name="tab_receipt_5" invisible="not receipt_5_visible">
+                            <field name="receipt_5_state" invisible="1"/>
+                            <div class="alert alert-warning py-1 mb-2 d-flex align-items-center" invisible="receipt_5_state != 'returned'" role="alert">
+                                <i class="fa fa-lock fa-lg me-2 text-warning"/>
+                                <div>
+                                    <strong>Biên lai này đã thu hồi hoàn tất!</strong> Thông tin biên lai được giữ nguyên (không cho phép sửa đổi).
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <h5 class="text-success fw-bold mb-1">
+                                    <field name="receipt_5_name" readonly="1"/>
+                                </h5>
+                            </div>
+                            <group>
+                                <group string="Khách hàng bàn giao lại xe">
+                                    <field name="receipt_5_customer_id" string="Khách hàng" readonly="receipt_5_state == 'returned'"/>
+                                    <field name="receipt_5_customer_phone" string="Số điện thoại" widget="phone" readonly="receipt_5_state == 'returned'"/>
+                                </group>
+                                <group string="Thời gian &amp; Địa điểm thu hồi">
+                                    <field name="receipt_5_return_time" string="Giờ thu hồi xe" readonly="receipt_5_state == 'returned'"/>
+                                    <field name="receipt_5_return_date" string="Ngày thu hồi xe" readonly="receipt_5_state == 'returned'"/>
+                                    <field name="receipt_5_return_location" string="Địa điểm thu hồi xe" readonly="receipt_5_state == 'returned'"/>
+                                </group>
+                            </group>
+
+                            <div class="o_horizontal_separator text-uppercase fw-bold mt-2 mb-2" style="font-size: 12px; color: #495057;">
+                                <i class="fa fa-cubes me-1"/> Phụ kiện thu hồi thực tế
+                            </div>
+                            <group>
+                                <group>
+                                    <field name="receipt_5_qty_helmet" string="Mũ bảo hiểm (cái)" readonly="receipt_5_state == 'returned'"/>
+                                    <field name="receipt_5_qty_raincoat" string="Áo mưa (cái)" readonly="receipt_5_state == 'returned'"/>
+                                </group>
+                                <group>
+                                    <field name="receipt_5_qty_phone_holder" string="Giá đỡ ĐT / Màn hình (cái)" readonly="receipt_5_state == 'returned'"/>
+                                    <field name="receipt_5_qty_charger" string="Bộ sạc xe (bộ)" readonly="receipt_5_state == 'returned'"/>
+                                </group>
+                            </group>
+
+                            <group string="Tình trạng ngoại quan / Hư hại khi nhận lại">
+                                <field name="receipt_5_return_visual_note" string="Ghi chú ngoại quan" readonly="receipt_5_state == 'returned'"/>
+                            </group>
+
+                            <div class="o_horizontal_separator text-uppercase fw-bold mt-3 mb-2" style="font-size: 12px; color: #495057;">
+                                <i class="fa fa-motorcycle me-1"/> Danh sách xe thu hồi &amp; Tình trạng xe
+                            </div>
+                            <field name="receipt_5_vehicle_ids" readonly="receipt_5_state == 'returned'">
+                                <list editable="bottom" create="0" delete="0">
+                                    <field name="vehicle_id" string="Xe" readonly="1"/>
+                                    <field name="license_plate" string="Biển số" readonly="1"/>
+                                    <field name="return_time" string="Giờ thu hồi" readonly="1"/>
+                                    <field name="return_location" string="Vị trí thu hồi" readonly="1" optional="show"/>
+                                    <field name="return_visual_note" string="Tình trạng xe khi nhận lại" readonly="parent.receipt_5_state == 'returned'"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <!-- TAB BIÊN LAI 6 -->
+                        <page string="Biên lai 6" name="tab_receipt_6" invisible="not receipt_6_visible">
+                            <field name="receipt_6_state" invisible="1"/>
+                            <div class="alert alert-warning py-1 mb-2 d-flex align-items-center" invisible="receipt_6_state != 'returned'" role="alert">
+                                <i class="fa fa-lock fa-lg me-2 text-warning"/>
+                                <div>
+                                    <strong>Biên lai này đã thu hồi hoàn tất!</strong> Thông tin biên lai được giữ nguyên (không cho phép sửa đổi).
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <h5 class="text-success fw-bold mb-1">
+                                    <field name="receipt_6_name" readonly="1"/>
+                                </h5>
+                            </div>
+                            <group>
+                                <group string="Khách hàng bàn giao lại xe">
+                                    <field name="receipt_6_customer_id" string="Khách hàng" readonly="receipt_6_state == 'returned'"/>
+                                    <field name="receipt_6_customer_phone" string="Số điện thoại" widget="phone" readonly="receipt_6_state == 'returned'"/>
+                                </group>
+                                <group string="Thời gian &amp; Địa điểm thu hồi">
+                                    <field name="receipt_6_return_time" string="Giờ thu hồi xe" readonly="receipt_6_state == 'returned'"/>
+                                    <field name="receipt_6_return_date" string="Ngày thu hồi xe" readonly="receipt_6_state == 'returned'"/>
+                                    <field name="receipt_6_return_location" string="Địa điểm thu hồi xe" readonly="receipt_6_state == 'returned'"/>
+                                </group>
+                            </group>
+
+                            <div class="o_horizontal_separator text-uppercase fw-bold mt-2 mb-2" style="font-size: 12px; color: #495057;">
+                                <i class="fa fa-cubes me-1"/> Phụ kiện thu hồi thực tế
+                            </div>
+                            <group>
+                                <group>
+                                    <field name="receipt_6_qty_helmet" string="Mũ bảo hiểm (cái)" readonly="receipt_6_state == 'returned'"/>
+                                    <field name="receipt_6_qty_raincoat" string="Áo mưa (cái)" readonly="receipt_6_state == 'returned'"/>
+                                </group>
+                                <group>
+                                    <field name="receipt_6_qty_phone_holder" string="Giá đỡ ĐT / Màn hình (cái)" readonly="receipt_6_state == 'returned'"/>
+                                    <field name="receipt_6_qty_charger" string="Bộ sạc xe (bộ)" readonly="receipt_6_state == 'returned'"/>
+                                </group>
+                            </group>
+
+                            <group string="Tình trạng ngoại quan / Hư hại khi nhận lại">
+                                <field name="receipt_6_return_visual_note" string="Ghi chú ngoại quan" readonly="receipt_6_state == 'returned'"/>
+                            </group>
+
+                            <div class="o_horizontal_separator text-uppercase fw-bold mt-3 mb-2" style="font-size: 12px; color: #495057;">
+                                <i class="fa fa-motorcycle me-1"/> Danh sách xe thu hồi &amp; Tình trạng xe
+                            </div>
+                            <field name="receipt_6_vehicle_ids" readonly="receipt_6_state == 'returned'">
+                                <list editable="bottom" create="0" delete="0">
+                                    <field name="vehicle_id" string="Xe" readonly="1"/>
+                                    <field name="license_plate" string="Biển số" readonly="1"/>
+                                    <field name="return_time" string="Giờ thu hồi" readonly="1"/>
+                                    <field name="return_location" string="Vị trí thu hồi" readonly="1" optional="show"/>
+                                    <field name="return_visual_note" string="Tình trạng xe khi nhận lại" readonly="parent.receipt_6_state == 'returned'"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <footer>
+                    <button name="action_confirm_only" 
+                            type="object" 
+                            string="Cập nhật biên lai" 
+                            class="btn-primary" 
+                            icon="fa-save"/>
+                    <button name="action_confirm_and_print" 
+                            type="object" 
+                            string="Cập nhật và xuất biên lai" 
+                            class="btn-secondary" 
+                            icon="fa-print"/>
+                    <button string="Hủy bỏ" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

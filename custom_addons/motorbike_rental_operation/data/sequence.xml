@@ -36,5 +36,23 @@
             <field name="padding">4</field>
             <field name="company_id" eval="False"/>
         </record>
+
+        <!-- Sequence for Biên Lai Thu Hồi Xe -->
+        <record id="seq_rental_return_receipt" model="ir.sequence">
+            <field name="name">Mã Biên Lai Thu Hồi Xe</field>
+            <field name="code">rental.return.receipt</field>
+            <field name="prefix">BLTH-%(year)s-</field>
+            <field name="padding">4</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <!-- Sequence for Đổi Xe -->
+        <record id="seq_rental_vehicle_exchange" model="ir.sequence">
+            <field name="name">Mã Đổi Xe</field>
+            <field name="code">rental.vehicle.exchange</field>
+            <field name="prefix">DX-%(year)s-</field>
+            <field name="padding">4</field>
+            <field name="company_id" eval="False"/>
+        </record>
     </data>
 </odoo>

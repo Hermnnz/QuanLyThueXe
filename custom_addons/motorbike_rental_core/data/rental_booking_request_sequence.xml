@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="seq_rental_booking_request" model="ir.sequence">
+        <field name="name">Yêu cầu thuê xe</field>
+        <field name="code">rental.booking.request</field>
+        <field name="prefix">RR-%(year)s-</field>
+        <field name="padding">5</field>
+        <field name="company_id" eval="False"/>
+    </record>
+</odoo>

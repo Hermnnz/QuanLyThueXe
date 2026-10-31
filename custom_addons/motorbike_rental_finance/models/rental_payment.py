@@ -372,9 +372,14 @@ class MotorbikeRentalPayment(models.Model):
             # Nếu hợp đồng đã hủy, không tạo thêm bất kỳ phiếu tiền nào gắn với hợp đồng đó.
             if contract.state == "cancelled":
                 raise UserError("Không thể tạo phiếu tiền cho hợp đồng đã hủy.")  # Dừng trước khi lưu phiếu mới.
-            # Sau khi ký, tiền thuê phải lấy từ phiếu đã tạo cùng hợp đồng nháp.
-            if contract and vals.get("transaction_type") == "rental_payment" and contract.state != "draft":
-                raise UserError("Không thể tạo phiếu thu tiền thuê sau khi ký hợp đồng.")
+            # Chỉ kiểm tra hai khoản thu ban đầu nếu phiếu gắn với một hợp đồng.
+            if contract:
+                # Lấy loại giao dịch mà người dùng hoặc hệ thống đang tạo.
+                transaction_type = vals.get("transaction_type")
+                # Tiền cọc và tiền thuê phải được lập lúc hợp đồng còn nháp.
+                if transaction_type in ("deposit", "rental_payment") and contract.state != "draft":
+                    # Sau khi ký hoặc bắt đầu thuê, không sinh thêm phiếu thu ban đầu.
+                    raise UserError("Chỉ được tạo phiếu cọc và phiếu thu tiền thuê khi hợp đồng còn nháp.")
             if contract.state == "done":
                 raise UserError("Hợp đồng đã hoàn tất, không thể tạo thêm thanh toán.")
 

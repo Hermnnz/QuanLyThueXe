@@ -39,7 +39,12 @@
 
                 <!-- Ngày tháng địa điểm -->
                 <div style="text-align: right; font-style: italic; margin-bottom: 12px; font-size: 12pt;">
-                    ……, ngày …… tháng …… năm ……
+                    <t t-if="doc.delivery_date">
+                        <span t-out="doc.company_id.city or 'Đà Nẵng'"/>, ngày <span t-out="doc.delivery_date.strftime('%d')"/> tháng <span t-out="doc.delivery_date.strftime('%m')"/> năm <span t-out="doc.delivery_date.strftime('%Y')"/>
+                    </t>
+                    <t t-else="">
+                        ……, ngày …… tháng …… năm ……
+                    </t>
                 </div>
 
                 <!-- Tiêu đề biên bản -->
@@ -54,8 +59,20 @@
 
                 <!-- Hôm nay vào lúc... -->
                 <p style="margin-bottom: 6px; text-align: justify;">
-                    Hôm nay, vào lúc …… 
-                    ngày <strong><span t-out="doc.delivery_date.strftime('%d/%m/%Y') if doc.delivery_date else ''"/></strong> 
+                    Hôm nay, vào lúc 
+                    <t t-if="doc.delivery_time">
+                        <strong><span t-field="doc.delivery_time"/></strong>
+                    </t>
+                    <t t-else="">
+                        ......
+                    </t> 
+                    ngày 
+                    <t t-if="doc.delivery_date">
+                        <strong><span t-out="doc.delivery_date.strftime('%d/%m/%Y')"/></strong>
+                    </t>
+                    <t t-else="">
+                        <strong>..........</strong>
+                    </t> 
                     <t t-if="doc.delivery_location and doc.delivery_location.strip().lower().startswith('tại ')">
                         <strong><span t-out="doc.delivery_location"/></strong>
                     </t>

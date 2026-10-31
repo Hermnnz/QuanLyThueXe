@@ -24,13 +24,29 @@
                 <attribute name="invisible">state not in ('draft', 'confirmed')</attribute>
             </xpath>
 
-            <!-- Một ô xác nhận đã nhận cả cọc và tiền thuê; bắt buộc tích trước khi ký hợp đồng. -->
+            <!-- Hiện xác nhận thu tiền ngay dưới thông tin và chi phí hợp đồng. -->
             <xpath expr="//sheet/group[1]" position="after">
-                <group string="Tiền đã nhận" invisible="state != 'draft'">
-                    <field name="upfront_received_check"/>
-                    <!-- Nhân viên chọn một phương thức cho cả cọc và tiền thuê trước khi ký hợp đồng. -->
-                    <field name="upfront_payment_method" required="upfront_received_check"/>
-                </group>
+                <!-- Chỉ hiện ở hợp đồng nháp; không tô nền để giữ giao diện gọn. -->
+                <div class="mt-3 o_rental_upfront_payment" invisible="state != 'draft'">
+                    <div class="d-flex align-items-center">
+                        <!-- Chữ đen, viết thường "đủ"; ô xác nhận nằm bên phải câu.
+                             Cỡ chữ và viền ô tích được chỉnh trong tệp SCSS của Finance. -->
+                        <label for="upfront_received_check"
+                               string="Tôi xác nhận đã nhận đủ tiền cọc và tiền thuê"
+                               class="mb-0"/>
+                        <field name="upfront_received_check" nolabel="1" class="oe_inline ms-3"
+                               style="transform: scale(1.3); transform-origin: left center;"/>
+                    </div>
+                    <div class="d-flex align-items-center mt-3">
+                        <!-- Ba phương thức hiện ngang để người dùng chọn đúng một cách đã thu tiền. -->
+                        <label for="upfront_payment_method"
+                               string="Phương thức nhận tiền"
+                               class="mb-0"/>
+                        <field name="upfront_payment_method" widget="radio"
+                               options="{'horizontal': true}" nolabel="1" class="ms-3 text-black"
+                               required="upfront_received_check"/>
+                    </div>
+                </div>
             </xpath>
 
             <!-- 2. Chèn 2 Tab hiển thị Phụ phí và Lịch sử thanh toán vào dưới Sheet -->

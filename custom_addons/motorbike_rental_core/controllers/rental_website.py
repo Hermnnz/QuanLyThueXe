@@ -5,6 +5,26 @@ from odoo.exceptions import ValidationError
 from odoo.http import request
 
 
+_VEHICLE_MODEL_IMAGES = {
+    'evo200': 'evo.jpg',
+    'evo200 lite': 'evo.jpg',
+    'feliz': 'feliz.webp',
+    'feliz s': 'feliz.webp',
+    'klara s (2022)': 'Vinfast_Klara_S2022.jpg',
+    'vento s': 'Vinfast_Vento_S.jpg',
+    'theon s': 'Vinfast_Theon_S.jpg',
+    'ludo': 'Vinfast_Ludo.jpg',
+    'weaver': 'Dat_bike_weaver.jpg',
+    'weaver 200': 'Dat_bike_weaver200.jpg',
+    'weaver++': 'Dat_bike_weaver++.jpg',
+    'quantum': 'Dat_bike_Quantum.jpg',
+    'quantum s1': 'Dat_bike_Quantum_S1.jpg',
+    'quantum s2': 'Dat_bike_Quantum_S2.jpg',
+    'quantum s3': 'Dat_bike_Quantum_S3.jpg',
+    'era': 'Dat_bikee_ERA.webp',
+}
+
+
 class RentalWebsite(http.Controller):
 
     @http.route(
@@ -127,28 +147,13 @@ class RentalWebsite(http.Controller):
             if not selected_vehicles:
                 errors.append(_('Vui lòng chọn ít nhất một xe.'))
 
-            rental_users = request.env.ref(
-                'motorbike_rental_core.group_rental_user'
-            ).sudo().users.filtered('active')
-            if not rental_users:
-                errors.append(
-                    _(
-                        'Chưa có nhân viên được cấp quyền Nhân viên thuê xe để nhận thông báo đặt xe.'
-                    )
-                )
-
             if not errors and selected_vehicles:
                 try:
                     with request.env.cr.savepoint():
-                        customer = request.env['res.partner'].sudo().create({
-                            'name': form_values['customer_name'],
+                        request.env['rental.booking.request'].sudo().create({
+                            'customer_name': form_values['customer_name'],
                             'phone': form_values['phone'],
                             'email': form_values['email'],
-                            'is_rental_customer': True,
-                        })
-                        contract = request.env['rental.contract'].sudo().create({
-                            'customer_id': customer.id,
-                            'currency_id': request.website.company_id.currency_id.id,
                             'start_date': start_date,
                             'end_date': end_date,
                             'notes': form_values['notes'],
@@ -156,22 +161,10 @@ class RentalWebsite(http.Controller):
                                 (0, 0, {
                                     'vehicle_id': vehicle.id,
                                     'vehicle_type_id': vehicle_type.id,
-                                    'daily_rate': vehicle_type.daily_rate,
                                 })
                                 for vehicle, vehicle_type in selected_vehicles
                             ],
                         })
-                        for rental_user in rental_users:
-                            customer.sudo().activity_schedule(
-                                'mail.mail_activity_data_todo',
-                                summary=_('Yêu cầu thuê xe mới'),
-                                note=_(
-                                    'Khách đã gửi yêu cầu thuê xe trên website. '
-                                    'Vui lòng kiểm tra hợp đồng %(contract)s '
-                                    'và xác nhận nếu thông tin hợp lệ.'
-                                ) % {'contract': contract.name},
-                                user_id=rental_user.id,
-                            )
                 except ValidationError as error:
                     errors.append(str(error))
                 else:
@@ -215,11 +208,11 @@ class RentalWebsite(http.Controller):
 
     @staticmethod
     def _get_available_vehicles(start_date, end_date):
-        company_currency = request.website.company_id.currency_id
+        rental_currency = request.env.ref('base.VND')
         rental_types = request.env['rental.vehicle.type'].sudo().search(
             [
                 ('active', '=', True),
-                ('currency_id', '=', company_currency.id),
+                ('currency_id', '=', rental_currency.id),
                 ('model_id.vehicle_type', '=', 'bike'),
             ],
             order='name, id',
@@ -265,30 +258,18 @@ class RentalWebsite(http.Controller):
                 lambda vehicle: vehicle.model_id == rental_type.model_id
             )
             model_name = rental_type.model_id.name.casefold()
-            illustration = (
-                'evo-grand.svg' if 'evo grand' in model_name
-                else 'evo.svg' if 'evo' in model_name
-                else 'feliz.svg' if 'feliz' in model_name
-                else 'electric-scooter.svg'
-            )
-            image = (
-                'evo-grand.webp' if 'evo grand' in model_name
-                else 'evo.jpg' if 'evo' in model_name
-                else 'feliz.webp' if 'feliz' in model_name
-                else None
-            )
+            image = _VEHICLE_MODEL_IMAGES.get(model_name)
+            if not image and rental_type.model_id.image_128:
+                image_url = (
+                    f'/web/image/fleet.vehicle.model/'
+                    f'{rental_type.model_id.id}/image_512'
+                )
+            else:
+                fallback = image or 'electric-scooter.svg'
+                image_url = f'/motorbike_rental_core/static/src/img/{fallback}'
             options.append({
                 'vehicle_type': rental_type,
-                'image_url': (
-                    f'/motorbike_rental_core/static/src/img/{image}'
-                    if image
-                    else (
-                        f'/web/image/fleet.vehicle.model/'
-                        f'{rental_type.model_id.id}/image_512'
-                        if rental_type.model_id.image_128
-                        else f'/motorbike_rental_core/static/src/img/{illustration}'
-                    )
-                ),
+                'image_url': image_url,
                 'total_count': len(model_vehicles),
                 'available_count': len(model_available_vehicles),
                 'vehicles': model_available_vehicles,

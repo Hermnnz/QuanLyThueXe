@@ -93,6 +93,8 @@ td[name="is_selected"] input[type="checkbox"]:checked {
 .o_field_widget[name="returned_vehicle_ids"] .o_list_renderer,
 .o_field_widget[name="receipt_ids"] .o_list_renderer,
 div[name="receipt_ids"] .o_list_renderer,
+.o_field_widget[name="return_receipt_ids"] .o_list_renderer,
+div[name="return_receipt_ids"] .o_list_renderer,
 .o_view_controller:has(.o_rental_ticket_list_table) .o_list_renderer,
 .o_list_renderer:has(.o_rental_ticket_list_table),
 .o_view_controller:has(.o_rental_incident_list_table) .o_list_renderer,
@@ -118,7 +120,9 @@ div[name="receipt_ids"] .o_list_renderer,
 }
 
 .o_field_widget[name="receipt_ids"] .o_list_table,
-div[name="receipt_ids"] .o_list_table {
+div[name="receipt_ids"] .o_list_table,
+.o_field_widget[name="return_receipt_ids"] .o_list_table,
+div[name="return_receipt_ids"] .o_list_table {
     min-width: 1800px !important;
     width: 100% !important;
 }

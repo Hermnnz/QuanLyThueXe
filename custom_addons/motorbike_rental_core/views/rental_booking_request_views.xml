@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_rental_booking_request_list" model="ir.ui.view">
+        <field name="name">rental.booking.request.list</field>
+        <field name="model">rental.booking.request</field>
+        <field name="arch" type="xml">
+            <list string="Yêu cầu thuê xe" decoration-muted="state == 'cancelled'">
+                <field name="name"/>
+                <field name="customer_name"/>
+                <field name="phone"/>
+                <field name="start_date"/>
+                <field name="end_date"/>
+                <field name="state" column_invisible="True"/>
+                <button name="action_create_draft_contract" type="object"
+                        string="Xác nhận yêu cầu"
+                        class="btn-primary"
+                        invisible="state != 'new'"/>
+                <field name="state" widget="badge"/>
+                <field name="contract_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_rental_booking_request_form" model="ir.ui.view">
+        <field name="name">rental.booking.request.form</field>
+        <field name="model">rental.booking.request</field>
+        <field name="arch" type="xml">
+            <form string="Yêu cầu thuê xe">
+                <header>
+                    <button name="action_create_draft_contract" type="object"
+                            string="Xác nhận yêu cầu"
+                            class="btn-primary"
+                            invisible="state != 'new'"/>
+                    <button name="action_cancel_request" type="object"
+                            string="Hủy yêu cầu"
+                            invisible="state != 'new'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="new,converted,cancelled"
+                           readonly="1"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" string="Mã yêu cầu"/>
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Thông tin khách hàng">
+                            <field name="customer_id"
+                                   readonly="state in ('converted', 'cancelled')"
+                                   options="{'no_create': True}"/>
+                            <field name="customer_name"
+                                   readonly="state in ('converted', 'cancelled')"/>
+                            <field name="phone"
+                                   readonly="state in ('converted', 'cancelled')"/>
+                            <field name="email"
+                                   readonly="state in ('converted', 'cancelled')"/>
+                        </group>
+                        <group string="Thời gian thuê">
+                            <field name="start_date"
+                                   readonly="state in ('converted', 'cancelled')"/>
+                            <field name="end_date"
+                                   readonly="state in ('converted', 'cancelled')"/>
+                            <field name="contract_id" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Xe khách yêu cầu">
+                        <field name="line_ids"
+                               readonly="state in ('converted', 'cancelled')">
+                            <list editable="bottom">
+                                <field name="vehicle_type_id"
+                                       domain="[('active', '=', True)]"
+                                       options="{'no_create': True}"/>
+                                <field name="vehicle_model_id" column_invisible="True"/>
+                                <field name="vehicle_id"
+                                       domain="[('active', '=', True), ('model_id', '=', vehicle_model_id)]"
+                                       options="{'no_create': True}"/>
+                            </list>
+                        </field>
+                    </group>
+                    <group string="Ghi chú">
+                        <field name="notes"
+                               readonly="state in ('converted', 'cancelled')"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_rental_booking_request_search" model="ir.ui.view">
+        <field name="name">rental.booking.request.search</field>
+        <field name="model">rental.booking.request</field>
+        <field name="arch" type="xml">
+            <search string="Tìm yêu cầu thuê xe">
+                <field name="name"/>
+                <field name="customer_name"/>
+                <field name="phone"/>
+                <field name="customer_id"/>
+                <filter name="new" string="Mới" domain="[('state', '=', 'new')]"/>
+                <filter name="converted" string="Đã tạo hợp đồng nháp"
+                        domain="[('state', '=', 'converted')]"/>
+                <filter name="cancelled" string="Đã hủy"
+                        domain="[('state', '=', 'cancelled')]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_rental_booking_request" model="ir.actions.act_window">
+        <field name="name">Yêu cầu thuê xe</field>
+        <field name="res_model">rental.booking.request</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_rental_booking_request_search"/>
+        <field name="context">{'search_default_new': 1}</field>
+    </record>
+
+    <menuitem id="menu_rental_booking_request"
+              name="Yêu cầu thuê xe"
+              parent="menu_rental_management"
+              action="action_rental_booking_request"
+              sequence="3"
+              groups="motorbike_rental_core.group_rental_user"/>
+</odoo>

@@ -31,6 +31,11 @@ class RentalVehicleScheduleWizard(models.TransientModel):
         default='Tại cửa hàng',
         help='Địa điểm thu hồi xe cho các xe được chọn'
     )
+    return_time = fields.Char(
+        string='Giờ thu hồi xe', 
+        placeholder='VD: 12:00 hoặc 18:00',
+        help='Thời gian thu hồi xe dự kiến (VD: 18:00)'
+    )
 
     @api.depends('vehicle_ids')
     def _compute_vehicle_count(self):
@@ -53,14 +58,39 @@ class RentalVehicleScheduleWizard(models.TransientModel):
                     veh_vals['delivery_time'] = self.delivery_time
                     veh_vals['is_custom_delivery_time'] = True
 
-            # Xe chưa thu hồi (chờ giao, đang giao hoặc đang thuê) được phép sửa địa điểm thu hồi
+            # Xe chưa thu hồi (chờ giao, đang giao hoặc đang thuê) được phép sửa thông tin thu hồi (địa điểm & giờ thu hồi)
             if veh.status != 'returned':
                 if self.return_location and self.return_location != veh.return_location:
                     veh_vals['return_location'] = self.return_location
                     veh_vals['is_custom_return_location'] = True
+                if self.return_time and self.return_time != veh.return_time:
+                    veh_vals['return_time'] = self.return_time
+                    veh_vals['is_custom_return_time'] = True
 
             if veh_vals:
                 veh.write(veh_vals)
+
+        # Đồng bộ trực tiếp vào các biên lai giao xe chưa hoàn tất (nếu có)
+        receipts_to_update = self.vehicle_ids.mapped('delivery_receipt_id').filtered(lambda r: r.state != 'delivered')
+        for r in receipts_to_update:
+            r_vals = {}
+            if self.delivery_location:
+                r_vals['delivery_location'] = self.delivery_location
+            if self.delivery_time:
+                r_vals['delivery_time'] = self.delivery_time
+            if r_vals:
+                r.write(r_vals)
+
+        # Đồng bộ trực tiếp vào các biên lai thu hồi xe chưa hoàn tất (nếu có)
+        ret_receipts_to_update = self.vehicle_ids.mapped('return_receipt_id').filtered(lambda r: r.state != 'returned')
+        for r in ret_receipts_to_update:
+            r_vals = {}
+            if self.return_location:
+                r_vals['return_location'] = self.return_location
+            if self.return_time:
+                r_vals['return_time'] = self.return_time
+            if r_vals:
+                r.write(r_vals)
 
         # Bỏ tick chọn sau khi cập nhật thành công
         self.vehicle_ids.write({'is_selected': False})

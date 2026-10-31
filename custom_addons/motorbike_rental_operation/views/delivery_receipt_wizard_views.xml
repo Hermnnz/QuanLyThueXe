@@ -6,7 +6,6 @@
         <field name="arch" type="xml">
             <form string="Xác Nhận &amp; Xuất Biên Lai Giao Xe">
                 <sheet>
-                    <!-- Các trường ẩn điều khiển hiển thị tab -->
                     <field name="ticket_id" invisible="1"/>
                     <field name="receipt_1_visible" invisible="1"/>
                     <field name="receipt_2_visible" invisible="1"/>
@@ -15,10 +14,23 @@
                     <field name="receipt_5_visible" invisible="1"/>
                     <field name="receipt_6_visible" invisible="1"/>
 
-                    <!-- Danh sách các tab biên lai: mỗi biên lai là 1 tab riêng biệt -->
+                    <field name="receipt_1_receipt_id" invisible="1"/>
+                    <field name="receipt_2_receipt_id" invisible="1"/>
+                    <field name="receipt_3_receipt_id" invisible="1"/>
+                    <field name="receipt_4_receipt_id" invisible="1"/>
+                    <field name="receipt_5_receipt_id" invisible="1"/>
+                    <field name="receipt_6_receipt_id" invisible="1"/>
+
                     <notebook>
                         <!-- TAB BIÊN LAI 1 -->
                         <page string="Biên lai 1" name="tab_receipt_1" invisible="not receipt_1_visible">
+                            <field name="receipt_1_state" invisible="1"/>
+                            <div class="alert alert-warning py-1 mb-2 d-flex align-items-center" invisible="receipt_1_state != 'delivered'" role="alert">
+                                <i class="fa fa-lock fa-lg me-2 text-warning"/>
+                                <div>
+                                    <strong>Biên lai này đã giao thành công!</strong> Thông tin biên lai được giữ nguyên (không cho phép sửa đổi).
+                                </div>
+                            </div>
                             <div class="mb-2">
                                 <h5 class="text-primary fw-bold mb-1">
                                     <field name="receipt_1_name" readonly="1"/>
@@ -26,13 +38,13 @@
                             </div>
                             <group>
                                 <group string="Khách hàng nhận xe">
-                                    <field name="receipt_1_customer_id" string="Khách hàng"/>
-                                    <field name="receipt_1_customer_phone" string="Số điện thoại" widget="phone"/>
+                                    <field name="receipt_1_customer_id" string="Khách hàng" readonly="receipt_1_state == 'delivered'"/>
+                                    <field name="receipt_1_customer_phone" string="Số điện thoại" widget="phone" readonly="receipt_1_state == 'delivered'"/>
                                 </group>
                                 <group string="Thời gian &amp; Địa điểm giao">
-                                    <field name="receipt_1_delivery_time" string="Giờ giao xe"/>
-                                    <field name="receipt_1_delivery_date" string="Ngày giao xe"/>
-                                    <field name="receipt_1_delivery_location" string="Địa điểm giao xe"/>
+                                    <field name="receipt_1_delivery_time" string="Giờ giao xe" readonly="receipt_1_state == 'delivered'"/>
+                                    <field name="receipt_1_delivery_date" string="Ngày giao xe" readonly="receipt_1_state == 'delivered'"/>
+                                    <field name="receipt_1_delivery_location" string="Địa điểm giao xe" readonly="receipt_1_state == 'delivered'"/>
                                 </group>
                             </group>
 
@@ -41,31 +53,37 @@
                             </div>
                             <group>
                                 <group>
-                                    <field name="receipt_1_qty_helmet" string="Mũ bảo hiểm (cái)"/>
-                                    <field name="receipt_1_qty_raincoat" string="Áo mưa (cái)"/>
+                                    <field name="receipt_1_qty_helmet" string="Mũ bảo hiểm (cái)" readonly="receipt_1_state == 'delivered'"/>
+                                    <field name="receipt_1_qty_raincoat" string="Áo mưa (cái)" readonly="receipt_1_state == 'delivered'"/>
                                 </group>
                                 <group>
-                                    <field name="receipt_1_qty_phone_holder" string="Giá đỡ ĐT / Màn hình (cái)"/>
-                                    <field name="receipt_1_qty_charger" string="Bộ sạc xe (bộ)"/>
+                                    <field name="receipt_1_qty_phone_holder" string="Giá đỡ ĐT / Màn hình (cái)" readonly="receipt_1_state == 'delivered'"/>
+                                    <field name="receipt_1_qty_charger" string="Bộ sạc xe (bộ)" readonly="receipt_1_state == 'delivered'"/>
                                 </group>
                             </group>
 
                             <div class="o_horizontal_separator text-uppercase fw-bold mt-3 mb-2" style="font-size: 12px; color: #495057;">
                                 <i class="fa fa-motorcycle me-1"/> Thông tin xe &amp; Tình trạng ngoại quan ban đầu
                             </div>
-                            <field name="receipt_1_vehicle_ids">
+                            <field name="receipt_1_vehicle_ids" readonly="receipt_1_state == 'delivered'">
                                 <list editable="bottom" create="0" delete="0">
                                     <field name="vehicle_id" string="Xe" readonly="1"/>
                                     <field name="license_plate" string="Biển số" readonly="1"/>
-                                    <field name="delivery_time" string="Giờ giao" readonly="1"/>
                                     <field name="delivery_location" string="Vị trí giao" readonly="1" optional="show"/>
-                                    <field name="delivery_visual_note" string="Tình trạng ngoại quan ban đầu (vết xước, phụ kiện...)"/>
+                                    <field name="delivery_visual_note" string="Tình trạng ngoại quan ban đầu (vết xước, phụ kiện...)" readonly="parent.receipt_1_state == 'delivered'"/>
                                 </list>
                             </field>
                         </page>
 
                         <!-- TAB BIÊN LAI 2 -->
                         <page string="Biên lai 2" name="tab_receipt_2" invisible="not receipt_2_visible">
+                            <field name="receipt_2_state" invisible="1"/>
+                            <div class="alert alert-warning py-1 mb-2 d-flex align-items-center" invisible="receipt_2_state != 'delivered'" role="alert">
+                                <i class="fa fa-lock fa-lg me-2 text-warning"/>
+                                <div>
+                                    <strong>Biên lai này đã giao thành công!</strong> Thông tin biên lai được giữ nguyên (không cho phép sửa đổi).
+                                </div>
+                            </div>
                             <div class="mb-2">
                                 <h5 class="text-primary fw-bold mb-1">
                                     <field name="receipt_2_name" readonly="1"/>
@@ -73,13 +91,13 @@
                             </div>
                             <group>
                                 <group string="Khách hàng nhận xe">
-                                    <field name="receipt_2_customer_id" string="Khách hàng"/>
-                                    <field name="receipt_2_customer_phone" string="Số điện thoại" widget="phone"/>
+                                    <field name="receipt_2_customer_id" string="Khách hàng" readonly="receipt_2_state == 'delivered'"/>
+                                    <field name="receipt_2_customer_phone" string="Số điện thoại" widget="phone" readonly="receipt_2_state == 'delivered'"/>
                                 </group>
                                 <group string="Thời gian &amp; Địa điểm giao">
-                                    <field name="receipt_2_delivery_time" string="Giờ giao xe"/>
-                                    <field name="receipt_2_delivery_date" string="Ngày giao xe"/>
-                                    <field name="receipt_2_delivery_location" string="Địa điểm giao xe"/>
+                                    <field name="receipt_2_delivery_time" string="Giờ giao xe" readonly="receipt_2_state == 'delivered'"/>
+                                    <field name="receipt_2_delivery_date" string="Ngày giao xe" readonly="receipt_2_state == 'delivered'"/>
+                                    <field name="receipt_2_delivery_location" string="Địa điểm giao xe" readonly="receipt_2_state == 'delivered'"/>
                                 </group>
                             </group>
 
@@ -88,31 +106,37 @@
                             </div>
                             <group>
                                 <group>
-                                    <field name="receipt_2_qty_helmet" string="Mũ bảo hiểm (cái)"/>
-                                    <field name="receipt_2_qty_raincoat" string="Áo mưa (cái)"/>
+                                    <field name="receipt_2_qty_helmet" string="Mũ bảo hiểm (cái)" readonly="receipt_2_state == 'delivered'"/>
+                                    <field name="receipt_2_qty_raincoat" string="Áo mưa (cái)" readonly="receipt_2_state == 'delivered'"/>
                                 </group>
                                 <group>
-                                    <field name="receipt_2_qty_phone_holder" string="Giá đỡ ĐT / Màn hình (cái)"/>
-                                    <field name="receipt_2_qty_charger" string="Bộ sạc xe (bộ)"/>
+                                    <field name="receipt_2_qty_phone_holder" string="Giá đỡ ĐT / Màn hình (cái)" readonly="receipt_2_state == 'delivered'"/>
+                                    <field name="receipt_2_qty_charger" string="Bộ sạc xe (bộ)" readonly="receipt_2_state == 'delivered'"/>
                                 </group>
                             </group>
 
                             <div class="o_horizontal_separator text-uppercase fw-bold mt-3 mb-2" style="font-size: 12px; color: #495057;">
                                 <i class="fa fa-motorcycle me-1"/> Thông tin xe &amp; Tình trạng ngoại quan ban đầu
                             </div>
-                            <field name="receipt_2_vehicle_ids">
+                            <field name="receipt_2_vehicle_ids" readonly="receipt_2_state == 'delivered'">
                                 <list editable="bottom" create="0" delete="0">
                                     <field name="vehicle_id" string="Xe" readonly="1"/>
                                     <field name="license_plate" string="Biển số" readonly="1"/>
-                                    <field name="delivery_time" string="Giờ giao" readonly="1"/>
                                     <field name="delivery_location" string="Vị trí giao" readonly="1" optional="show"/>
-                                    <field name="delivery_visual_note" string="Tình trạng ngoại quan ban đầu (vết xước, phụ kiện...)"/>
+                                    <field name="delivery_visual_note" string="Tình trạng ngoại quan ban đầu (vết xước, phụ kiện...)" readonly="parent.receipt_2_state == 'delivered'"/>
                                 </list>
                             </field>
                         </page>
 
                         <!-- TAB BIÊN LAI 3 -->
                         <page string="Biên lai 3" name="tab_receipt_3" invisible="not receipt_3_visible">
+                            <field name="receipt_3_state" invisible="1"/>
+                            <div class="alert alert-warning py-1 mb-2 d-flex align-items-center" invisible="receipt_3_state != 'delivered'" role="alert">
+                                <i class="fa fa-lock fa-lg me-2 text-warning"/>
+                                <div>
+                                    <strong>Biên lai này đã giao thành công!</strong> Thông tin biên lai được giữ nguyên (không cho phép sửa đổi).
+                                </div>
+                            </div>
                             <div class="mb-2">
                                 <h5 class="text-primary fw-bold mb-1">
                                     <field name="receipt_3_name" readonly="1"/>
@@ -120,13 +144,13 @@
                             </div>
                             <group>
                                 <group string="Khách hàng nhận xe">
-                                    <field name="receipt_3_customer_id" string="Khách hàng"/>
-                                    <field name="receipt_3_customer_phone" string="Số điện thoại" widget="phone"/>
+                                    <field name="receipt_3_customer_id" string="Khách hàng" readonly="receipt_3_state == 'delivered'"/>
+                                    <field name="receipt_3_customer_phone" string="Số điện thoại" widget="phone" readonly="receipt_3_state == 'delivered'"/>
                                 </group>
                                 <group string="Thời gian &amp; Địa điểm giao">
-                                    <field name="receipt_3_delivery_time" string="Giờ giao xe"/>
-                                    <field name="receipt_3_delivery_date" string="Ngày giao xe"/>
-                                    <field name="receipt_3_delivery_location" string="Địa điểm giao xe"/>
+                                    <field name="receipt_3_delivery_time" string="Giờ giao xe" readonly="receipt_3_state == 'delivered'"/>
+                                    <field name="receipt_3_delivery_date" string="Ngày giao xe" readonly="receipt_3_state == 'delivered'"/>
+                                    <field name="receipt_3_delivery_location" string="Địa điểm giao xe" readonly="receipt_3_state == 'delivered'"/>
                                 </group>
                             </group>
 
@@ -135,31 +159,37 @@
                             </div>
                             <group>
                                 <group>
-                                    <field name="receipt_3_qty_helmet" string="Mũ bảo hiểm (cái)"/>
-                                    <field name="receipt_3_qty_raincoat" string="Áo mưa (cái)"/>
+                                    <field name="receipt_3_qty_helmet" string="Mũ bảo hiểm (cái)" readonly="receipt_3_state == 'delivered'"/>
+                                    <field name="receipt_3_qty_raincoat" string="Áo mưa (cái)" readonly="receipt_3_state == 'delivered'"/>
                                 </group>
                                 <group>
-                                    <field name="receipt_3_qty_phone_holder" string="Giá đỡ ĐT / Màn hình (cái)"/>
-                                    <field name="receipt_3_qty_charger" string="Bộ sạc xe (bộ)"/>
+                                    <field name="receipt_3_qty_phone_holder" string="Giá đỡ ĐT / Màn hình (cái)" readonly="receipt_3_state == 'delivered'"/>
+                                    <field name="receipt_3_qty_charger" string="Bộ sạc xe (bộ)" readonly="receipt_3_state == 'delivered'"/>
                                 </group>
                             </group>
 
                             <div class="o_horizontal_separator text-uppercase fw-bold mt-3 mb-2" style="font-size: 12px; color: #495057;">
                                 <i class="fa fa-motorcycle me-1"/> Thông tin xe &amp; Tình trạng ngoại quan ban đầu
                             </div>
-                            <field name="receipt_3_vehicle_ids">
+                            <field name="receipt_3_vehicle_ids" readonly="receipt_3_state == 'delivered'">
                                 <list editable="bottom" create="0" delete="0">
                                     <field name="vehicle_id" string="Xe" readonly="1"/>
                                     <field name="license_plate" string="Biển số" readonly="1"/>
-                                    <field name="delivery_time" string="Giờ giao" readonly="1"/>
                                     <field name="delivery_location" string="Vị trí giao" readonly="1" optional="show"/>
-                                    <field name="delivery_visual_note" string="Tình trạng ngoại quan ban đầu (vết xước, phụ kiện...)"/>
+                                    <field name="delivery_visual_note" string="Tình trạng ngoại quan ban đầu (vết xước, phụ kiện...)" readonly="parent.receipt_3_state == 'delivered'"/>
                                 </list>
                             </field>
                         </page>
 
                         <!-- TAB BIÊN LAI 4 -->
                         <page string="Biên lai 4" name="tab_receipt_4" invisible="not receipt_4_visible">
+                            <field name="receipt_4_state" invisible="1"/>
+                            <div class="alert alert-warning py-1 mb-2 d-flex align-items-center" invisible="receipt_4_state != 'delivered'" role="alert">
+                                <i class="fa fa-lock fa-lg me-2 text-warning"/>
+                                <div>
+                                    <strong>Biên lai này đã giao thành công!</strong> Thông tin biên lai được giữ nguyên (không cho phép sửa đổi).
+                                </div>
+                            </div>
                             <div class="mb-2">
                                 <h5 class="text-primary fw-bold mb-1">
                                     <field name="receipt_4_name" readonly="1"/>
@@ -167,13 +197,13 @@
                             </div>
                             <group>
                                 <group string="Khách hàng nhận xe">
-                                    <field name="receipt_4_customer_id" string="Khách hàng"/>
-                                    <field name="receipt_4_customer_phone" string="Số điện thoại" widget="phone"/>
+                                    <field name="receipt_4_customer_id" string="Khách hàng" readonly="receipt_4_state == 'delivered'"/>
+                                    <field name="receipt_4_customer_phone" string="Số điện thoại" widget="phone" readonly="receipt_4_state == 'delivered'"/>
                                 </group>
                                 <group string="Thời gian &amp; Địa điểm giao">
-                                    <field name="receipt_4_delivery_time" string="Giờ giao xe"/>
-                                    <field name="receipt_4_delivery_date" string="Ngày giao xe"/>
-                                    <field name="receipt_4_delivery_location" string="Địa điểm giao xe"/>
+                                    <field name="receipt_4_delivery_time" string="Giờ giao xe" readonly="receipt_4_state == 'delivered'"/>
+                                    <field name="receipt_4_delivery_date" string="Ngày giao xe" readonly="receipt_4_state == 'delivered'"/>
+                                    <field name="receipt_4_delivery_location" string="Địa điểm giao xe" readonly="receipt_4_state == 'delivered'"/>
                                 </group>
                             </group>
 
@@ -182,31 +212,37 @@
                             </div>
                             <group>
                                 <group>
-                                    <field name="receipt_4_qty_helmet" string="Mũ bảo hiểm (cái)"/>
-                                    <field name="receipt_4_qty_raincoat" string="Áo mưa (cái)"/>
+                                    <field name="receipt_4_qty_helmet" string="Mũ bảo hiểm (cái)" readonly="receipt_4_state == 'delivered'"/>
+                                    <field name="receipt_4_qty_raincoat" string="Áo mưa (cái)" readonly="receipt_4_state == 'delivered'"/>
                                 </group>
                                 <group>
-                                    <field name="receipt_4_qty_phone_holder" string="Giá đỡ ĐT / Màn hình (cái)"/>
-                                    <field name="receipt_4_qty_charger" string="Bộ sạc xe (bộ)"/>
+                                    <field name="receipt_4_qty_phone_holder" string="Giá đỡ ĐT / Màn hình (cái)" readonly="receipt_4_state == 'delivered'"/>
+                                    <field name="receipt_4_qty_charger" string="Bộ sạc xe (bộ)" readonly="receipt_4_state == 'delivered'"/>
                                 </group>
                             </group>
 
                             <div class="o_horizontal_separator text-uppercase fw-bold mt-3 mb-2" style="font-size: 12px; color: #495057;">
                                 <i class="fa fa-motorcycle me-1"/> Thông tin xe &amp; Tình trạng ngoại quan ban đầu
                             </div>
-                            <field name="receipt_4_vehicle_ids">
+                            <field name="receipt_4_vehicle_ids" readonly="receipt_4_state == 'delivered'">
                                 <list editable="bottom" create="0" delete="0">
                                     <field name="vehicle_id" string="Xe" readonly="1"/>
                                     <field name="license_plate" string="Biển số" readonly="1"/>
-                                    <field name="delivery_time" string="Giờ giao" readonly="1"/>
                                     <field name="delivery_location" string="Vị trí giao" readonly="1" optional="show"/>
-                                    <field name="delivery_visual_note" string="Tình trạng ngoại quan ban đầu (vết xước, phụ kiện...)"/>
+                                    <field name="delivery_visual_note" string="Tình trạng ngoại quan ban đầu (vết xước, phụ kiện...)" readonly="parent.receipt_4_state == 'delivered'"/>
                                 </list>
                             </field>
                         </page>
 
                         <!-- TAB BIÊN LAI 5 -->
                         <page string="Biên lai 5" name="tab_receipt_5" invisible="not receipt_5_visible">
+                            <field name="receipt_5_state" invisible="1"/>
+                            <div class="alert alert-warning py-1 mb-2 d-flex align-items-center" invisible="receipt_5_state != 'delivered'" role="alert">
+                                <i class="fa fa-lock fa-lg me-2 text-warning"/>
+                                <div>
+                                    <strong>Biên lai này đã giao thành công!</strong> Thông tin biên lai được giữ nguyên (không cho phép sửa đổi).
+                                </div>
+                            </div>
                             <div class="mb-2">
                                 <h5 class="text-primary fw-bold mb-1">
                                     <field name="receipt_5_name" readonly="1"/>
@@ -214,13 +250,13 @@
                             </div>
                             <group>
                                 <group string="Khách hàng nhận xe">
-                                    <field name="receipt_5_customer_id" string="Khách hàng"/>
-                                    <field name="receipt_5_customer_phone" string="Số điện thoại" widget="phone"/>
+                                    <field name="receipt_5_customer_id" string="Khách hàng" readonly="receipt_5_state == 'delivered'"/>
+                                    <field name="receipt_5_customer_phone" string="Số điện thoại" widget="phone" readonly="receipt_5_state == 'delivered'"/>
                                 </group>
                                 <group string="Thời gian &amp; Địa điểm giao">
-                                    <field name="receipt_5_delivery_time" string="Giờ giao xe"/>
-                                    <field name="receipt_5_delivery_date" string="Ngày giao xe"/>
-                                    <field name="receipt_5_delivery_location" string="Địa điểm giao xe"/>
+                                    <field name="receipt_5_delivery_time" string="Giờ giao xe" readonly="receipt_5_state == 'delivered'"/>
+                                    <field name="receipt_5_delivery_date" string="Ngày giao xe" readonly="receipt_5_state == 'delivered'"/>
+                                    <field name="receipt_5_delivery_location" string="Địa điểm giao xe" readonly="receipt_5_state == 'delivered'"/>
                                 </group>
                             </group>
 
@@ -229,31 +265,37 @@
                             </div>
                             <group>
                                 <group>
-                                    <field name="receipt_5_qty_helmet" string="Mũ bảo hiểm (cái)"/>
-                                    <field name="receipt_5_qty_raincoat" string="Áo mưa (cái)"/>
+                                    <field name="receipt_5_qty_helmet" string="Mũ bảo hiểm (cái)" readonly="receipt_5_state == 'delivered'"/>
+                                    <field name="receipt_5_qty_raincoat" string="Áo mưa (cái)" readonly="receipt_5_state == 'delivered'"/>
                                 </group>
                                 <group>
-                                    <field name="receipt_5_qty_phone_holder" string="Giá đỡ ĐT / Màn hình (cái)"/>
-                                    <field name="receipt_5_qty_charger" string="Bộ sạc xe (bộ)"/>
+                                    <field name="receipt_5_qty_phone_holder" string="Giá đỡ ĐT / Màn hình (cái)" readonly="receipt_5_state == 'delivered'"/>
+                                    <field name="receipt_5_qty_charger" string="Bộ sạc xe (bộ)" readonly="receipt_5_state == 'delivered'"/>
                                 </group>
                             </group>
 
                             <div class="o_horizontal_separator text-uppercase fw-bold mt-3 mb-2" style="font-size: 12px; color: #495057;">
                                 <i class="fa fa-motorcycle me-1"/> Thông tin xe &amp; Tình trạng ngoại quan ban đầu
                             </div>
-                            <field name="receipt_5_vehicle_ids">
+                            <field name="receipt_5_vehicle_ids" readonly="receipt_5_state == 'delivered'">
                                 <list editable="bottom" create="0" delete="0">
                                     <field name="vehicle_id" string="Xe" readonly="1"/>
                                     <field name="license_plate" string="Biển số" readonly="1"/>
-                                    <field name="delivery_time" string="Giờ giao" readonly="1"/>
                                     <field name="delivery_location" string="Vị trí giao" readonly="1" optional="show"/>
-                                    <field name="delivery_visual_note" string="Tình trạng ngoại quan ban đầu (vết xước, phụ kiện...)"/>
+                                    <field name="delivery_visual_note" string="Tình trạng ngoại quan ban đầu (vết xước, phụ kiện...)" readonly="parent.receipt_5_state == 'delivered'"/>
                                 </list>
                             </field>
                         </page>
 
                         <!-- TAB BIÊN LAI 6 -->
                         <page string="Biên lai 6" name="tab_receipt_6" invisible="not receipt_6_visible">
+                            <field name="receipt_6_state" invisible="1"/>
+                            <div class="alert alert-warning py-1 mb-2 d-flex align-items-center" invisible="receipt_6_state != 'delivered'" role="alert">
+                                <i class="fa fa-lock fa-lg me-2 text-warning"/>
+                                <div>
+                                    <strong>Biên lai này đã giao thành công!</strong> Thông tin biên lai được giữ nguyên (không cho phép sửa đổi).
+                                </div>
+                            </div>
                             <div class="mb-2">
                                 <h5 class="text-primary fw-bold mb-1">
                                     <field name="receipt_6_name" readonly="1"/>
@@ -261,13 +303,13 @@
                             </div>
                             <group>
                                 <group string="Khách hàng nhận xe">
-                                    <field name="receipt_6_customer_id" string="Khách hàng"/>
-                                    <field name="receipt_6_customer_phone" string="Số điện thoại" widget="phone"/>
+                                    <field name="receipt_6_customer_id" string="Khách hàng" readonly="receipt_6_state == 'delivered'"/>
+                                    <field name="receipt_6_customer_phone" string="Số điện thoại" widget="phone" readonly="receipt_6_state == 'delivered'"/>
                                 </group>
                                 <group string="Thời gian &amp; Địa điểm giao">
-                                    <field name="receipt_6_delivery_time" string="Giờ giao xe"/>
-                                    <field name="receipt_6_delivery_date" string="Ngày giao xe"/>
-                                    <field name="receipt_6_delivery_location" string="Địa điểm giao xe"/>
+                                    <field name="receipt_6_delivery_time" string="Giờ giao xe" readonly="receipt_6_state == 'delivered'"/>
+                                    <field name="receipt_6_delivery_date" string="Ngày giao xe" readonly="receipt_6_state == 'delivered'"/>
+                                    <field name="receipt_6_delivery_location" string="Địa điểm giao xe" readonly="receipt_6_state == 'delivered'"/>
                                 </group>
                             </group>
 
@@ -276,35 +318,39 @@
                             </div>
                             <group>
                                 <group>
-                                    <field name="receipt_6_qty_helmet" string="Mũ bảo hiểm (cái)"/>
-                                    <field name="receipt_6_qty_raincoat" string="Áo mưa (cái)"/>
+                                    <field name="receipt_6_qty_helmet" string="Mũ bảo hiểm (cái)" readonly="receipt_6_state == 'delivered'"/>
+                                    <field name="receipt_6_qty_raincoat" string="Áo mưa (cái)" readonly="receipt_6_state == 'delivered'"/>
                                 </group>
                                 <group>
-                                    <field name="receipt_6_qty_phone_holder" string="Giá đỡ ĐT / Màn hình (cái)"/>
-                                    <field name="receipt_6_qty_charger" string="Bộ sạc xe (bộ)"/>
+                                    <field name="receipt_6_qty_phone_holder" string="Giá đỡ ĐT / Màn hình (cái)" readonly="receipt_6_state == 'delivered'"/>
+                                    <field name="receipt_6_qty_charger" string="Bộ sạc xe (bộ)" readonly="receipt_6_state == 'delivered'"/>
                                 </group>
                             </group>
 
                             <div class="o_horizontal_separator text-uppercase fw-bold mt-3 mb-2" style="font-size: 12px; color: #495057;">
                                 <i class="fa fa-motorcycle me-1"/> Thông tin xe &amp; Tình trạng ngoại quan ban đầu
                             </div>
-                            <field name="receipt_6_vehicle_ids">
+                            <field name="receipt_6_vehicle_ids" readonly="receipt_6_state == 'delivered'">
                                 <list editable="bottom" create="0" delete="0">
                                     <field name="vehicle_id" string="Xe" readonly="1"/>
                                     <field name="license_plate" string="Biển số" readonly="1"/>
-                                    <field name="delivery_time" string="Giờ giao" readonly="1"/>
                                     <field name="delivery_location" string="Vị trí giao" readonly="1" optional="show"/>
-                                    <field name="delivery_visual_note" string="Tình trạng ngoại quan ban đầu (vết xước, phụ kiện...)"/>
+                                    <field name="delivery_visual_note" string="Tình trạng ngoại quan ban đầu (vết xước, phụ kiện...)" readonly="parent.receipt_6_state == 'delivered'"/>
                                 </list>
                             </field>
                         </page>
                     </notebook>
                 </sheet>
                 <footer>
+                    <button name="action_confirm_only" 
+                            type="object" 
+                            string="Cập nhật biên lai" 
+                            class="btn-primary" 
+                            icon="fa-save"/>
                     <button name="action_confirm_and_print" 
                             type="object" 
-                            string="Xác nhận &amp; In Biên lai" 
-                            class="btn-primary" 
+                            string="Cập nhật và xuất biên lai" 
+                            class="btn-secondary" 
                             icon="fa-print"/>
                     <button string="Hủy bỏ" class="btn-secondary" special="cancel"/>
                 </footer>

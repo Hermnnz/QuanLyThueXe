@@ -8,6 +8,8 @@
     
     <menuitem id="menu_rental_delivery_receipt" name="Biên Lai Giao Xe" parent="menu_rental_operation_root" sequence="15" action="action_rental_delivery_receipt"/>
 
+    <menuitem id="menu_rental_return_receipt" name="Biên Lai Thu Hồi Xe" parent="menu_rental_operation_root" sequence="16" action="action_rental_return_receipt"/>
+
     <menuitem id="menu_rental_incident_log" name="Sự cố &amp; Hư hỏng" parent="menu_rental_operation_root" sequence="20" action="action_rental_incident_log"/>
     
     <menuitem id="menu_rental_price_catalog" name="Bảng giá Phụ phí &amp; Bồi thường" parent="menu_rental_operation_root" sequence="30" action="action_rental_operation_price_catalog"/>
