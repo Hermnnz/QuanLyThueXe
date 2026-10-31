@@ -33,6 +33,10 @@ class FleetVehicle(models.Model):
     ], default='pending_inspection', required=True, copy=False, group_expand=True,
        string='Trạng thái vận hành', tracking=True)
     technical_ready = fields.Boolean('Đạt điều kiện kỹ thuật', default=False, copy=False, tracking=True)
+    pre_maintenance_status = fields.Selection([
+        ('available', 'Sẵn sàng'),
+        ('pending_inspection', 'Chờ kiểm tra'),
+    ], string='Trạng thái trước bảo dưỡng', copy=False)
     rental_blocked = fields.Boolean('Khóa thuê', tracking=True)
     block_reason = fields.Text('Lý do khóa')
     next_service_date = fields.Date('Ngày bảo dưỡng tiếp theo')

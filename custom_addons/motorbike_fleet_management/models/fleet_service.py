@@ -51,16 +51,23 @@ class FleetVehicleLogServices(models.Model):
 
     def _start_vehicle_maintenance(self):
         for vehicle in self.filtered(lambda s: s.is_electric_motorbike and s.blocks_rental).vehicle_id:
-            vehicle.write({'operational_status': 'maintenance', 'technical_ready': False})
+            vals = {'operational_status': 'maintenance', 'technical_ready': False}
+            if vehicle.operational_status != 'maintenance':
+                vals['pre_maintenance_status'] = vehicle.operational_status
+            vehicle._write_operational_state(vals)
 
     def _release_vehicle_maintenance(self):
         for vehicle in self.filtered(lambda s: s.is_electric_motorbike and s.blocks_rental).vehicle_id:
             if not vehicle._running_blocking_services() and vehicle.operational_status == 'maintenance':
                 finished = self.filtered(lambda s: s.vehicle_id == vehicle)
                 passed = bool(finished) and all(s.state == 'done' for s in finished)
+                is_previously_available = (vehicle.pre_maintenance_status == 'available')
+                target_status = 'available' if (passed and is_previously_available) else 'pending_inspection'
+                target_ready = bool(passed and is_previously_available)
                 vehicle._write_operational_state({
-                    'operational_status': 'available' if passed else 'pending_inspection',
-                    'technical_ready': passed})
+                    'operational_status': target_status,
+                    'technical_ready': target_ready,
+                    'pre_maintenance_status': False})
 
     @api.model_create_multi
     def create(self, vals_list):
