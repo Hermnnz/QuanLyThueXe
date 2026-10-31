@@ -3,16 +3,13 @@
 
 - Trạng thái: Xác nhận (confirmed), Hoàn thành (done), Hủy (cancelled)
 - Khi vừa tạo bản ghi mới:
-  + Cập nhật trạng thái xe B trong Fleet sang 'renting' (Đang thuê)
-  + Thêm xe B vào chi tiết Hợp đồng (rental.contract.line)
-  + Thêm xe B vào chi tiết Vận hành (rental.operation.ticket.vehicle) với trạng thái 'waiting' (Chưa giao),
+  + Giữ xe B ở trạng thái Sẵn sàng; chỉ thêm vào phiếu vận hành ở trạng thái Chưa giao.
     ngày/giờ giao trống, địa điểm nhận mặc định 'Tại cửa hàng'
   + Trạng thái bản ghi đổi xe = 'confirmed' (Xác nhận)
 - Tự động hoàn thành (done):
-  + Khi Xe B giao thành công (status in ('renting', 'returned')) VÀ Xe A đã thu hồi xong (status == 'returned')
-  + Xe A chuyển sang trạng thái 'maintenance' (Bảo dưỡng) trong Fleet
+  + Khi A đã thu hồi và B đã giao: thêm dòng lịch sử B vào hợp đồng rồi hoàn thành phiếu đổi.
 - Khi bấm nút Hủy:
-  + Hoàn tác: Xóa xe B khỏi Hợp đồng & Phiếu vận hành, trả xe B về 'available' (Sẵn sàng) trong Fleet
+  + Chỉ hủy được trước khi thu hồi A hoặc bắt đầu giao B.
   + Trạng thái bản ghi = 'cancelled' (Hủy)
 """
 
@@ -57,9 +54,11 @@ class RentalVehicleExchange(models.Model):
         'fleet.vehicle', string='Xe A (xe hỏng)', required=True,
         domain="[('id', 'in', available_vehicle_ids)]",
         help='Xe cần được đổi (đang gặp sự cố).')
+    vehicle_a_model_id = fields.Many2one(
+        'fleet.vehicle.model', related='vehicle_a_id.model_id', readonly=True)
     vehicle_b_id = fields.Many2one(
         'fleet.vehicle', string='Xe B (xe thay thế)', required=True,
-        domain="[('operational_status', '=', 'available')]",
+        domain="[('operational_status', '=', 'available'), ('model_id', '=', vehicle_a_model_id)]",
         help='Xe thay thế cho xe A.')
 
     # ---------------------------------------------------------------------
@@ -158,6 +157,17 @@ class RentalVehicleExchange(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
+            ticket = self.env['rental.operation.ticket'].browse(vals.get('ticket_id'))
+            vehicle_a = self.env['fleet.vehicle'].browse(vals.get('vehicle_a_id'))
+            vehicle_b = self.env['fleet.vehicle'].browse(vals.get('vehicle_b_id'))
+            line_a = ticket.vehicle_detail_ids.filtered(lambda line: line.vehicle_id == vehicle_a)
+            if ticket.contract_id.state != 'in_progress' or not line_a or line_a[0].status != 'renting':
+                raise ValidationError(_('Chỉ được đổi xe A đang cho thuê trong hợp đồng đang thuê.'))
+            if vehicle_a == vehicle_b or vehicle_a.model_id != vehicle_b.model_id:
+                raise ValidationError(_('Xe B phải khác xe A và cùng dòng xe.'))
+            if (vehicle_b.operational_status != 'available' or not vehicle_b.technical_ready
+                    or vehicle_b.rental_blocked):
+                raise ValidationError(_('Xe B chưa sẵn sàng để đổi.'))
             if not vals.get('name') or vals.get('name') == _('Mới'):
                 vals['name'] = self.env['ir.sequence'].next_by_code('rental.vehicle.exchange') or _('Mới')
             vals['status'] = 'confirmed'
@@ -165,11 +175,8 @@ class RentalVehicleExchange(models.Model):
         records = super().create(vals_list)
 
         for rec in records:
-            # 1. Cập nhật trạng thái xe B trong Fleet chuyển sang 'renting' (Đang thuê)
-            if rec.vehicle_b_id:
-                rec.vehicle_b_id.sudo().write({'operational_status': 'renting'})
-
-            # Xác định giá thuê hàng ngày và dòng xe theo mã xe B
+            # B vẫn Sẵn sàng; chỉ khi xác nhận biên lai giao B mới thành Đang thuê.
+            # Giữ giá thuê tham khảo trên phiếu vận hành, chưa thêm B vào hợp đồng.
             contract = rec.ticket_id.contract_id if rec.ticket_id else False
             daily_rate = 0.0
             vehicle_type = False
@@ -189,19 +196,7 @@ class RentalVehicleExchange(models.Model):
                 line_a = contract.line_ids.filtered(lambda l: l.vehicle_id == rec.vehicle_a_id)
                 daily_rate = line_a[0].daily_rate if line_a else 0.0
 
-            # 2. Thêm xe B vào chi tiết Hợp đồng (rental.contract.line)
-            if contract:
-                c_line_vals = {
-                    'contract_id': contract.id,
-                    'vehicle_id': rec.vehicle_b_id.id,
-                    'vehicle_type_id': vehicle_type.id if vehicle_type else False,
-                    'daily_rate': daily_rate,
-                    'notes': f"Xe thay thế cho {rec.vehicle_a_id.display_name} (Mã đổi: {rec.name})",
-                }
-                c_line = self.env['rental.contract.line'].with_context(allow_vehicle_exchange=True).create(c_line_vals)
-                rec.contract_line_b_id = c_line.id
-
-            # 3. Thêm xe B vào chi tiết Vận hành (rental.operation.ticket.vehicle)
+            # Thêm B vào vận hành ở trạng thái Chưa giao để thu hồi A không kết thúc phiếu.
             # trạng thái chưa giao xe, ngày & giờ giao trống, địa chỉ nhận mặc định tại cửa hàng
             if rec.ticket_id:
                 ext_condition = self.env['rental.operation.ticket.vehicle']._get_vehicle_exterior_condition(rec.vehicle_b_id)
@@ -210,6 +205,7 @@ class RentalVehicleExchange(models.Model):
                     'vehicle_id': rec.vehicle_b_id.id,
                     'vehicle_price': daily_rate,
                     'status': 'waiting',
+                    'subfleet': True,
                     'delivery_date': False,
                     'delivery_time': False,
                     'delivery_location': 'Tại cửa hàng',
@@ -220,6 +216,12 @@ class RentalVehicleExchange(models.Model):
                 rec.ticket_line_b_id = t_line.id
 
         return records
+
+    def write(self, vals):
+        """Không cho sửa cặp xe của phiếu đổi đã tạo, tránh lệch biên lai và hợp đồng."""
+        if {'ticket_id', 'vehicle_a_id', 'vehicle_b_id'} & vals.keys():
+            raise UserError(_('Không được đổi xe hoặc phiếu vận hành của yêu cầu đã tạo. Hãy hủy yêu cầu trước khi thu hồi A.'))
+        return super().write(vals)
 
     # ---------------------------------------------------------------------
     # Actions & State Transitions
@@ -237,7 +239,7 @@ class RentalVehicleExchange(models.Model):
         }
 
     def action_cancel(self):
-        """Hủy đổi xe: Hoàn tác xe B, trả trạng thái về available, chuyển status thành cancelled."""
+        """Chỉ hủy phiếu đổi khi A chưa thu hồi và B chưa bắt đầu giao."""
         for rec in self:
             if rec.status == 'done':
                 raise UserError(_('Không thể hủy yêu cầu đổi xe đã hoàn thành.'))
@@ -246,6 +248,9 @@ class RentalVehicleExchange(models.Model):
                 continue
             if rec.ticket_line_b_id and rec.ticket_line_b_id.status in ('delivering', 'renting', 'returned'):
                 raise UserError(_('Xe B (%s) đã bắt đầu giao hoặc đã được bàn giao cho khách, không thể hủy yêu cầu đổi xe!') % rec.vehicle_b_id.display_name)
+            line_a = rec.ticket_id.vehicle_detail_ids.filtered(lambda line: line.vehicle_id == rec.vehicle_a_id)
+            if line_a and line_a[0].status == 'returned':
+                raise UserError(_('Xe A đã được thu hồi, không thể hủy yêu cầu đổi xe.'))
 
             # 1. Xóa dòng xe B trong chi tiết vận hành
             if rec.ticket_line_b_id:
@@ -258,20 +263,6 @@ class RentalVehicleExchange(models.Model):
             # 2. Xóa dòng xe B trong chi tiết hợp đồng
             if rec.contract_line_b_id:
                 rec.contract_line_b_id.with_context(allow_vehicle_exchange=True).unlink()
-            elif rec.ticket_id and rec.ticket_id.contract_id and rec.vehicle_b_id:
-                old_c_lines = rec.ticket_id.contract_id.line_ids.filtered(lambda l: l.vehicle_id == rec.vehicle_b_id)
-                if old_c_lines:
-                    old_c_lines.with_context(allow_vehicle_exchange=True).unlink()
-
-            # 3. Trả lại trạng thái xe B trong Fleet về 'available'
-            if rec.vehicle_b_id:
-                self.env.cr.execute("""
-                    UPDATE fleet_vehicle
-                    SET operational_status = 'available',
-                        technical_ready = TRUE
-                    WHERE id = %s
-                """, (rec.vehicle_b_id.id,))
-                rec.vehicle_b_id.invalidate_recordset(['operational_status', 'technical_ready'])
 
             rec.status = 'cancelled'
             rec.is_selected = False

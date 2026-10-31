@@ -97,7 +97,7 @@ class RentalDeliveryReceipt(models.Model):
                 'is_selected': False,
             })
             for v in rec.vehicle_ids:
-                if v.vehicle_id:
+                if v.vehicle_id and not v.subfleet:
                     v.vehicle_id.sudo().write({'operational_status': 'renting'})
 
             # 3. Cập nhật biên lai
@@ -123,6 +123,7 @@ class RentalDeliveryReceipt(models.Model):
                 raise UserError(_('Biên lai "%s" chưa có danh sách xe bàn giao!') % (rec.name or ''))
 
             # 1. Kiểm tra điều kiện Fleet
+            rec.vehicle_ids._require_a_returned_before_b_delivery()
             rec.vehicle_ids._check_fleet_delivery_eligibility()
 
             # 2. Cập nhật các xe con trong biên lai
@@ -178,10 +179,6 @@ class RentalDeliveryReceipt(models.Model):
         for rec in self:
             if rec.ticket_id and rec.ticket_id.state == 'contract_cancelled':
                 raise UserError(_('Phiếu vận hành đã ở trạng thái "Hợp đồng bị hủy" và đã bị khóa, không thể chỉnh sửa biên lai!'))
-
-        if 'state' in vals and vals['state'] in ('delivering', 'delivered'):
-            for rec in self:
-                rec.vehicle_ids._check_fleet_delivery_eligibility()
 
         # Nếu có cập nhật các trường thông tin biên lai (ngoài is_selected và state)
         if any(k not in ('is_selected', 'state') for k in vals.keys()):

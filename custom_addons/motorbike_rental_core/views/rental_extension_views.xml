@@ -26,10 +26,6 @@
         <field name="arch" type="xml">
             <form string="Yêu cầu gia hạn thuê xe">
                 <header>
-                    <button name="action_check_and_extend" type="object"
-                            string="Kiểm tra xe và gia hạn"
-                            class="btn-primary"
-                            invisible="state != 'pending'"/>
                     <button name="action_reject" type="object" string="Từ chối"
                             groups="motorbike_rental_core.group_rental_manager"
                             invisible="not id or state != 'pending'"/>
@@ -73,6 +69,14 @@
                                groups="motorbike_rental_core.group_rental_manager"/>
                     </group>
                 </sheet>
+                <!-- Nút xử lý ở chân cửa sổ thay cho nút Lưu mặc định của Odoo. -->
+                <footer>
+                    <button name="action_check_and_extend" type="object"
+                            string="Kiểm tra xe và gia hạn"
+                            class="btn-primary"
+                            invisible="state != 'pending'"/>
+                    <button string="Hủy bỏ" class="btn-secondary" special="cancel"/>
+                </footer>
             </form>
         </field>
     </record>

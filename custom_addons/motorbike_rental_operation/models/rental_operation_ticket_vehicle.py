@@ -30,6 +30,7 @@ class RentalOperationTicketVehicle(models.Model):
     )
 
     vehicle_id = fields.Many2one('fleet.vehicle', string='Xe', required=True)
+    subfleet = fields.Boolean(string='Xe thay thế', default=False, readonly=True)
     license_plate = fields.Char(string='Biển số xe', related='vehicle_id.license_plate', readonly=True)
     vehicle_price = fields.Monetary(string='Giá tiền xe', default=0.0, currency_field='currency_id')
 
@@ -329,7 +330,7 @@ class RentalOperationTicketVehicle(models.Model):
                 'status': 'delivering',
                 'is_selected': False,
             })
-            if rec.vehicle_id:
+            if rec.vehicle_id and not rec.subfleet:
                 rec.vehicle_id.write({'operational_status': 'renting'})
         self._sync_delivery_receipt_state()
 
@@ -341,6 +342,12 @@ class RentalOperationTicketVehicle(models.Model):
                 ticket = self.env['rental.operation.ticket'].browse(ticket_id)
                 if ticket.state == 'contract_cancelled':
                     raise UserError(_('Phiếu vận hành đã ở trạng thái "Hợp đồng bị hủy" và đã bị khóa, không thể thêm xe!'))
+                # Xe ngoài hợp đồng chỉ được tạo qua nút Đổi xe; xe gốc chỉ nạp khi lập phiếu.
+                if not self.env.context.get('allow_vehicle_exchange') and (
+                    ticket.state != 'waiting'
+                    or vals.get('vehicle_id') not in ticket.contract_id.line_ids.mapped('vehicle_id').ids
+                ):
+                    raise UserError(_('Chỉ được thêm xe thay thế bằng nút Đổi xe.'))
         records = super(RentalOperationTicketVehicle, self).create(vals_list)
         for rec in records:
             if rec.status in ('delivering', 'renting'):
@@ -370,6 +377,20 @@ class RentalOperationTicketVehicle(models.Model):
             if contract and contract.state == 'confirmed':
                 contract.sudo().write({'state': 'in_progress'})
 
+    def _require_a_returned_before_b_delivery(self):
+        """Không giao xe thay thế khi chưa có xác nhận thu hồi xe cũ."""
+        for line_b in self.filtered('subfleet'):
+            exchange = line_b.ticket_id.vehicle_exchange_ids.filtered(
+                lambda item: item.ticket_line_b_id == line_b and item.status == 'confirmed'
+            )[:1]
+            if not exchange:
+                raise UserError(_('Không tìm thấy phiếu đổi xe đang thực hiện.'))
+            line_a = line_b.ticket_id.vehicle_detail_ids.filtered(
+                lambda item: item.vehicle_id == exchange.vehicle_a_id
+            )[:1]
+            if not line_a or line_a.status != 'returned':
+                raise UserError(_('Phải xác nhận biên lai thu hồi xe A trước khi giao xe B.'))
+
     def _check_and_sync_vehicle_exchanges(self):
         """Tự động kiểm tra và cập nhật hoàn thành cho bản ghi đổi xe:
         Khi Xe B đã giao thành công (status in ('renting', 'returned')).
@@ -384,19 +405,31 @@ class RentalOperationTicketVehicle(models.Model):
 
                 is_b_delivered = bool(line_b and all(l.status in ('renting', 'returned') for l in line_b))
 
-                if is_b_delivered:
-                    ex.write({'status': 'done'})
-                    if ex.vehicle_a_id:
-                        ex.vehicle_a_id.sudo().write({
-                            'operational_status': 'maintenance',
-                            'technical_ready': False,
+                if is_b_delivered and line_a and all(l.status == 'returned' for l in line_a):
+                    if not ex.contract_line_b_id:
+                        original = ticket.contract_id.line_ids.filtered(
+                            lambda line: line.vehicle_id == ex.vehicle_a_id
+                        )[:1]
+                        if not original:
+                            raise UserError(_('Không tìm thấy xe A trong hợp đồng.'))
+                        ex.contract_line_b_id = self.env['rental.contract.line'].with_context(
+                            allow_vehicle_exchange=True
+                        ).create({
+                            'contract_id': ticket.contract_id.id,
+                            'vehicle_id': ex.vehicle_b_id.id,
+                            'vehicle_type_id': original.vehicle_type_id.id,
+                            'daily_rate': original.daily_rate,
+                            'subfleet': True,
+                            'notes': _('Đổi xe: thay cho %s') % ex.vehicle_a_id.display_name,
                         })
+                    ex.write({'status': 'done'})
 
     def action_confirm_delivery(self):
         """Xác nhận đã bàn giao xe thành công cho khách - Xe bên Bắc ở trạng thái Đang cho thuê (renting)"""
         for rec in self:
             if rec.ticket_id and rec.ticket_id.state == 'contract_cancelled':
                 raise UserError(_('Phiếu vận hành đã ở trạng thái "Hợp đồng bị hủy" và đã bị khóa!'))
+        self._require_a_returned_before_b_delivery()
         self._check_fleet_delivery_eligibility()
         for rec in self:
             name = rec._get_vehicle_label()
@@ -445,7 +478,7 @@ class RentalOperationTicketVehicle(models.Model):
                         rec.ticket_id.actual_return_date = fields.Datetime.now()
             if rec.vehicle_id:
                 rec.vehicle_id.write({
-                    'operational_status': 'maintenance' if (rec.ticket_id and rec.ticket_id.vehicle_exchange_ids.filtered(lambda e: e.vehicle_a_id == rec.vehicle_id and e.status in ('confirmed', 'done'))) else 'pending_inspection',
+                    'operational_status': 'pending_inspection',
                     'technical_ready': False,
                 })
         self._sync_delivery_receipt_state()
@@ -483,11 +516,11 @@ class RentalOperationTicketVehicle(models.Model):
         if 'status' in vals:
             for rec in self:
                 if rec.vehicle_id:
-                    if vals['status'] in ('delivering', 'renting'):
+                    if vals['status'] == 'renting' or (vals['status'] == 'delivering' and not rec.subfleet):
                         rec.vehicle_id.write({'operational_status': 'renting'})
                     elif vals['status'] == 'returned':
                         rec.vehicle_id.write({
-                            'operational_status': 'maintenance' if (rec.ticket_id and rec.ticket_id.vehicle_exchange_ids.filtered(lambda e: e.vehicle_a_id == rec.vehicle_id and e.status in ('confirmed', 'done'))) else 'pending_inspection',
+                            'operational_status': 'pending_inspection',
                             'technical_ready': False,
                         })
                 # Khi xe ở trạng thái đã giao xe ('renting'), hợp đồng chuyển sang trạng thái Đang thuê ('in_progress')

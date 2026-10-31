@@ -67,18 +67,18 @@
                             <field name="total_amount"/>
                         </group>
                     </group>
-                    <group string="Thông tin khách hàng bắt buộc trước khi xác nhận"
+                    <group string="Thông tin khách hàng trước khi xác nhận"
                            invisible="state != 'draft'">
                         <group>
                             <field name="customer_name" readonly="not customer_id"/>
                             <field name="customer_phone" readonly="not customer_id"/>
                         </group>
                         <group>
-                            <field name="customer_email" readonly="not customer_id"/>
+                            <field name="customer_email" string="Email (không bắt buộc)" readonly="not customer_id"/>
                             <field name="customer_id_number" readonly="not customer_id"/>
                         </group>
                         <div class="text-muted" colspan="2">
-                            Tải tối thiểu một tệp scan bất kỳ bằng nút Tải scan khách hàng ở phía trên.
+                            Email và tệp scan có thể bổ sung sau; không bắt buộc khi xác nhận hợp đồng.
                         </div>
                     </group>
                     <group string="Xe thuê">
@@ -89,7 +89,8 @@
                                 <field name="vehicle_id" string="Xe thuê" domain="[('active', '=', True), ('model_id', '=', vehicle_model_id)]" options="{'no_create': True}"/>
                                 <field name="daily_rate" readonly="1"/>
                                 <field name="subtotal" readonly="1"/>
-                                <field name="notes" string="Ghi chú"/>
+                                <field name="subfleet" column_invisible="True"/>
+                                <field name="notes" string="Ghi chú từng xe" optional="show" width="260px"/>
                             </list>
                         </field>
                     </group>

@@ -23,11 +23,19 @@
         "views/rental_charge_views.xml",
         "views/rental_contract_views.xml",   
         "views/account_move_views.xml",
+        "views/account_move_off.xml",  # Hạn chế giao diện kế toán gốc; nạp sau form hóa đơn Finance.
         "views/finance_actions.xml",
         "views/finance_menu.xml",
         # Bộ cấp số cho các phiếu thanh toán.
         "data/rental_payment_sequence.xml",
     ],
+
+    # Nạp kiểu chữ và viền ô tích cho hợp đồng, đồng thời làm nổi bật ô xác nhận hoàn tiền trên hóa đơn.
+    "assets": {
+        "web.assets_backend": [
+            "motorbike_rental_finance/static/src/scss/rental_contract_payment.scss",
+        ],
+    },
 
     "installable": True,
 

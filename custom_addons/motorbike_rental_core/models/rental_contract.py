@@ -367,12 +367,10 @@ class RentalContract(models.Model):
                 missing_customer_info.append(_('họ tên'))
             if not contract.customer_id.phone:
                 missing_customer_info.append(_('số điện thoại'))
-            if not contract.customer_id.email:
-                missing_customer_info.append(_('email'))
+            # Email là thông tin tùy chọn; khách vẫn có thể ký hợp đồng khi chưa có email.
             if not contract.customer_id.rental_id_number:
                 missing_customer_info.append(_('số CCCD/CMND'))
-            if not contract.customer_id.rental_document_ids.filtered('file'):
-                missing_customer_info.append(_('tệp scan'))
+            # Khi ký chỉ bắt buộc họ tên, số điện thoại và CCCD/CMND; email và tệp scan có thể bổ sung sau.
             if missing_customer_info:
                 raise UserError(
                     _('Vui lòng bổ sung thông tin khách hàng trước khi xác nhận: %s.')
@@ -474,15 +472,19 @@ class RentalContractLine(models.Model):
     daily_rate = fields.Monetary(
         string='Giá thuê mỗi ngày', required=True, default=0, currency_field='currency_id'
     )
+    # Xe gốc mặc định False; quy trình Đổi xe tự đánh dấu True cho xe thay thế.
+    subfleet = fields.Boolean(string='Xe thay thế', default=False, readonly=True)
     subtotal = fields.Monetary(
         string='Thành tiền', compute='_compute_subtotal', store=True, currency_field='currency_id'
     )
-    notes = fields.Text(string='Ghi chú')
+    # Ghi chú riêng cho dòng xe, độc lập với ghi chú chung của hợp đồng.
+    notes = fields.Text(string='Ghi chú từng xe')
 
-    @api.depends('contract_id.rental_days', 'daily_rate', 'currency_id')
+    @api.depends('contract_id.rental_days', 'daily_rate', 'currency_id', 'subfleet')
     def _compute_subtotal(self):
         for line in self:
-            amount = line.contract_id.rental_days * line.daily_rate
+            # Xe thay thế vẫn hiện giá mỗi ngày, nhưng không tính thêm tiền thuê.
+            amount = 0.0 if line.subfleet else line.contract_id.rental_days * line.daily_rate
             line.subtotal = line.currency_id.round(amount) if line.currency_id else amount
 
     @api.onchange('vehicle_type_id')

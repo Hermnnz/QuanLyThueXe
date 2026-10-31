@@ -348,13 +348,33 @@ class RentalOperationTicket(models.Model):
             'context': {'default_ticket_id': self.id},
         }
 
+    def action_new_vehicle_exchange(self):
+        """Mở phiếu đổi xe; chỉ hợp đồng đang thuê mới được đổi."""
+        self.ensure_one()
+        if self.contract_id.state != 'in_progress':
+            raise UserError(_('Chỉ được đổi xe khi hợp đồng đang thuê.'))
+        return {
+            'name': _('Đổi xe'), 'type': 'ir.actions.act_window',
+            'res_model': 'rental.vehicle.exchange', 'view_mode': 'form',
+            'target': 'new', 'context': {'default_ticket_id': self.id},
+        }
+
     # Trạng thái phiếu tự động cập nhật theo các xe con
     state = fields.Selection([
         ('waiting', 'Chưa thực hiện'),
         ('in_progress', 'Đang thực hiện'),
-        ('done', 'Hoàn tất'),
         ('contract_cancelled', 'Hợp đồng bị hủy'),
-    ], string='Trạng thái Vận Hành', compute='_compute_state', store=True, readonly=False, default='waiting')
+        ('done', 'Hoàn tất'),
+    ], string='Trạng thái Vận Hành', compute='_compute_state', store=True, readonly=False,
+       default='waiting', group_expand='_group_expand_state')
+
+    @api.model
+    def _group_expand_state(self, values, domain):
+        """Giữ ba cột vận hành theo thứ tự; chỉ hiện cột đã hủy khi người dùng chủ động xem."""
+        states = ['waiting', 'in_progress']
+        if 'contract_cancelled' in values:
+            states.append('contract_cancelled')
+        return states + ['done']
 
     @api.depends('vehicle_detail_ids.status', 'contract_id.state')
     def _compute_state(self):

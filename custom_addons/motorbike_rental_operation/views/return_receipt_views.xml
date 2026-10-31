@@ -41,6 +41,11 @@
         <field name="arch" type="xml">
             <form string="Biên Lai Thu Hồi Xe" create="0" edit="0" delete="0">
                 <header>
+                    <!-- Gọi cùng hàm với nút Xác nhận đã thu hồi trên phiếu vận hành.
+                         Chỉ biên lai chưa thu hồi mới hiện nút này. -->
+                    <button name="action_confirm_return" type="object"
+                            string="Xác nhận đã thu hồi" class="btn-primary"
+                            invisible="state != 'pending'"/>
                     <button name="action_print_receipt" 
                             type="object" 
                             string="In Biên Lai (PDF)" 
