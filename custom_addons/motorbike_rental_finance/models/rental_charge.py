@@ -208,11 +208,3 @@ class MotorbikeRentalCharge(models.Model):
             if record.contract_id and record.contract_id.settlement_status == "settled":
                 raise UserError("Không thể chỉnh sửa khoản phí của hợp đồng đã quyết toán!")
             record.state = "draft"
-
-    def action_create_invoice(self):  # Chặn tạo hóa đơn riêng cho phụ phí.
-        # Giữ hàm để các nơi còn gọi nút cũ cũng bị chặn.
-        # UserError dừng thao tác và hiện hướng dẫn cho nhân viên.
-        raise UserError(
-            "Phụ phí phải được gộp vào hóa đơn cuối hợp đồng. "
-            "Vui lòng tạo hóa đơn và chọn hợp đồng tương ứng."
-        )

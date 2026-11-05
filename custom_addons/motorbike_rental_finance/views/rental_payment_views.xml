@@ -107,32 +107,4 @@
             </search>
         </field>
     </record>
-
-    <!-- Pivot View biểu đồ-->
-    <record id="view_motorbike_rental_payment_pivot" model="ir.ui.view">
-        <field name="name">motorbike.rental.payment.pivot</field>
-        <field name="model">motorbike.rental.payment</field>
-        <field name="arch" type="xml">
-            <pivot string="Phân tích dòng tiền" sample="1"> <!-- sample="1" để hiển thị dữ liệu mẫu khi chưa có dữ liệu thực tế -->
-                <field name="payment_date" interval="month" type="row"/>
-                <field name="transaction_type" type="row"/>
-                <field name="payment_method" type="col"/>
-                <field name="amount" type="measure"/>        <!-- Chỉ định cột số liệu được dùng để Cộng tổng (ở đây là trường amount). -->
-            </pivot>
-        </field>
-    </record>
-
-
-    <!--Graph View biểu đồ-->
-    <record id="view_motorbike_rental_payment_graph" model="ir.ui.view">
-        <field name="name">motorbike.rental.payment.graph</field>
-        <field name="model">motorbike.rental.payment</field>
-        <field name="arch" type="xml">
-            <graph string="Biểu đồ dòng tiền" type="bar" sample="1">
-                <field name="payment_date" interval="month"/>
-                <field name="transaction_type"/>
-                <field name="amount" type="measure"/>        <!-- Chỉ định cột số liệu được dùng để Cộng tổng (ở đây là trường amount). -->
-            </graph>
-        </field>
-    </record>
 </odoo>

@@ -16,11 +16,6 @@ class AccountMove(models.Model):
         ondelete="set null",
         copy=False,
     )
-    rental_payments_ids = fields.One2many(
-        "motorbike.rental.payment",
-        "invoice_id",
-        string="Thanh toán",
-    )
     rental_charges_ids = fields.One2many(
         "motorbike.rental.charge",
         "invoice_id",

@@ -4,3 +4,4 @@ from . import account_move
 from . import rental_contract   
 from . import rental_incident_log
 from . import rental_operation_ticket_vehicle  # Tự tạo hóa đơn nháp sau khi thu hồi xe cuối.
+from . import rental_finance_report  # Nguồn số liệu chỉ đọc cho Dashboard nghiệp vụ thuê xe.

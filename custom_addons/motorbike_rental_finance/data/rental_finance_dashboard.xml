@@ -1,0 +1,16 @@
+<odoo>
+    <!-- Cập nhật bản ghi Dashboard hóa đơn có sẵn của Odoo, không tạo ứng dụng báo cáo riêng. -->
+    <record id="spreadsheet_dashboard_account.dashboard_invoicing" model="spreadsheet.dashboard">
+        <!-- File JSON chỉ mô tả bố cục và công thức; Odoo tự đọc dữ liệu mới qua pivot/chart mỗi lần mở báo cáo.
+             sheets: các trang tính; Dashboard là trang hiển thị, Data/RentalData chứa công thức cho thẻ số.
+             cells: nội dung ô; figures: thẻ số và biểu đồ; pivots: model, bộ lọc và phép cộng của từng chỉ tiêu.
+             fieldMatching nối bộ lọc kỳ với ngày nguồn; chỉ tiêu hiện tại không nhận bộ lọc kỳ.
+             PIVOT.VALUE lấy tổng; ODOO.LIST lấy dòng chứng từ; __count đếm lượt/hợp đồng.
+             currency_id.name = VND lọc theo mã đồng tiền, tránh phụ thuộc số ID khác nhau giữa các database.
+             Bốn bảng xếp hạng chung, DSO và nguồn chưa đối soát đã được bỏ sẵn khỏi cấu hình này.
+             Không còn hàm Python cắt ô, quét công thức, xóa nguồn hoặc dựng lại bố cục mỗi lần mở Dashboard. -->
+        <field name="spreadsheet_binary_data" type="base64" file="motorbike_rental_finance/data/rental_finance_dashboard.json"/>
+        <!-- False bỏ dữ liệu minh họa: khi chưa có chứng từ thật, báo cáo dùng dữ liệu rỗng thay vì số mẫu. -->
+        <field name="sample_dashboard_file_path" eval="False"/>
+    </record>
+</odoo>
