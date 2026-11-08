@@ -13,7 +13,15 @@ class FleetVehicleLogServices(models.Model):
     customer_phone = fields.Char(string='Số điện thoại khách hàng')
     service_type_id = fields.Many2one(default=lambda self: self.env.ref(
         'motorbike_fleet_management.service_type_electric_maintenance', raise_if_not_found=False))
-    technician_id = fields.Many2one('res.partner', string='Kỹ thuật viên')
+    def _domain_technician_id(self):
+        group = self.env.ref('motorbike_fleet_management.group_motorbike_technician', raise_if_not_found=False)
+        return [('user_ids.groups_id', 'in', [group.id])] if group else []
+
+    technician_id = fields.Many2one(
+        'res.partner',
+        string='Kỹ thuật viên',
+        domain=_domain_technician_id,
+    )
     result = fields.Text('Kết quả / công việc đã thực hiện', copy=False)
     next_service_date = fields.Date('Ngày bảo dưỡng tiếp theo')
     maintenance_type = fields.Selection([
@@ -21,9 +29,14 @@ class FleetVehicleLogServices(models.Model):
     ], default='preventive', required=True, string='Loại bảo dưỡng')
     actual_start = fields.Datetime('Ngày bắt đầu', copy=False)
     actual_end = fields.Datetime('Ngày kết thúc', copy=False)
-    blocks_rental = fields.Boolean('Ghi nhận chặn thuê', default=True)
+    blocks_rental = fields.Boolean('Tạm khóa xe khi bảo dưỡng', default=True)
     cost = fields.Monetary(related='amount', readonly=False, string='Chi phí')
-    state = fields.Selection(copy=False)
+    state = fields.Selection([
+        ('new', 'Mới'),
+        ('running', 'Đang thực hiện'),
+        ('done', 'Hoàn tất'),
+        ('cancelled', 'Đã hủy'),
+    ], string='Trạng thái', copy=False)
 
     @api.constrains('vehicle_id', 'actual_start',
                     'actual_end', 'amount', 'next_service_date', 'date', 'state', 'blocks_rental')
@@ -174,6 +187,16 @@ class FleetVehicleLogServices(models.Model):
             return True
         # Giữ hồ sơ bảo dưỡng ở mọi trạng thái để bảo toàn lịch sử.
         raise UserError('Không được xóa hồ sơ bảo dưỡng; hãy hủy hoặc lưu trữ nếu cần.')
+
+    def action_claim_ticket(self):
+        for service in self:
+            if service.state != 'new':
+                raise UserError('Chỉ có thể nhận các phiếu đang ở trạng thái Mới.')
+            service.write({
+                'technician_id': self.env.user.partner_id.id,
+                'state': 'running',
+            })
+        return True
 
     def action_start(self):
         return self.write({'state': 'running'})

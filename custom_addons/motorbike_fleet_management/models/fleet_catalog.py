@@ -34,10 +34,17 @@ _MODEL_IMAGE_MAPPING = {
 class FleetVehicleModel(models.Model):
     _inherit = 'fleet.vehicle.model'
 
+    vehicle_type = fields.Selection(
+        selection=[('car', 'Car'), ('bike', 'Bike')],
+        default='bike',
+        required=True,
+    )
     image_128 = fields.Image(
         string='Ảnh dòng xe',
         max_width=512,
         max_height=512,
+        readonly=False,
+        store=True,
         help='Ảnh chụp thực tế của dòng xe máy điện.',
     )
 
