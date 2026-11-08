@@ -62,7 +62,7 @@
           <div class="oe_title">
             <label for="vehicle_code" string="Mã phương tiện" />
             <h1>
-              <field name="vehicle_code" placeholder="Tự cấp mã khi lưu" />
+              <field name="vehicle_code" readonly="1" placeholder="Hệ thống tự cấp mã" />
             </h1>
           </div>
           <group>

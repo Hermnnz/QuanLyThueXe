@@ -58,18 +58,42 @@ class FleetVehicle(models.Model):
             vehicle.license_plate_key = re.sub(r'[\W_]+', '', vehicle.license_plate or '').upper() or False
             vehicle.vehicle_code_key = self._clean_code(vehicle.vehicle_code) or False
 
+    @api.model
+    def _find_next_available_code(self, reserved_codes=None):
+        reserved = set(reserved_codes or [])
+        records = self.sudo().with_context(active_test=False).search_read(
+            [('vehicle_code', '=like', 'XE%')], ['vehicle_code']
+        )
+        used_nums = set()
+        for rec in records:
+            val = (rec.get('vehicle_code') or '').strip().upper()
+            if val.startswith('XE') and val[2:].isdigit():
+                try:
+                    used_nums.add(int(val[2:]))
+                except ValueError:
+                    pass
+        for val in reserved:
+            val = (val or '').strip().upper()
+            if val.startswith('XE') and val[2:].isdigit():
+                try:
+                    used_nums.add(int(val[2:]))
+                except ValueError:
+                    pass
+        candidate = 1
+        while candidate in used_nums:
+            candidate += 1
+        return f"XE{candidate:05d}"
+
     @api.model_create_multi
     def create(self, vals_list):
         prepared = []
+        reserved_in_batch = set()
         for values in vals_list:
             values = dict(values)
             code = self._clean_code(values.get('vehicle_code'))
-            while not code:
-                candidate = self.env['ir.sequence'].next_by_code('motorbike.fleet.vehicle')
-                if not candidate:
-                    raise UserError('Chưa cấu hình bộ cấp mã phương tiện.')
-                if not self.sudo().with_context(active_test=False).search_count([('vehicle_code_key', '=', candidate)]):
-                    code = candidate
+            if not code:
+                code = self._find_next_available_code(reserved_codes=reserved_in_batch)
+                reserved_in_batch.add(code)
             values['vehicle_code'] = code
             if values.get('license_plate'):
                 values['license_plate'] = values['license_plate'].strip().upper()
