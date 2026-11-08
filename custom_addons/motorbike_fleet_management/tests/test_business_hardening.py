@@ -113,8 +113,8 @@ class TestFleetBusinessHardening(TransactionCase):
             'next_service_date': '2026-06-01', 'result': 'Đã sửa'})
         latest.action_start()
         latest.action_done()
-        latest.unlink()
-        self.assertEqual(vehicle.next_service_date, previous.next_service_date)
+        with self.assertRaises(UserError):
+            latest.unlink()
 
     def test_archived_catalog_blocks_selection_and_delivery(self):
         vehicle = self.ready()
@@ -140,8 +140,8 @@ class TestFleetBusinessHardening(TransactionCase):
         older.action_start()
         older.action_done()
         self.assertEqual(str(vehicle.next_service_date), '2027-06-01')
-        newer.unlink()
-        self.assertEqual(str(vehicle.next_service_date), '2027-05-01')
+        with self.assertRaises(UserError):
+            newer.unlink()
 
     def test_archived_history_cannot_be_bypassed_by_reclassification(self):
         vehicle = self.ready()

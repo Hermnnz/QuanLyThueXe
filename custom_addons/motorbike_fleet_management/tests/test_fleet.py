@@ -50,7 +50,8 @@ class TestWeek7Fleet(TransactionCase):
         self.assertEqual(service.cost, 500000)
         service.action_done()
         self.assertEqual(service.state, 'done')
-        service.unlink()
+        with self.assertRaises(UserError):
+            service.unlink()
 
     def test_vehicle_validation(self):
         for values in [{'operational_status': 'available'}, {'rental_blocked': True},
@@ -221,7 +222,8 @@ class TestWeek7Fleet(TransactionCase):
             'service_id': service.id, 'result': 'Đã sửa'}).action_complete()
         with self.assertRaises(AccessError), self.cr.savepoint():
             service.unlink()
-        service.with_user(manager).unlink()
+        with self.assertRaises(UserError), self.cr.savepoint():
+            service.with_user(manager).unlink()
         with self.assertRaises(AccessError), self.cr.savepoint():
             self.vehicle.with_user(outsider).action_confirm_technical_ready()
 
@@ -236,7 +238,8 @@ class TestWeek7Fleet(TransactionCase):
         ordinary = self.env['fleet.vehicle'].create({'model_id': self.model.id})
         service = self.env['fleet.vehicle.log.services'].create({'vehicle_id': ordinary.id})
         service.write({'state': 'done'})
-        service.write({'state': 'new'})
+        with self.assertRaises(UserError), self.cr.savepoint():
+            service.write({'state': 'new'})
         self.vehicle.operational_status = 'renting'
         with self.assertRaises(UserError), self.cr.savepoint():
             service.write({'vehicle_id': self.vehicle.id, 'state': 'running'})
