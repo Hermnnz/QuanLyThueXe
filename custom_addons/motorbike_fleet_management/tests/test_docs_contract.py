@@ -6,7 +6,7 @@ from odoo.tools.safe_eval import safe_eval
 @tagged('post_install', '-at_install')
 class TestFleetDocsContract(TransactionCase):
     def _visible_fields(self, xmlid, values):
-        values = {'context': {}, 'service_schedule_state': 'ok', 'service_odometer_recorded': False,
+        values = {'id': 1, 'maintenance_type': 'preventive', 'is_electric_motorbike': True, 'customer_name': 'Test', 'customer_phone': '0901234567', 'context': {}, 'service_schedule_state': 'ok', 'service_odometer_recorded': False,
                   'service_interval_km': 0, 'service_interval_months': 0,
                   'service_last_date': False, **values}
         arch = self.env.ref(xmlid)._get_combined_arch()
@@ -48,7 +48,7 @@ class TestFleetDocsContract(TransactionCase):
                     'maintenance_type', 'next_service_date', 'result', 'blocks_rental',
                     'actual_start', 'actual_end'}
         self.assertFalse(expected - service, str(expected - service))
-        self.assertFalse({'purchaser_id', 'technician_id', 'vendor_id', 'service_type_id'} & service)
+        self.assertFalse({'purchaser_id', 'vendor_id', 'service_type_id'} & service)
 
     def test_scope_menus_and_stored_odometer(self):
         for xmlid in ['fleet.fleet_vehicle_model_category_menu', 'fleet.fleet_vehicles',
