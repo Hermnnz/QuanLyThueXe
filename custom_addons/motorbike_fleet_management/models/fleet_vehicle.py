@@ -13,7 +13,7 @@ class FleetVehicle(models.Model):
     odometer = fields.Float(
         string='Số ODO hiện tại (km)', compute=None, inverse=None, store=True, default=0.0,
         help='Tổng số km xe đã chạy, tự động cập nhật sau mỗi chuyến thuê.')
-    vehicle_code = fields.Char('Mã xe', copy=False, index=True)
+    vehicle_code = fields.Char('M\u00e3 xe', copy=False, index=True, default=lambda self: self._find_next_available_code())
     license_plate_key = fields.Char(compute='_compute_identity_keys', store=True, copy=False, index=True)
     vehicle_code_key = fields.Char(compute='_compute_identity_keys', store=True, copy=False, index=True)
     if hasattr(models, 'Constraint'):
@@ -93,7 +93,9 @@ class FleetVehicle(models.Model):
             code = self._clean_code(values.get('vehicle_code'))
             if not code:
                 code = self._find_next_available_code(reserved_codes=reserved_in_batch)
-                reserved_in_batch.add(code)
+            elif code.startswith('XE') and (self.sudo().with_context(active_test=False).search_count([('vehicle_code_key', '=', code)]) or code in reserved_in_batch):
+                code = self._find_next_available_code(reserved_codes=reserved_in_batch)
+            reserved_in_batch.add(code)
             values['vehicle_code'] = code
             if values.get('license_plate'):
                 values['license_plate'] = values['license_plate'].strip().upper()
