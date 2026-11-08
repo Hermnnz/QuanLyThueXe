@@ -31,11 +31,10 @@ class FleetVehicleLogServices(models.Model):
         for service in self.filtered('is_electric_motorbike'):
             if not math.isfinite(service.amount) or service.amount < 0:
                 raise ValidationError('Chi phí bảo dưỡng phải là số hữu hạn, không âm.')
-            for start, end in [(service.actual_start, service.actual_end)]:
-                if end and not start:
-                    raise ValidationError('Cần nhập thời gian bắt đầu trước thời gian kết thúc.')
-                if start and end and end < start:
-                    raise ValidationError('Thời gian kết thúc không được trước thời gian bắt đầu.')
+            if service.actual_end and not service.actual_start:
+                raise ValidationError('Cần nhập thời gian bắt đầu trước thời gian kết thúc.')
+            if service.actual_start and service.actual_end and service.actual_end < service.actual_start:
+                raise ValidationError('Thời gian kết thúc không được trước thời gian bắt đầu.')
             if service.next_service_date and service.date and service.next_service_date <= service.date:
                 raise ValidationError('Mốc bảo dưỡng tiếp theo phải sau ngày hồ sơ bảo dưỡng.')
 
@@ -60,27 +59,29 @@ class FleetVehicleLogServices(models.Model):
         for vehicle in self.filtered(lambda s: s.is_electric_motorbike and s.blocks_rental).vehicle_id:
             if not vehicle._running_blocking_services() and vehicle.operational_status == 'maintenance':
                 finished = self.filtered(lambda s: s.vehicle_id == vehicle)
-                passed = bool(finished) and all(s.state == 'done' for s in finished)
-                is_previously_available = (vehicle.pre_maintenance_status == 'available')
-                target_status = 'available' if (passed and is_previously_available) else 'pending_inspection'
-                target_ready = bool(passed and is_previously_available)
+                # Xe chỉ trở về Sẵn sàng nếu trước khi bảo dưỡng xe đã sẵn sàng và tất cả phiếu đều hoàn tất (passed)
+                ready = bool(finished) and all(s.state == 'done' for s in finished) and vehicle.pre_maintenance_status == 'available'
                 vehicle._write_operational_state({
-                    'operational_status': target_status,
-                    'technical_ready': target_ready,
+                    'operational_status': 'available' if ready else 'pending_inspection',
+                    'technical_ready': ready,
                     'pre_maintenance_status': False})
+
+    # Helper nội bộ bóc tách customer_id từ giao diện/bên ngoài để tự động điền tên và số điện thoại
+    def _pop_customer_vals(self, values):
+        customer_id = values.pop('customer_id', None)
+        if customer_id and not values.get('customer_name'):
+            if isinstance(customer_id, int):
+                partner = self.env['res.partner'].browse(customer_id)
+                values['customer_name'] = partner.name
+                if not values.get('customer_phone') and (partner.phone or partner.mobile):
+                    values['customer_phone'] = partner.phone or partner.mobile
+            elif isinstance(customer_id, str):
+                values['customer_name'] = customer_id
 
     @api.model_create_multi
     def create(self, vals_list):
         for values in vals_list:
-            cid = values.pop('customer_id', None)
-            if cid and not values.get('customer_name'):
-                if isinstance(cid, int):
-                    partner = self.env['res.partner'].browse(cid)
-                    values['customer_name'] = partner.name
-                    if not values.get('customer_phone') and (partner.phone or partner.mobile):
-                        values['customer_phone'] = partner.phone or partner.mobile
-                elif isinstance(cid, str):
-                    values['customer_name'] = cid
+            self._pop_customer_vals(values)
             vehicle = self.env['fleet.vehicle'].browse(
                 values.get('vehicle_id') or self.env.context.get('default_vehicle_id'))
             if vehicle.is_electric_motorbike:
@@ -108,9 +109,7 @@ class FleetVehicleLogServices(models.Model):
     def _validate_cost_input(self, values):
         # Monetary fields round before ORM constraints run. Reject invalid input
         # here so import/RPC returns a business error rather than a rounding crash.
-        for key in ('amount', 'cost'):
-            if key not in values:
-                continue
+        for key in {'amount', 'cost'} & set(values):
             try:
                 value = float(values[key] or 0)
             except (TypeError, ValueError, OverflowError):
@@ -120,15 +119,7 @@ class FleetVehicleLogServices(models.Model):
 
     def write(self, vals):
         self.check_access('write')
-        cid = vals.pop('customer_id', None)
-        if cid and not vals.get('customer_name'):
-            if isinstance(cid, int):
-                partner = self.env['res.partner'].browse(cid)
-                vals['customer_name'] = partner.name
-                if not vals.get('customer_phone') and (partner.phone or partner.mobile):
-                    vals['customer_phone'] = partner.phone or partner.mobile
-            elif isinstance(cid, str):
-                vals['customer_name'] = cid
+        self._pop_customer_vals(vals)
         target = self.env['fleet.vehicle'].browse(vals.get('vehicle_id'))
         electric = self.filtered(lambda s: s.is_electric_motorbike or target.is_electric_motorbike)
         if electric:

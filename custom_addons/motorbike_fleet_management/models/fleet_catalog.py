@@ -2,8 +2,9 @@
 import base64
 import logging
 import os
+from pathlib import Path
 
-from odoo import fields, models
+from odoo import fields, models, tools
 from odoo.tools.misc import file_path
 
 _logger = logging.getLogger(__name__)
@@ -49,13 +50,13 @@ class FleetVehicleModel(models.Model):
             model = self.env.ref(f'motorbike_fleet_management.{xml_id}', raise_if_not_found=False)
             if model and not model.image_128:
                 try:
-                    p = file_path(f'motorbike_fleet_management/static/src/img/{img_file}')
-                    if p and os.path.isfile(p):
-                        with open(p, 'rb') as f:
-                            data = base64.b64encode(f.read())
-                        model.sudo().write({'image_128': data})
+                    img_path = file_path(f'motorbike_fleet_management/static/src/img/{img_file}')
+                    if img_path and os.path.isfile(img_path):
+                        # Nạp dữ liệu ảnh dưới dạng base64 trực tiếp qua Path
+                        model.sudo().write({'image_128': base64.b64encode(Path(img_path).read_bytes())})
                         updated = True
                 except Exception as e:
                     _logger.warning('Không thể nạp ảnh tự động cho %s: %s', xml_id, e)
-        if updated:
+        # Khóa an toàn: không commit khi đang chạy test để bảo toàn rollback của TransactionCase
+        if updated and not tools.config.get('test_enable'):
             self.env.cr.commit()

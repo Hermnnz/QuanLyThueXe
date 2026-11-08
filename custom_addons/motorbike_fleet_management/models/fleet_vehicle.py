@@ -41,18 +41,29 @@ class FleetVehicle(models.Model):
     block_reason = fields.Text('Lý do khóa')
     next_service_date = fields.Date('Ngày bảo dưỡng tiếp theo')
 
+    # Helper tĩnh chuẩn hóa mã xe: bỏ toàn bộ khoảng trắng thừa và viết in hoa
+    @staticmethod
+    def _clean_code(val):
+        return ''.join((val or '').split()).upper()
+
+    # Helper kiểm tra hãng hoặc dòng xe có còn đang hoạt động không
+    def _check_active_catalog(self, model_id, msg):
+        model = self.env['fleet.vehicle.model'].browse(model_id)
+        if model and (not model.active or not model.brand_id.active):
+            raise UserError(msg)
+
     @api.depends('license_plate', 'vehicle_code')
     def _compute_identity_keys(self):
         for vehicle in self:
             vehicle.license_plate_key = re.sub(r'[\W_]+', '', vehicle.license_plate or '').upper() or False
-            vehicle.vehicle_code_key = ''.join((vehicle.vehicle_code or '').split()).upper() or False
+            vehicle.vehicle_code_key = self._clean_code(vehicle.vehicle_code) or False
 
     @api.model_create_multi
     def create(self, vals_list):
         prepared = []
         for values in vals_list:
             values = dict(values)
-            code = ''.join((values.get('vehicle_code') or '').split()).upper()
+            code = self._clean_code(values.get('vehicle_code'))
             while not code:
                 candidate = self.env['ir.sequence'].next_by_code('motorbike.fleet.vehicle')
                 if not candidate:
@@ -62,9 +73,7 @@ class FleetVehicle(models.Model):
             values['vehicle_code'] = code
             if values.get('license_plate'):
                 values['license_plate'] = values['license_plate'].strip().upper()
-            vehicle_model = self.env['fleet.vehicle.model'].browse(values.get('model_id'))
-            if vehicle_model and (not vehicle_model.active or not vehicle_model.brand_id.active):
-                raise UserError('Không tạo xe từ hãng hoặc dòng xe đã ngừng sử dụng.')
+            self._check_active_catalog(values.get('model_id'), 'Không tạo xe từ hãng hoặc dòng xe đã ngừng sử dụng.')
             if values.get('active') is False or values.get('operational_status') == 'inactive':
                 values.update(active=False, operational_status='inactive', technical_ready=False)
             prepared.append(values)
@@ -73,7 +82,7 @@ class FleetVehicle(models.Model):
     def write(self, vals):
         vals = dict(vals)
         if 'vehicle_code' in vals:
-            vals['vehicle_code'] = ''.join((vals['vehicle_code'] or '').split()).upper()
+            vals['vehicle_code'] = self._clean_code(vals['vehicle_code'])
             if not vals['vehicle_code']:
                 raise ValidationError('Không được xóa mã phương tiện đã cấp.')
         if vals.get('license_plate'):
@@ -96,8 +105,6 @@ class FleetVehicle(models.Model):
                 raise UserError('Chỉ khôi phục các xe ngừng hoạt động trong cùng một thao tác.')
             vals.update(operational_status='pending_inspection', technical_ready=False)
         for vehicle in electric:
-            if vals.get('active') is False and vehicle.operational_status == 'renting':
-                raise UserError('Không ngừng sử dụng xe đang thuê; cần nhận trả trước.')
             if vals.get('is_electric_motorbike') is False:
                 if (vehicle.operational_status in ('renting', 'maintenance')
                         or self.env['fleet.vehicle.log.services'].sudo().with_context(active_test=False).search_count([
@@ -106,9 +113,7 @@ class FleetVehicle(models.Model):
             if vehicle.operational_status != 'available' and vals.get('operational_status') == 'available':
                 raise ValidationError('Dùng nghiệp vụ nhận trả hoặc nút xác nhận đạt kỹ thuật để đưa xe về Sẵn sàng.')
         if 'model_id' in vals:
-            model = self.env['fleet.vehicle.model'].browse(vals['model_id'])
-            if model and (not model.active or not model.brand_id.active):
-                raise UserError('Không chọn hãng hoặc dòng xe đã ngừng sử dụng.')
+            self._check_active_catalog(vals['model_id'], 'Không chọn hãng hoặc dòng xe đã ngừng sử dụng.')
         return super().write(vals)
 
     def _write_operational_state(self, values):
@@ -144,7 +149,10 @@ class FleetVehicle(models.Model):
     @api.constrains('is_electric_motorbike', 'operational_status', 'technical_ready',
                     'rental_blocked', 'block_reason', 'active')
     def _check_rental_condition(self):
-        for vehicle in self.filtered('is_electric_motorbike'):
+        electric = self.filtered('is_electric_motorbike')
+        # Batch prefetch các xe đang bảo dưỡng để tránh truy vấn lặp trong vòng lặp kiểm tra
+        blocking_ids = set(electric._running_blocking_services().mapped('vehicle_id').ids) if electric else set()
+        for vehicle in electric:
             if vehicle.rental_blocked and not (vehicle.block_reason or '').strip():
                 raise ValidationError('Cần nhập lý do khi khóa thuê xe.')
             if (vehicle.operational_status == 'inactive') != (not vehicle.active):
@@ -155,7 +163,7 @@ class FleetVehicle(models.Model):
                 raise ValidationError('Xe sẵn sàng phải đạt điều kiện kỹ thuật.')
             if vehicle.operational_status in ('pending_inspection', 'maintenance') and vehicle.technical_ready:
                 raise ValidationError('Xe chờ kiểm tra hoặc bảo dưỡng chưa được đánh dấu đạt kỹ thuật.')
-            if vehicle._running_blocking_services() and (
+            if vehicle.id in blocking_ids and (
                     vehicle.operational_status != 'maintenance' or vehicle.technical_ready):
                 raise ValidationError('Xe đang bảo dưỡng chặn thuê phải ở trạng thái bảo dưỡng và chưa đạt kỹ thuật.')
 
@@ -194,6 +202,11 @@ class FleetVehicle(models.Model):
         """
         self.check_access('read')
         start, end = self._rental_period(start, end)
+        # Batch prefetch các xe đang có lịch bảo dưỡng trùng khoảng thời gian thuê (tránh N+1)
+        blocking_ids = {
+            s.vehicle_id.id for s in self._running_blocking_services()
+            if not s.actual_start or s.actual_start < end
+        }
         result = []
         for vehicle in self:
             reasons = []
@@ -207,7 +220,7 @@ class FleetVehicle(models.Model):
                 reasons.append('not_technical_ready')
             if vehicle.rental_blocked:
                 reasons.append('rental_blocked')
-            if vehicle._maintenance_overlaps(start, end):
+            if vehicle.id in blocking_ids:
                 reasons.append('blocking_maintenance')
             result.append({'vehicle_id': vehicle.id, 'fleet_ok': not reasons, 'reasons': reasons})
         return result

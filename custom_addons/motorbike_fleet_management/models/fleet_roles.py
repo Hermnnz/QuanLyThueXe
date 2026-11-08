@@ -29,8 +29,8 @@ class FleetVehicleRoles(models.Model):
                         or values.get('technical_ready') or values.get('active') is False):
                     raise AccessError('Nhân viên chỉ tạo xe mới chờ kiểm tra, không tự xác nhận kỹ thuật/ngừng hoạt động.')
         vehicles = super().create(vals_list)
-        if staff_only(self.env) and vehicles.filtered(lambda v:
-                v.operational_status != 'pending_inspection' or v.technical_ready or not v.active):
+        if staff_only(self.env) and any(
+                vehicle.operational_status != 'pending_inspection' or vehicle.technical_ready or not vehicle.active for vehicle in vehicles):
             raise AccessError('Xe do nhân viên tạo phải đang hoạt động và chờ kiểm tra kỹ thuật.')
         return vehicles
 

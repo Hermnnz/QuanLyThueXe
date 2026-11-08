@@ -5,6 +5,17 @@ from odoo import api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
 
+# Helper module-level dùng chung để kiểm tra chính sách bảo dưỡng trên cả dòng xe và từng xe (DRY)
+def _validate_service_policy(records):
+    for record in records:
+        values = (record.service_interval_km, record.service_interval_months,
+                  record.service_warning_km, record.service_warning_days)
+        if any(not math.isfinite(val) or val < 0 for val in values):
+            raise ValidationError('Chu kỳ và ngưỡng cảnh báo phải là số hữu hạn, không âm.')
+        if record.service_interval_km and record.service_warning_km >= record.service_interval_km:
+            raise ValidationError('Ngưỡng báo trước km phải nhỏ hơn chu kỳ bảo dưỡng.')
+
+
 class FleetModelPreventive(models.Model):
     # Legacy storage only; no runtime policy inheritance.
     _inherit = 'fleet.vehicle.model'
@@ -16,13 +27,7 @@ class FleetModelPreventive(models.Model):
 
     @api.constrains('service_interval_km', 'service_interval_months', 'service_warning_km', 'service_warning_days')
     def _check_service_policy(self):
-        for model in self:
-            for value in [model.service_interval_km, model.service_interval_months,
-                          model.service_warning_km, model.service_warning_days]:
-                if not math.isfinite(value) or value < 0:
-                    raise ValidationError('Chu kỳ và ngưỡng cảnh báo phải là số hữu hạn, không âm.')
-            if model.service_interval_km and model.service_warning_km >= model.service_interval_km:
-                raise ValidationError('Ngưỡng báo trước km phải nhỏ hơn chu kỳ bảo dưỡng.')
+        _validate_service_policy(self)
 
 
 class FleetVehiclePreventive(models.Model):
@@ -100,13 +105,7 @@ class FleetVehiclePreventive(models.Model):
 
     @api.constrains('service_interval_km', 'service_interval_months', 'service_warning_km', 'service_warning_days')
     def _check_vehicle_service_policy(self):
-        for vehicle in self:
-            values = (vehicle.service_interval_km, vehicle.service_interval_months,
-                      vehicle.service_warning_km, vehicle.service_warning_days)
-            if any(not math.isfinite(value) or value < 0 for value in values):
-                raise ValidationError('Chu kỳ và ngưỡng cảnh báo phải là số hữu hạn, không âm.')
-            if vehicle.service_interval_km and vehicle.service_warning_km >= vehicle.service_interval_km:
-                raise ValidationError('Ngưỡng báo trước km phải nhỏ hơn chu kỳ bảo dưỡng.')
+        _validate_service_policy(self)
 
     @api.constrains('service_reference_date', 'service_reference_odo', 'odometer')
     def _check_service_reference(self):
@@ -176,7 +175,7 @@ class FleetVehiclePreventive(models.Model):
                     state = 'unconfigured'
                 elif configured and not vehicle.service_last_date:
                     state = 'missing_baseline'
-            if configured and not vehicle.service_last_date:
+            elif configured and not vehicle.service_last_date:
                 reasons.append('Chưa có mốc ban đầu đã xác minh; chưa thể tính đầy đủ kỳ bảo dưỡng.')
             if not vehicle.is_electric_motorbike:
                 state, reasons = 'unconfigured', []
@@ -198,8 +197,14 @@ class FleetVehiclePreventive(models.Model):
 
     @api.depends('log_services.state', 'log_services.maintenance_type', 'log_services.active')
     def _compute_open_preventive_count(self):
+        # Tối ưu N+1 Query: Đếm số lượng phiếu bằng 1 truy vấn GROUP BY duy nhất (chuẩn Odoo 18)
+        counts = {vehicle.id: count for vehicle, count in self.env['fleet.vehicle.log.services']._read_group(
+            [('vehicle_id', 'in', self.ids), ('maintenance_type', '=', 'preventive'),
+             ('state', 'in', ['new', 'running'])],
+            ['vehicle_id'], ['__count'],
+        )} if self.ids else {}
         for vehicle in self:
-            vehicle.open_preventive_count = len(vehicle._open_preventive_services())
+            vehicle.open_preventive_count = counts.get(vehicle.id, 0)
 
     def action_preventive_service(self):
         self.ensure_one()
@@ -210,15 +215,15 @@ class FleetVehiclePreventive(models.Model):
         self.env.cr.execute('SELECT id FROM fleet_vehicle WHERE id=%s FOR UPDATE', (self.id,))
         existing = self._open_preventive_services()
         if existing:
-            action = self.action_open_rental_services()
-            action.update({'view_mode': 'form', 'views': [(False, 'form')], 'res_id': existing[0].id})
-            return action
-        self.env['fleet.vehicle.log.services'].check_access('create')
-        service = self.env['fleet.vehicle.log.services'].create({
-            'vehicle_id': self.id, 'maintenance_type': 'preventive',
-            'description': 'Bảo dưỡng định kỳ — ' + (self.vehicle_code or self.display_name),
-            'notes': self.service_alert_message or 'Nhân viên chủ động tạo phiếu bảo dưỡng định kỳ.',
-            'blocks_rental': True})
+            service = existing[0]
+        else:
+            self.env['fleet.vehicle.log.services'].check_access('create')
+            service = self.env['fleet.vehicle.log.services'].create({
+                'vehicle_id': self.id, 'maintenance_type': 'preventive',
+                'description': 'Bảo dưỡng định kỳ — ' + (self.vehicle_code or self.display_name),
+                'notes': self.service_alert_message or 'Nhân viên chủ động tạo phiếu bảo dưỡng định kỳ.',
+                'blocks_rental': True})
+        # Gộp chung cấu trúc trả về action cho cả 2 nhánh
         action = self.action_open_rental_services()
         action.update({'view_mode': 'form', 'views': [(False, 'form')], 'res_id': service.id})
         return action
