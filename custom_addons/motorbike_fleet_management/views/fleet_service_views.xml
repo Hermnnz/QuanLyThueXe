@@ -38,6 +38,16 @@
 
 
 
+            <xpath expr="//sheet//group[1]" position="before">
+        <div class="oe_title">
+          <label for="service_code" string="Mã phiếu" />
+          <h1>
+            <field name="service_code" readonly="id != False" placeholder="Hệ thống tự cấp mã" class="text-primary"/>
+          </h1>
+        </div>
+      </xpath>
+
+
       <xpath expr="//field[@name='purchaser_id']" position="attributes">
 
 
@@ -204,7 +214,8 @@
 
 
 
-        <button name="action_claim_ticket" type="object" string="Nhận việc" class="btn-success" groups="motorbike_fleet_management.group_motorbike_technician,fleet.fleet_group_manager" invisible="(not is_electric_motorbike and not context.get('motorbike_only')) or state != 'new'"/>
+        <field name="can_claim_ticket" invisible="1"/>
+        <button name="action_claim_ticket" type="object" string="Nhận việc" class="btn-success" invisible="not can_claim_ticket"/>
         <button name="action_start" type="object" string="Bắt đầu" class="btn-primary" invisible="(not is_electric_motorbike and not context.get('motorbike_only')) or state != 'new'"/>
 
 
@@ -338,6 +349,7 @@
 
 
       <search>
+        <field name="service_code" string="Mã phiếu"/>
 
 
 
@@ -457,9 +469,8 @@
 
     <field name="arch" type="xml">
 
-      <list default_order="id desc" delete="false">
-
-        <field name="id" string="ID phiếu" readonly="1"/>
+      <list default_order="service_code desc" delete="false">
+        <field name="service_code" string="Mã phiếu" readonly="1" decoration-bf="1"/>
 
         <field name="vehicle_id" string="Phương tiện"/>
 

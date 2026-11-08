@@ -1,4 +1,5 @@
 import math
+import re
 
 from odoo import api, fields, models
 from odoo.exceptions import UserError, ValidationError
@@ -7,12 +8,34 @@ from odoo.exceptions import UserError, ValidationError
 class FleetVehicleLogServices(models.Model):
     _inherit = 'fleet.vehicle.log.services'
 
+    service_code = fields.Char(
+        string='Mã phiếu', copy=False, index=True,
+        default=lambda self: self._find_next_available_code(),
+    )
+    service_code_key = fields.Char(
+        compute='_compute_service_code_key', store=True, copy=False, index=True,
+    )
+
+    if hasattr(models, 'Constraint'):
+        _service_code_unique = models.Constraint('UNIQUE(service_code)', 'Mã phiếu bảo dưỡng đã tồn tại.')
+        _normalized_service_code_unique = models.Constraint(
+            'UNIQUE(service_code_key)',
+            'Mã phiếu bảo dưỡng đã tồn tại (không phân biệt hoa thường/khoảng trắng).'
+        )
+    else:
+        _sql_constraints = [
+            ('service_code_unique', 'UNIQUE(service_code)', 'Mã phiếu bảo dưỡng đã tồn tại.'),
+            ('normalized_service_code_unique', 'UNIQUE(service_code_key)',
+             'Mã phiếu bảo dưỡng đã tồn tại (không phân biệt hoa thường/khoảng trắng).'),
+        ]
+
     is_electric_motorbike = fields.Boolean(related='vehicle_id.is_electric_motorbike')
     vehicle_code = fields.Char(related='vehicle_id.vehicle_code', string='Mã phương tiện', readonly=True)
     customer_name = fields.Char(string='Khách hàng')
     customer_phone = fields.Char(string='Số điện thoại khách hàng')
     service_type_id = fields.Many2one(default=lambda self: self.env.ref(
         'motorbike_fleet_management.service_type_electric_maintenance', raise_if_not_found=False))
+
     def _domain_technician_id(self):
         group = self.env.ref('motorbike_fleet_management.group_motorbike_technician', raise_if_not_found=False)
         return [('user_ids.groups_id', 'in', [group.id])] if group else []
@@ -22,6 +45,16 @@ class FleetVehicleLogServices(models.Model):
         string='Kỹ thuật viên',
         domain=_domain_technician_id,
     )
+    can_claim_ticket = fields.Boolean(compute='_compute_can_claim_ticket')
+
+    def _compute_can_claim_ticket(self):
+        user = self.env.user
+        is_tech = user.has_group('motorbike_fleet_management.group_motorbike_technician')
+        is_manager = user.has_group('motorbike_fleet_management.group_fleet_manager') or user.has_group('base.group_system')
+        can_claim = bool(is_tech and not is_manager)
+        for record in self:
+            record.can_claim_ticket = bool(can_claim and record.state == 'new' and record.is_electric_motorbike)
+
     result = fields.Text('Kết quả / công việc đã thực hiện', copy=False)
     next_service_date = fields.Date('Ngày bảo dưỡng tiếp theo')
     maintenance_type = fields.Selection([
@@ -37,6 +70,52 @@ class FleetVehicleLogServices(models.Model):
         ('done', 'Hoàn tất'),
         ('cancelled', 'Đã hủy'),
     ], string='Trạng thái', copy=False)
+
+    @api.model
+    def _clean_code(cls, val):
+        if not val:
+            return False
+        return re.sub(r'\s+', '', str(val)).upper()
+
+    @api.depends('service_code')
+    def _compute_service_code_key(self):
+        for service in self:
+            service.service_code_key = self._clean_code(service.service_code) or False
+
+    @api.model
+    def _find_next_available_code(self, reserved_codes=None):
+        reserved = set(reserved_codes or [])
+        records = self.sudo().with_context(active_test=False).search_read(
+            [('service_code', '=like', 'BD%')], ['service_code']
+        )
+        used_nums = set()
+        for rec in records:
+            val = (rec.get('service_code') or '').strip().upper()
+            if val.startswith('BD') and val[2:].isdigit():
+                try:
+                    used_nums.add(int(val[2:]))
+                except ValueError:
+                    pass
+        for val in reserved:
+            val = (val or '').strip().upper()
+            if val.startswith('BD') and val[2:].isdigit():
+                try:
+                    used_nums.add(int(val[2:]))
+                except ValueError:
+                    pass
+        candidate = 1
+        while candidate in used_nums:
+            candidate += 1
+        return f"BD{candidate:05d}"
+
+    @api.depends('service_code', 'service_type_id', 'vehicle_id.name')
+    def _compute_display_name(self):
+        super()._compute_display_name()
+        for service in self:
+            if service.service_code:
+                type_name = service.service_type_id.name or 'Bảo dưỡng'
+                vehicle_name = f" - {service.vehicle_id.name}" if service.vehicle_id else ""
+                service.display_name = f"[{service.service_code}] {type_name}{vehicle_name}"
 
     @api.constrains('vehicle_id', 'actual_start',
                     'actual_end', 'amount', 'next_service_date', 'date', 'state', 'blocks_rental')
@@ -93,7 +172,10 @@ class FleetVehicleLogServices(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        prepared = []
+        reserved_in_batch = set()
         for values in vals_list:
+            values = dict(values)
             self._pop_customer_vals(values)
             vehicle = self.env['fleet.vehicle'].browse(
                 values.get('vehicle_id') or self.env.context.get('default_vehicle_id'))
@@ -108,8 +190,19 @@ class FleetVehicleLogServices(models.Model):
                          for key in ('amount', 'cost') if 'default_' + key in self.env.context}
                 costs.update(values)
                 self._validate_cost_input(costs)
+
+            # Auto-assign service_code if not set or colliding
+            code = self._clean_code(values.get('service_code'))
+            if not code:
+                code = self._find_next_available_code(reserved_codes=reserved_in_batch)
+            elif code.startswith('BD') and (self.sudo().with_context(active_test=False).search_count([('service_code_key', '=', code)]) or code in reserved_in_batch):
+                code = self._find_next_available_code(reserved_codes=reserved_in_batch)
+            reserved_in_batch.add(code)
+            values['service_code'] = code
+            prepared.append(values)
+
         # Completed historical records may be imported; they do not change today's vehicle state.
-        services = super().create(vals_list)
+        services = super().create(prepared)
         running = services.filtered(lambda s: s.is_electric_motorbike and s.state == 'running')
         running._check_start_vehicle()
         for service in running:
@@ -133,6 +226,11 @@ class FleetVehicleLogServices(models.Model):
     def write(self, vals):
         self.check_access('write')
         self._pop_customer_vals(vals)
+        if 'service_code' in vals:
+            cleaned = self._clean_code(vals['service_code'])
+            if not cleaned:
+                raise ValidationError('Không được xóa mã phiếu bảo dưỡng đã cấp.')
+            vals['service_code'] = cleaned
         target = self.env['fleet.vehicle'].browse(vals.get('vehicle_id'))
         electric = self.filtered(lambda s: s.is_electric_motorbike or target.is_electric_motorbike)
         if electric:
@@ -189,11 +287,16 @@ class FleetVehicleLogServices(models.Model):
         raise UserError('Không được xóa hồ sơ bảo dưỡng; hãy hủy hoặc lưu trữ nếu cần.')
 
     def action_claim_ticket(self):
+        user = self.env.user
+        if user.has_group('motorbike_fleet_management.group_fleet_manager') or user.has_group('base.group_system'):
+            raise UserError('Quản lý/Admin không nhận việc; thao tác này chỉ dành riêng cho Kỹ thuật viên.')
+        if not user.has_group('motorbike_fleet_management.group_motorbike_technician'):
+            raise UserError('Chỉ Kỹ thuật viên xe điện mới có quyền nhận việc.')
         for service in self:
             if service.state != 'new':
                 raise UserError('Chỉ có thể nhận các phiếu đang ở trạng thái Mới.')
             service.write({
-                'technician_id': self.env.user.partner_id.id,
+                'technician_id': user.partner_id.id,
                 'state': 'running',
             })
         return True
