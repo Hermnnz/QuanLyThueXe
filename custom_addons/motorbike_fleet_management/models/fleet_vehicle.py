@@ -58,15 +58,6 @@ class FleetVehicle(models.Model):
             vehicle.custom_image_128 = vehicle.image_128
 
     # Helper tĩnh chuẩn hóa mã xe: bỏ toàn bộ khoảng trắng thừa và viết in hoa
-    @api.depends('model_id.brand_id.name', 'model_id.name', 'license_plate', 'vehicle_code')
-    def _compute_vehicle_name(self):
-        for record in self:
-            if record.is_electric_motorbike:
-                parts = [p for p in [record.vehicle_code, record.model_id.name, record.license_plate] if p]
-                record.name = ' - '.join(parts) if parts else (record.vehicle_code or 'Ph\u01b0\u01a1ng ti\u1ec7n m\u1edbi')
-            else:
-                super(FleetVehicle, record)._compute_vehicle_name()
-
     @staticmethod
     def _clean_code(val):
         return ''.join((val or '').split()).upper()
