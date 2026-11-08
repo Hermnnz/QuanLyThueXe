@@ -118,7 +118,8 @@
 
         <field name="vehicle_code" readonly="1" invisible="not is_electric_motorbike and not context.get('motorbike_only')"/>
 
-        <field name="technician_id" string="Kỹ thuật viên phụ trách" readonly="state in ['running', 'done', 'cancelled']" options="{'no_create': True, 'no_open': True}"/>
+        <field name="is_fleet_manager" invisible="1"/>
+        <field name="technician_id" string="Kỹ thuật viên phụ trách" readonly="not is_fleet_manager or state in ['running', 'done', 'cancelled']" options="{'no_create': True, 'no_open': True}"/>
 
 
 

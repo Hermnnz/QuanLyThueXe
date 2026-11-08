@@ -37,14 +37,28 @@ class FleetVehicleLogServices(models.Model):
         'motorbike_fleet_management.service_type_electric_maintenance', raise_if_not_found=False))
 
     def _domain_technician_id(self):
-        group = self.env.ref('motorbike_fleet_management.group_motorbike_technician', raise_if_not_found=False)
-        return [('user_ids.groups_id', 'in', [group.id])] if group else []
+        tech_group = self.env.ref('motorbike_fleet_management.group_motorbike_technician', raise_if_not_found=False)
+        manager_group = self.env.ref('motorbike_fleet_management.group_fleet_manager', raise_if_not_found=False)
+        if not tech_group:
+            return []
+        domain = [('user_ids.groups_id', 'in', [tech_group.id])]
+        if manager_group:
+            domain.append(('user_ids.groups_id', 'not in', [manager_group.id]))
+        return domain
 
     technician_id = fields.Many2one(
         'res.partner',
         string='Kỹ thuật viên',
         domain=_domain_technician_id,
     )
+    is_fleet_manager = fields.Boolean(compute='_compute_is_fleet_manager')
+
+    def _compute_is_fleet_manager(self):
+        user = self.env.user
+        is_mgr = bool(user.has_group('motorbike_fleet_management.group_fleet_manager') or user.has_group('base.group_system'))
+        for record in self:
+            record.is_fleet_manager = is_mgr
+
     can_claim_ticket = fields.Boolean(compute='_compute_can_claim_ticket')
 
     def _compute_can_claim_ticket(self):
@@ -129,6 +143,13 @@ class FleetVehicleLogServices(models.Model):
                 raise ValidationError('Thời gian kết thúc không được trước thời gian bắt đầu.')
             if service.next_service_date and service.date and service.next_service_date <= service.date:
                 raise ValidationError('Mốc bảo dưỡng tiếp theo phải sau ngày hồ sơ bảo dưỡng.')
+
+    @api.constrains('technician_id')
+    def _check_technician_id(self):
+        manager_group = self.env.ref('motorbike_fleet_management.group_fleet_manager', raise_if_not_found=False)
+        for service in self.filtered('technician_id'):
+            if manager_group and manager_group in service.technician_id.user_ids.groups_id:
+                raise ValidationError('Không được phân công Quản lý/Admin làm kỹ thuật viên sửa chữa.')
 
     def _check_start_vehicle(self):
         for service in self.filtered('is_electric_motorbike'):
@@ -226,6 +247,10 @@ class FleetVehicleLogServices(models.Model):
     def write(self, vals):
         self.check_access('write')
         self._pop_customer_vals(vals)
+        if 'technician_id' in vals and not self.env.context.get('is_claim_ticket_action'):
+            user = self.env.user
+            if not (user.has_group('motorbike_fleet_management.group_fleet_manager') or user.has_group('base.group_system')):
+                raise UserError('Chỉ Quản lý xe mới có quyền phân công Kỹ thuật viên.')
         if 'service_code' in vals:
             cleaned = self._clean_code(vals['service_code'])
             if not cleaned:
@@ -251,6 +276,10 @@ class FleetVehicleLogServices(models.Model):
                 raise UserError('Chuyển trạng thái bảo dưỡng không hợp lệ.')
         starting = changed if vals.get('state') == 'running' else self.browse()
         ending = changed.filtered(lambda s: s.state == 'running') if vals.get('state') in ('done', 'cancelled') else self.browse()
+        for service in starting:
+            tech = vals.get('technician_id', service.technician_id)
+            if not tech:
+                raise UserError('Vui lòng phân công Kỹ thuật viên phụ trách trước khi bắt đầu thực hiện.')
         starting._check_start_vehicle()
         for service in changed:
             if vals.get('state') == 'done' and not (vals.get('result', service.result) or '').strip():
@@ -295,13 +324,16 @@ class FleetVehicleLogServices(models.Model):
         for service in self:
             if service.state != 'new':
                 raise UserError('Chỉ có thể nhận các phiếu đang ở trạng thái Mới.')
-            service.write({
+            service.with_context(is_claim_ticket_action=True).write({
                 'technician_id': user.partner_id.id,
                 'state': 'running',
             })
         return True
 
     def action_start(self):
+        for service in self:
+            if service.is_electric_motorbike and not service.technician_id:
+                raise UserError('Vui lòng phân công Kỹ thuật viên phụ trách trước khi bắt đầu thực hiện.')
         return self.write({'state': 'running'})
 
     def action_done(self):

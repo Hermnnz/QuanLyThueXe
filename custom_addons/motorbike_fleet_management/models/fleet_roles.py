@@ -26,8 +26,6 @@ def staff_view(result, env):
 
         root = etree.fromstring(result['arch'].encode())
 
-        root.set('edit', 'false')
-
         root.set('delete', 'false')
 
         result['arch'] = etree.tostring(root, encoding='unicode')
@@ -71,11 +69,13 @@ class FleetVehicleRoles(models.Model):
 
 
     def write(self, vals):
-
-        if staff_only(self.env):
-
-            raise AccessError('Nhân viên không được sửa hồ sơ hoặc lưu trữ/khôi phục phương tiện.')
-
+        if staff_only(self.env) and not self.env.user.has_group('motorbike_fleet_management.group_motorbike_technician'):
+            disallowed = {'operational_status', 'technical_ready', 'active', 'pre_maintenance_status', 'rental_blocked', 'block_reason'}
+            if set(vals) & disallowed:
+                raise AccessError('Nhân viên không được tự ý đổi trạng thái kỹ thuật hoặc lưu trữ/khóa xe.')
+            for vehicle in self:
+                if vehicle.operational_status in ('renting', 'maintenance'):
+                    raise UserError('Xe đang thuê hoặc đang bảo dưỡng; nhân viên không được sửa thông tin.')
         return super().write(vals)
 
 
@@ -155,11 +155,13 @@ class FleetServiceRoles(models.Model):
 
 
     def write(self, vals):
-
-        if staff_only(self.env):
-
-            raise AccessError('Nhân viên không được sửa phiếu; dùng nút Bắt đầu hoặc Hoàn tất.')
-
+        if staff_only(self.env) and not self.env.user.has_group('motorbike_fleet_management.group_motorbike_technician'):
+            disallowed = {'state', 'technician_id', 'amount', 'cost', 'next_service_date', 'actual_start', 'actual_end', 'blocks_rental', 'active'}
+            if set(vals) & disallowed:
+                raise AccessError('Nhân viên không được sửa trạng thái, thợ phụ trách hoặc chi phí phiếu bảo dưỡng.')
+            for service in self:
+                if service.state in ('running', 'done', 'cancelled'):
+                    raise UserError('Phiếu đang thực hiện hoặc đã kết thúc; nhân viên không được chỉnh sửa.')
         return super().write(vals)
 
 
