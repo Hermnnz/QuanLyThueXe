@@ -378,6 +378,7 @@ class RentalContract(models.Model):
         # Hàm được gọi tự bỏ qua hợp đồng không còn nháp và phiếu cọc đã xác nhận.
         if (
             "deposit_amount" in vals
+            or "line_ids" in vals  # Thêm/bỏ xe làm cọc tự tính thay đổi; phải cập nhật phiếu cọc nháp theo.
             or "customer_id" in vals
             or "currency_id" in vals
         ):
