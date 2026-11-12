@@ -111,9 +111,7 @@
               </group>
             </page>
             <page name="rental_condition" string="Mô tả tình trạng">
-              <group string="Trạng thái hệ thống" invisible="not id">
-                <field name="active" string="Đang sử dụng" />
-              </group>
+              <field name="active" invisible="1" />
               <field name="description" nolabel="1" placeholder="Ghi tình trạng chung và ngoại quan hiện tại của xe..." />
             </page>
           </notebook>

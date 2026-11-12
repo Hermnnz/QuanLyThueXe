@@ -156,7 +156,7 @@ class TestFleetBusinessHardening(TransactionCase):
 
     def test_active_fields_have_visible_form_controls(self):
         for xmlid in ['fleet.fleet_vehicle_model_brand_view_form', 'fleet.fleet_vehicle_model_view_form',
-                      'fleet.fleet_vehicle_view_form', 'fleet.fleet_vehicle_log_services_view_form']:
+                      'fleet.fleet_vehicle_log_services_view_form']:
             arch = self.env.ref(xmlid)._get_combined_arch()
             self.assertTrue(arch.xpath('.//field[@name="active" and not(@invisible)]'), xmlid)
         self.assertEqual(self.env.ref('fleet.fleet_vehicle_model_brand_action').context, '{}')
