@@ -77,13 +77,14 @@
             </group>
             <group string="Điều kiện khai thác">
               <field name="odometer" string="ODO hiện tại (km)" readonly="operational_status in ['renting', 'maintenance']" />
+              <field name="technical_ready" string="Đạt kỹ thuật ngay" invisible="id" groups="motorbike_fleet_management.group_motorbike_technician,fleet.fleet_group_manager" />
               <field name="technical_ready" readonly="1" invisible="not id" />
               <field name="rental_blocked" invisible="not id" />
               <field name="block_reason" required="rental_blocked" invisible="not id or not rental_blocked and not block_reason" />
-              <field name="next_service_date" string="Lịch hẹn kiểm tra" invisible="not id" />
+              <field name="next_service_date" string="Lịch hẹn kiểm tra" />
             </group>
           </group>
-          <notebook invisible="not id">
+          <notebook>
             <page name="periodic_maintenance" string="Bảo dưỡng định kỳ">
               <p class="text-muted">Chu kỳ chỉ áp dụng cho phương tiện này; mốc ngày hoặc km nào đến trước sẽ được cảnh báo. Không tự khóa thuê.</p>
               <group>
@@ -91,7 +92,7 @@
                   <field name="service_interval_km" string="Chu kỳ (km)"/>
                   <field name="service_interval_months" string="Chu kỳ (tháng)"/>
                 </group>
-                <group string="Hạn tiếp theo">
+                <group string="Hạn tiếp theo" invisible="not id">
                   <field name="service_schedule_state" widget="badge"/>
                   <field name="service_next_date" string="Ngày dự kiến" invisible="not service_interval_months or not service_last_date"/>
                   <field name="service_next_odo" string="ODO dự kiến" invisible="not service_interval_km or not service_last_date"/>
@@ -105,8 +106,8 @@
                 <group string="Mốc bảo dưỡng">
                   <field name="service_reference_date" string="Ngày mốc ban đầu"/>
                   <field name="service_reference_odo" string="ODO mốc ban đầu"/>
-                  <field name="service_last_date" string="Ngày làm gần nhất"/>
-                  <field name="service_last_odo" string="ODO lúc làm gần nhất"/>
+                  <field name="service_last_date" string="Ngày làm gần nhất" invisible="not id"/>
+                  <field name="service_last_odo" string="ODO lúc làm gần nhất" invisible="not id"/>
                 </group>
               </group>
             </page>

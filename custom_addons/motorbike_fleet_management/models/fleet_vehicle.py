@@ -190,6 +190,13 @@ class FleetVehicle(models.Model):
             self._check_active_catalog(values.get('model_id'), 'Không tạo xe từ hãng hoặc dòng xe đã ngừng sử dụng.')
             if values.get('active') is False or values.get('operational_status') == 'inactive':
                 values.update(active=False, operational_status='inactive', technical_ready=False)
+            elif values.get('technical_ready') and not values.get('operational_status'):
+                is_tech = self.env.user.has_group('motorbike_fleet_management.group_motorbike_technician')
+                is_mgr = self.env.user.has_group('fleet.fleet_group_manager')
+                if is_tech or is_mgr:
+                    values['operational_status'] = 'available'
+                else:
+                    values['technical_ready'] = False
             prepared.append(values)
         return super().create(prepared)
 

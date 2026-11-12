@@ -125,6 +125,36 @@ class FleetVehiclePreventive(models.Model):
             if vehicle.service_reference_date and vehicle.service_reference_date > fields.Date.context_today(vehicle):
                 raise ValidationError('Ngày mốc ban đầu không được trong tương lai.')
 
+    @api.onchange('model_id')
+    def _onchange_model_id_preventive_defaults(self):
+        """Tự động điền chu kỳ bảo dưỡng định kỳ từ dòng xe và đề xuất mốc ban đầu nếu chưa nhập."""
+        if self.model_id:
+            if not self.service_interval_km:
+                self.service_interval_km = self.model_id.service_interval_km or 2000.0
+            if not self.service_interval_months:
+                self.service_interval_months = self.model_id.service_interval_months or 3
+            if self.model_id.service_warning_km:
+                self.service_warning_km = self.model_id.service_warning_km
+            if self.model_id.service_warning_days:
+                self.service_warning_days = self.model_id.service_warning_days
+            if not self.service_reference_date:
+                self.service_reference_date = self.acquisition_date or fields.Date.context_today(self)
+            if not self.service_reference_odo:
+                self.service_reference_odo = self.odometer or 0
+
+    @api.onchange('acquisition_date')
+    def _onchange_acquisition_date_baseline(self):
+        """Đề xuất ngày mốc bảo dưỡng ban đầu theo ngày tiếp nhận nếu chưa nhập."""
+        if self.acquisition_date and not self.service_reference_date:
+            self.service_reference_date = self.acquisition_date
+
+    @api.onchange('odometer')
+    def _onchange_odometer_baseline(self):
+        """Đề xuất ODO mốc bảo dưỡng ban đầu theo ODO hiện tại lúc tiếp nhận nếu chưa nhập."""
+        if self.odometer and not self.service_reference_odo:
+            self.service_reference_odo = self.odometer
+
+
     @api.depends('service_reference_date', 'service_reference_odo', 'model_id',
         'service_interval_km', 'service_interval_months',
         'log_services.state', 'log_services.actual_end', 'log_services.maintenance_type',
