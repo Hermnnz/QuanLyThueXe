@@ -10,6 +10,7 @@ from odoo.exceptions import AccessError, UserError
 
 def staff_only(env):
 
+    """Kiểm tra người dùng hiện tại có phải là Nhân viên quản lý xe thuần túy hay không."""
     return (not env.su and env.user.has_group('motorbike_fleet_management.group_fleet_staff')
 
             and not env.user.has_group('fleet.fleet_group_manager'))
@@ -20,6 +21,7 @@ def staff_only(env):
 
 def staff_view(result, env):
 
+    """Ẩn nút Xóa trên giao diện form đối với vai trò Nhân viên quản lý xe."""
     if staff_only(env):
 
         result = dict(result)
@@ -38,6 +40,7 @@ def staff_view(result, env):
 
 class FleetVehicleRoles(models.Model):
 
+    """Ma trận kiểm soát quyền hạn giữa Admin, Quản lý xe và Nhân viên trên hồ sơ xe."""
     _inherit = 'fleet.vehicle'
 
 
@@ -46,6 +49,7 @@ class FleetVehicleRoles(models.Model):
 
     def create(self, vals_list):
 
+        """Chốt chặn nhân viên chỉ được tạo xe mới ở trạng thái Chờ kiểm tra kỹ thuật."""
         if staff_only(self.env):
 
             for values in vals_list:
@@ -69,6 +73,7 @@ class FleetVehicleRoles(models.Model):
 
 
     def write(self, vals):
+        """Chặn nhân viên tự đổi trạng thái kỹ thuật hoặc sửa thông tin xe đang thuê/bảo dưỡng."""
         if staff_only(self.env) and not self.env.user.has_group('motorbike_fleet_management.group_motorbike_technician'):
             disallowed = {'operational_status', 'technical_ready', 'active', 'pre_maintenance_status', 'rental_blocked', 'block_reason'}
             if set(vals) & disallowed:
@@ -84,12 +89,14 @@ class FleetVehicleRoles(models.Model):
 
     def get_view(self, view_id=None, view_type='form', **options):
 
+        """Can thiệp giao diện form xe để loại bỏ nút Xóa đối với nhân viên thường."""
         return staff_view(super().get_view(view_id, view_type, **options), self.env)
 
 
 
     def _write_operational_state(self, values):
 
+        """Chặn nhân viên đổi trạng thái xe trực tiếp ngoài quy trình Bắt đầu/Hoàn tất bảo dưỡng."""
         if staff_only(self.env) and not self.env.user.has_group('motorbike_fleet_management.group_motorbike_technician'):
 
             raise AccessError('Nhân viên chỉ thay đổi trạng thái xe qua Bắt đầu/Hoàn tất phiếu bảo dưỡng.')
@@ -100,6 +107,7 @@ class FleetVehicleRoles(models.Model):
 
     def action_confirm_technical_ready(self):
 
+        """Chỉ cho phép Quản lý xe hoặc Kỹ thuật viên xác nhận xe đạt điều kiện kỹ thuật."""
         if staff_only(self.env) and not self.env.user.has_group('motorbike_fleet_management.group_motorbike_technician'):
 
             raise AccessError('Chỉ quản lý hoặc kỹ thuật viên được xác nhận kỹ thuật.')
@@ -112,6 +120,7 @@ class FleetVehicleRoles(models.Model):
 
 class FleetServiceRoles(models.Model):
 
+    """Kiểm soát quyền nhận việc, bắt đầu, hoàn tất và hủy bỏ phiếu bảo dưỡng."""
     _inherit = 'fleet.vehicle.log.services'
 
 
@@ -120,6 +129,7 @@ class FleetServiceRoles(models.Model):
 
     def create(self, vals_list):
 
+        """Chốt chặn nhân viên chỉ tạo phiếu Mới cho xe điện đang hoạt động."""
         if staff_only(self.env):
 
             for values in vals_list:
@@ -155,6 +165,7 @@ class FleetServiceRoles(models.Model):
 
 
     def write(self, vals):
+        """Chặn nhân viên sửa trạng thái, kỹ thuật viên phụ trách hoặc chi phí phiếu bảo dưỡng."""
         if staff_only(self.env) and not self.env.user.has_group('motorbike_fleet_management.group_motorbike_technician'):
             disallowed = {'state', 'technician_id', 'amount', 'cost', 'next_service_date', 'actual_start', 'actual_end', 'blocks_rental', 'active'}
             if set(vals) & disallowed:
@@ -168,6 +179,7 @@ class FleetServiceRoles(models.Model):
 
     def unlink(self):
 
+        """Cấm nhân viên xóa hồ sơ phiếu bảo dưỡng."""
         if staff_only(self.env):
 
             raise AccessError('Nhân viên không được xóa phiếu bảo dưỡng.')
@@ -180,12 +192,14 @@ class FleetServiceRoles(models.Model):
 
     def get_view(self, view_id=None, view_type='form', **options):
 
+        """Ẩn nút Xóa trên giao diện phiếu bảo dưỡng đối với nhân viên thường."""
         return staff_view(super().get_view(view_id, view_type, **options), self.env)
 
 
 
     def _check_staff_service_action(self):
 
+        """Khóa hàng cơ sở dữ liệu và kiểm tra quyền nhân viên trước khi thao tác phiếu."""
         self.ensure_one()
 
         if not staff_only(self.env):
@@ -207,6 +221,7 @@ class FleetServiceRoles(models.Model):
 
 
     def action_claim_ticket(self):
+        """Kỹ thuật viên tự nhận phiếu Mới để thực hiện sửa chữa."""
         if staff_only(self.env):
             self._check_staff_service_action()
             if self.state != 'new':
@@ -219,6 +234,7 @@ class FleetServiceRoles(models.Model):
 
     def action_start(self):
 
+        """Chuyển phiếu Mới sang Đang thực hiện khi đã có kỹ thuật viên phụ trách."""
         if staff_only(self.env):
 
             self._check_staff_service_action()
@@ -235,6 +251,7 @@ class FleetServiceRoles(models.Model):
 
     def action_done(self):
 
+        """Mở hộp thoại bắt buộc nghiệm thu kết quả công việc trước khi hoàn tất bảo dưỡng."""
         if staff_only(self.env):
 
             self._check_staff_service_action()
@@ -255,6 +272,7 @@ class FleetServiceRoles(models.Model):
 
     def action_cancel(self):
 
+        """Chỉ cấp Quản lý xe mới có quyền hủy bỏ phiếu bảo dưỡng."""
         if staff_only(self.env):
 
             raise AccessError('Chỉ quản lý được hủy phiếu bảo dưỡng.')
@@ -267,6 +285,7 @@ class FleetServiceRoles(models.Model):
 
 class ServiceCompleteWizard(models.TransientModel):
 
+    """Hộp thoại Wizard bắt buộc nhập kết quả nghiệm thu khi kết thúc bảo dưỡng."""
     _name = 'motorbike.service.complete.wizard'
 
     _description = 'Nhân viên xác nhận hoàn tất bảo dưỡng'
@@ -281,6 +300,7 @@ class ServiceCompleteWizard(models.TransientModel):
 
     def action_complete(self):
 
+        """Lưu kết quả nghiệm thu công việc và đóng phiếu sang trạng thái Hoàn tất."""
         self.ensure_one()
 
         if self.create_uid != self.env.user:
@@ -307,12 +327,14 @@ class ServiceCompleteWizard(models.TransientModel):
 
 class FleetOdometerRoles(models.Model):
 
+    """Bảo mật công-tơ-mét: Cấm nhân viên chỉnh sửa hoặc xóa lịch sử ODO."""
     _inherit = 'fleet.vehicle.odometer'
 
 
 
     def write(self, vals):
 
+        """Cấm nhân viên chỉnh sửa lịch sử chỉ số ODO đã ghi nhận."""
         if staff_only(self.env):
 
             raise AccessError('Nhân viên không được sửa lịch sử ODO.')
@@ -323,6 +345,7 @@ class FleetOdometerRoles(models.Model):
 
     def unlink(self):
 
+        """Cấm nhân viên xóa bản ghi lịch sử chỉ số ODO."""
         if staff_only(self.env):
 
             raise AccessError('Nhân viên không được xóa lịch sử ODO.')

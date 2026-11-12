@@ -32,6 +32,7 @@ _MODEL_IMAGE_MAPPING = {
 
 
 class FleetVehicleModel(models.Model):
+    """Quản lý dòng xe máy điện và tự động hóa nạp ảnh đại diện thực tế từ thư mục static."""
     _inherit = 'fleet.vehicle.model'
 
     vehicle_type = fields.Selection(
@@ -49,6 +50,7 @@ class FleetVehicleModel(models.Model):
     )
 
     def _register_hook(self):
+        """Tự động nạp ảnh thực tế cho các dòng xe máy điện từ static/src/img nếu chưa có ảnh."""
         super()._register_hook()
         # Đảm bảo môi trường khác khi kéo code về (kể cả database cũ đã tồn tại)
         # vẫn tự động nạp ảnh thực tế cho các dòng xe nếu chưa có ảnh.

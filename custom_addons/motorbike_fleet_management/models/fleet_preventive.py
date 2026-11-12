@@ -7,6 +7,7 @@ from odoo.exceptions import UserError, ValidationError
 
 # Helper module-level dùng chung để kiểm tra chính sách bảo dưỡng trên cả dòng xe và từng xe (DRY)
 def _validate_service_policy(records):
+    """Kiểm tra tính hợp lệ của chu kỳ bảo dưỡng (km, tháng) và ngưỡng cảnh báo báo trước."""
     for record in records:
         values = (record.service_interval_km, record.service_interval_months,
                   record.service_warning_km, record.service_warning_days)
@@ -18,6 +19,7 @@ def _validate_service_policy(records):
 
 class FleetModelPreventive(models.Model):
     # Legacy storage only; no runtime policy inheritance.
+    """Cấu hình chu kỳ bảo dưỡng định kỳ (km, tháng) cho từng dòng xe máy điện."""
     _inherit = 'fleet.vehicle.model'
 
     service_interval_km = fields.Float('Chu kỳ bảo dưỡng (km)', default=0)
@@ -27,10 +29,12 @@ class FleetModelPreventive(models.Model):
 
     @api.constrains('service_interval_km', 'service_interval_months', 'service_warning_km', 'service_warning_days')
     def _check_service_policy(self):
+        """Ràng buộc kiểm tra chu kỳ bảo dưỡng trên danh mục dòng xe."""
         _validate_service_policy(self)
 
 
 class FleetVehiclePreventive(models.Model):
+    """Quản lý mốc bảo dưỡng ban đầu, tính hạn định kỳ và tự động tạo phiếu nhắc việc."""
     _inherit = 'fleet.vehicle'
 
     service_reference_date = fields.Date('Ngày mốc ban đầu', tracking=True,
@@ -53,12 +57,14 @@ class FleetVehiclePreventive(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        """Tự động tạo phiếu bảo dưỡng định kỳ đến hạn khi tạo hồ sơ xe mới."""
         vehicles = super().create(vals_list)
         if not self.env.context.get('install_mode'):
             vehicles._auto_create_due_services()
         return vehicles
 
     def write(self, vals):
+        """Kích hoạt kiểm tra và tự sinh phiếu bảo dưỡng định kỳ khi ODO hoặc chu kỳ xe thay đổi."""
         result = super().write(vals)
         triggers = {'odometer', 'service_interval_km', 'service_interval_months',
                     'service_reference_date', 'service_reference_odo', 'active',
@@ -105,10 +111,12 @@ class FleetVehiclePreventive(models.Model):
 
     @api.constrains('service_interval_km', 'service_interval_months', 'service_warning_km', 'service_warning_days')
     def _check_vehicle_service_policy(self):
+        """Ràng buộc kiểm tra chu kỳ bảo dưỡng định kỳ trên từng xe máy điện."""
         _validate_service_policy(self)
 
     @api.constrains('service_reference_date', 'service_reference_odo', 'odometer')
     def _check_service_reference(self):
+        """Kiểm tra mốc ODO ban đầu và ngày mốc xác minh không được vượt quá hiện tại."""
         for vehicle in self:
             if not math.isfinite(vehicle.service_reference_odo) or vehicle.service_reference_odo < 0:
                 raise ValidationError('ODO mốc ban đầu phải hữu hạn và không âm.')
@@ -123,6 +131,7 @@ class FleetVehiclePreventive(models.Model):
         'log_services.service_odometer', 'log_services.service_odometer_recorded')
     def _compute_service_schedule(self):
         # Include archived completed services: archiving must not reset a milestone.
+        """Tính toán mốc bảo dưỡng gần nhất và hạn định kỳ tiếp theo theo km và theo tháng."""
         services = self.env['fleet.vehicle.log.services'].sudo().with_context(active_test=False).search([
             ('vehicle_id', 'in', self.ids), ('state', '=', 'done'),
             ('maintenance_type', '=', 'preventive'), ('service_odometer_recorded', '=', True),
@@ -141,12 +150,14 @@ class FleetVehiclePreventive(models.Model):
             vehicle.service_next_odo = odo + vehicle.service_interval_km if date and vehicle.service_interval_km else 0
 
     def _maintenance_today(self):
+        """Lấy ngày hiện tại theo múi giờ ngữ cảnh của người dùng để so khớp hạn."""
         return fields.Date.context_today(self)
 
     @api.depends('service_last_date', 'service_next_date', 'service_next_odo', 'next_service_date',
         'odometer', 'is_electric_motorbike', 'service_interval_km',
         'service_interval_months', 'service_warning_km', 'service_warning_days')
     def _compute_service_alert(self):
+        """Xác định trạng thái hạn bảo dưỡng: Chưa đến hạn, Sắp đến hạn, Đến hạn hoặc Quá hạn."""
         today = self._maintenance_today()
         for vehicle in self:
             configured = bool(vehicle.service_interval_km or vehicle.service_interval_months)
@@ -175,8 +186,9 @@ class FleetVehiclePreventive(models.Model):
                     state = 'unconfigured'
                 elif configured and not vehicle.service_last_date:
                     state = 'missing_baseline'
+                    reasons.append('Chưa có mốc ban đầu đã xác minh; vui lòng nhập mốc trong tab Bảo dưỡng định kỳ.')
             elif configured and not vehicle.service_last_date:
-                reasons.append('Chưa có mốc ban đầu đã xác minh; chưa thể tính đầy đủ kỳ bảo dưỡng.')
+                reasons.append('Chưa có mốc ban đầu đã xác minh; vui lòng nhập mốc trong tab Bảo dưỡng định kỳ.')
             if not vehicle.is_electric_motorbike:
                 state, reasons = 'unconfigured', []
             vehicle.service_schedule_state = state
@@ -184,6 +196,7 @@ class FleetVehiclePreventive(models.Model):
 
     @api.model
     def _cron_refresh_service_alerts(self):
+        """Tác vụ cron định kỳ chạy mỗi ngày quét cập nhật cảnh báo hạn và tự sinh phiếu."""
         vehicles = self.search([('is_electric_motorbike', '=', True)])
         for start in range(0, len(vehicles), 500):
             batch = vehicles[start:start + 500]
@@ -191,6 +204,7 @@ class FleetVehiclePreventive(models.Model):
             batch._auto_create_due_services()
 
     def _open_preventive_services(self):
+        """Tìm các phiếu bảo dưỡng định kỳ đang ở trạng thái Mới hoặc Đang thực hiện của xe."""
         return self.env['fleet.vehicle.log.services'].search([
             ('vehicle_id', 'in', self.ids), ('maintenance_type', '=', 'preventive'),
             ('state', 'in', ['new', 'running'])], order='id desc')
@@ -198,6 +212,7 @@ class FleetVehiclePreventive(models.Model):
     @api.depends('log_services.state', 'log_services.maintenance_type', 'log_services.active')
     def _compute_open_preventive_count(self):
         # Tối ưu N+1 Query: Đếm số lượng phiếu bằng 1 truy vấn GROUP BY duy nhất (chuẩn Odoo 18)
+        """Đếm số lượng phiếu bảo dưỡng định kỳ đang mở bằng GROUP BY tối ưu N+1."""
         counts = {vehicle.id: count for vehicle, count in self.env['fleet.vehicle.log.services']._read_group(
             [('vehicle_id', 'in', self.ids), ('maintenance_type', '=', 'preventive'),
              ('state', 'in', ['new', 'running'])],
@@ -207,6 +222,7 @@ class FleetVehiclePreventive(models.Model):
             vehicle.open_preventive_count = counts.get(vehicle.id, 0)
 
     def action_preventive_service(self):
+        """Nút tạo nhanh hoặc mở phiếu bảo dưỡng định kỳ từ màn hình xe máy điện."""
         self.ensure_one()
         self.check_access('write')
         if not self.is_electric_motorbike or not self.active:
@@ -231,6 +247,7 @@ class FleetVehiclePreventive(models.Model):
 
 
 class FleetServicePreventive(models.Model):
+    """Ghi nhận chỉ số ODO khi hoàn tất bảo dưỡng định kỳ làm mốc cho kỳ tiếp theo."""
     _inherit = 'fleet.vehicle.log.services'
 
     service_odometer = fields.Float('ODO lúc hoàn tất (km)', copy=False)
@@ -238,6 +255,7 @@ class FleetServicePreventive(models.Model):
 
     @api.constrains('service_odometer', 'service_odometer_recorded', 'actual_end', 'maintenance_type')
     def _check_completion_odometer(self):
+        """Kiểm tra số ODO ghi nhận lúc hoàn tất bảo dưỡng phải hợp lệ và không vượt ODO xe."""
         for service in self:
             if service.service_odometer_recorded:
                 if not math.isfinite(service.service_odometer) or service.service_odometer < 0:
@@ -246,6 +264,7 @@ class FleetServicePreventive(models.Model):
                     raise ValidationError('ODO hoàn tất không được lớn hơn ODO hiện tại; cập nhật số đo xe trước.')
 
     def write(self, vals):
+        """Tự động chốt số ODO hoàn tất khi phiếu bảo dưỡng chuyển sang trạng thái Hoàn tất."""
         vals = dict(vals)
         if any(service.state in ('done', 'cancelled') for service in self) and (
                 {'service_odometer', 'service_odometer_recorded'} & vals.keys()):

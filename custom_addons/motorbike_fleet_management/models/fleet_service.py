@@ -6,6 +6,7 @@ from odoo.exceptions import UserError, ValidationError
 
 
 class FleetVehicleLogServices(models.Model):
+    """Quản lý vòng đời phiếu bảo dưỡng xe máy điện, cấp mã tự động và phân công kỹ thuật viên."""
     _inherit = 'fleet.vehicle.log.services'
 
     service_code = fields.Char(
@@ -37,6 +38,7 @@ class FleetVehicleLogServices(models.Model):
         'motorbike_fleet_management.service_type_electric_maintenance', raise_if_not_found=False))
 
     def _domain_technician_id(self):
+        """Lọc danh sách kỹ thuật viên: Chỉ lấy người dùng thuộc nhóm Thợ, loại trừ Quản lý/Admin."""
         tech_group = self.env.ref('motorbike_fleet_management.group_motorbike_technician', raise_if_not_found=False)
         manager_group = self.env.ref('motorbike_fleet_management.group_fleet_manager', raise_if_not_found=False)
         if not tech_group:
@@ -54,6 +56,7 @@ class FleetVehicleLogServices(models.Model):
     is_fleet_manager = fields.Boolean(compute='_compute_is_fleet_manager')
 
     def _compute_is_fleet_manager(self):
+        """Xác định người dùng hiện tại có thuộc nhóm Quản lý xe hoặc Quản trị hệ thống hay không."""
         user = self.env.user
         is_mgr = bool(user.has_group('motorbike_fleet_management.group_fleet_manager') or user.has_group('base.group_system'))
         for record in self:
@@ -62,6 +65,7 @@ class FleetVehicleLogServices(models.Model):
     can_claim_ticket = fields.Boolean(compute='_compute_can_claim_ticket')
 
     def _compute_can_claim_ticket(self):
+        """Kiểm tra quyền hiển thị nút Nhận việc dành riêng cho kỹ thuật viên trên phiếu Mới."""
         user = self.env.user
         is_tech = user.has_group('motorbike_fleet_management.group_motorbike_technician')
         is_manager = user.has_group('motorbike_fleet_management.group_fleet_manager') or user.has_group('base.group_system')
@@ -87,17 +91,20 @@ class FleetVehicleLogServices(models.Model):
 
     @api.model
     def _clean_code(cls, val):
+        """Chuẩn hóa mã phiếu: Xóa toàn bộ khoảng trắng và chuyển thành chữ in hoa."""
         if not val:
             return False
         return re.sub(r'\s+', '', str(val)).upper()
 
     @api.depends('service_code')
     def _compute_service_code_key(self):
+        """Tự động tính khóa chuẩn hóa của mã phiếu phục vụ kiểm tra trùng lặp không phân biệt hoa thường."""
         for service in self:
             service.service_code_key = self._clean_code(service.service_code) or False
 
     @api.model
     def _find_next_available_code(self, reserved_codes=None):
+        """Tự động sinh mã phiếu BDxxxxx tăng tuần tự và lấp đầy khoảng trống nếu có."""
         reserved = set(reserved_codes or [])
         records = self.sudo().with_context(active_test=False).search_read(
             [('service_code', '=like', 'BD%')], ['service_code']
@@ -124,6 +131,7 @@ class FleetVehicleLogServices(models.Model):
 
     @api.depends('service_code', 'service_type_id', 'vehicle_id.name')
     def _compute_display_name(self):
+        """Định dạng tên hiển thị của phiếu bảo dưỡng theo chuẩn [Mã] Loại dịch vụ - Xe."""
         super()._compute_display_name()
         for service in self:
             if service.service_code:
@@ -134,6 +142,7 @@ class FleetVehicleLogServices(models.Model):
     @api.constrains('vehicle_id', 'actual_start',
                     'actual_end', 'amount', 'next_service_date', 'date', 'state', 'blocks_rental')
     def _check_maintenance_values(self):
+        """Ràng buộc kiểm tra chi phí không âm, ngày kết thúc sau ngày bắt đầu và mốc hẹn hợp lý."""
         for service in self.filtered('is_electric_motorbike'):
             if not math.isfinite(service.amount) or service.amount < 0:
                 raise ValidationError('Chi phí bảo dưỡng phải là số hữu hạn, không âm.')
@@ -146,12 +155,14 @@ class FleetVehicleLogServices(models.Model):
 
     @api.constrains('technician_id')
     def _check_technician_id(self):
+        """Chặn phân công Quản lý/Admin làm kỹ thuật viên sửa chữa trực tiếp trên phiếu."""
         manager_group = self.env.ref('motorbike_fleet_management.group_fleet_manager', raise_if_not_found=False)
         for service in self.filtered('technician_id'):
             if manager_group and manager_group in service.technician_id.user_ids.groups_id:
                 raise ValidationError('Không được phân công Quản lý/Admin làm kỹ thuật viên sửa chữa.')
 
     def _check_start_vehicle(self):
+        """Kiểm tra xe không bị chặn thuê trước khi bắt đầu thực hiện bảo dưỡng."""
         for service in self.filtered('is_electric_motorbike'):
             vehicle = service.vehicle_id
             if not service.active or not vehicle.active:
@@ -162,6 +173,7 @@ class FleetVehicleLogServices(models.Model):
                 raise UserError('Xe đang được thuê; chưa thể bắt đầu bảo dưỡng chặn thuê.')
 
     def _start_vehicle_maintenance(self):
+        """Khóa xe sang trạng thái Bảo dưỡng và lưu lại trạng thái trước đó khi bắt đầu sửa."""
         for vehicle in self.filtered(lambda s: s.is_electric_motorbike and s.blocks_rental).vehicle_id:
             vals = {'operational_status': 'maintenance', 'technical_ready': False}
             if vehicle.operational_status != 'maintenance':
@@ -169,6 +181,7 @@ class FleetVehicleLogServices(models.Model):
             vehicle._write_operational_state(vals)
 
     def _release_vehicle_maintenance(self):
+        """Khôi phục trạng thái vận hành của xe về trạng thái trước đó sau khi kết thúc bảo dưỡng."""
         for vehicle in self.filtered(lambda s: s.is_electric_motorbike and s.blocks_rental).vehicle_id:
             if not vehicle._running_blocking_services() and vehicle.operational_status == 'maintenance':
                 finished = self.filtered(lambda s: s.vehicle_id == vehicle)
@@ -181,6 +194,7 @@ class FleetVehicleLogServices(models.Model):
 
     # Helper nội bộ bóc tách customer_id từ giao diện/bên ngoài để tự động điền tên và số điện thoại
     def _pop_customer_vals(self, values):
+        """Tách thông tin khách hàng ra khỏi dữ liệu cập nhật để xử lý riêng theo luồng."""
         customer_id = values.pop('customer_id', None)
         if customer_id and not values.get('customer_name'):
             if isinstance(customer_id, int):
@@ -193,6 +207,7 @@ class FleetVehicleLogServices(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        """Tự động cấp mã BDxxxxx và xử lý khóa xe nếu phiếu được tạo ở trạng thái Đang thực hiện."""
         prepared = []
         reserved_in_batch = set()
         for values in vals_list:
@@ -236,6 +251,7 @@ class FleetVehicleLogServices(models.Model):
     def _validate_cost_input(self, values):
         # Monetary fields round before ORM constraints run. Reject invalid input
         # here so import/RPC returns a business error rather than a rounding crash.
+        """Kiểm tra chi phí bảo dưỡng đầu vào phải là số thực hữu hạn và không âm."""
         for key in {'amount', 'cost'} & set(values):
             try:
                 value = float(values[key] or 0)
@@ -245,6 +261,7 @@ class FleetVehicleLogServices(models.Model):
                 raise ValidationError('Chi phí bảo dưỡng phải là số hữu hạn, không âm.')
 
     def write(self, vals):
+        """Kiểm soát vòng đời phiếu bảo dưỡng, ràng buộc đổi thợ, chốt chặn hoàn tất và ghi nhận thời gian."""
         self.check_access('write')
         self._pop_customer_vals(vals)
         if 'technician_id' in vals and not self.env.context.get('is_claim_ticket_action'):
@@ -310,12 +327,14 @@ class FleetVehicleLogServices(models.Model):
 
     def unlink(self):
         # Tập rỗng không có hồ sơ nào để xóa; cho phép Odoo tiếp tục xử lý hóa đơn.
+        """Cấm xóa phiếu bảo dưỡng để bảo toàn lịch sử kỹ thuật phục vụ kiểm định phương tiện."""
         if not self:
             return True
         # Giữ hồ sơ bảo dưỡng ở mọi trạng thái để bảo toàn lịch sử.
         raise UserError('Không được xóa hồ sơ bảo dưỡng; hãy hủy hoặc lưu trữ nếu cần.')
 
     def action_claim_ticket(self):
+        """Kỹ thuật viên tự nhận việc: Gán chính mình vào phiếu và chuyển sang Đang thực hiện."""
         user = self.env.user
         if user.has_group('motorbike_fleet_management.group_fleet_manager') or user.has_group('base.group_system'):
             raise UserError('Quản lý/Admin không nhận việc; thao tác này chỉ dành riêng cho Kỹ thuật viên.')
@@ -331,13 +350,16 @@ class FleetVehicleLogServices(models.Model):
         return True
 
     def action_start(self):
+        """Bắt đầu thực hiện bảo dưỡng: Bắt buộc đã phân công kỹ thuật viên phụ trách."""
         for service in self:
             if service.is_electric_motorbike and not service.technician_id:
                 raise UserError('Vui lòng phân công Kỹ thuật viên phụ trách trước khi bắt đầu thực hiện.')
         return self.write({'state': 'running'})
 
     def action_done(self):
+        """Chuyển trạng thái phiếu bảo dưỡng sang Hoàn tất."""
         return self.write({'state': 'done'})
 
     def action_cancel(self):
+        """Hủy bỏ phiếu bảo dưỡng."""
         return self.write({'state': 'cancelled'})
