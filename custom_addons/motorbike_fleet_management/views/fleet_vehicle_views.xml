@@ -91,22 +91,22 @@
                   <field name="service_interval_km" string="Chu kỳ (km)"/>
                   <field name="service_interval_months" string="Chu kỳ (tháng)"/>
                 </group>
-                <group string="Hạn tiếp theo" invisible="not id">
-                  <field name="service_schedule_state" widget="badge"/>
-                  <field name="service_next_date" string="Ngày dự kiến" invisible="not service_interval_months or not service_last_date"/>
-                  <field name="service_next_odo" string="ODO dự kiến" invisible="not service_interval_km or not service_last_date"/>
-                </group>
-              </group>
-              <group>
                 <group string="Cảnh báo trước">
                   <field name="service_warning_km" string="Báo trước (km)"/>
                   <field name="service_warning_days" string="Báo trước (ngày)"/>
                 </group>
+              </group>
+              <group>
                 <group string="Mốc bảo dưỡng">
                   <field name="service_reference_date" string="Ngày mốc ban đầu"/>
                   <field name="service_reference_odo" string="ODO mốc ban đầu"/>
                   <field name="service_last_date" string="Ngày làm gần nhất" invisible="not id"/>
                   <field name="service_last_odo" string="ODO lúc làm gần nhất" invisible="not id"/>
+                </group>
+                <group string="Hạn tiếp theo" invisible="not id">
+                  <field name="service_schedule_state" widget="badge"/>
+                  <field name="service_next_date" string="Ngày dự kiến" invisible="not service_interval_months or not service_last_date"/>
+                  <field name="service_next_odo" string="ODO dự kiến" invisible="not service_interval_km or not service_last_date"/>
                 </group>
               </group>
             </page>
