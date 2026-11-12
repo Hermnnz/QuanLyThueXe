@@ -43,25 +43,6 @@
     />
 
 
-    <!-- NHÓM CẤU HÌNH -->
-    <menuitem
-        id="menu_motorbike_rental_finance_configuration"
-        name="Cấu hình"
-        parent="menu_motorbike_rental_finance_root"
-        sequence="30"
-    />
-
-    <menuitem
-        id="menu_motorbike_rental_price_catalog"
-        name="Bảng giá"
-        parent="menu_motorbike_rental_finance_configuration"
-        action="action_motorbike_rental_price_catalog"
-        sequence="10"
-    />
-    <record id="menu_motorbike_rental_finance_configuration" model="ir.ui.menu">
-        <field name="active" eval="False"/>
-    </record>
-
         <!-- NHÓM BÁO CÁO -->
     <menuitem
         id="menu_motorbike_rental_finance_reporting"
@@ -78,21 +59,7 @@
         sequence="5"
     />
 
-    <menuitem
-        id="menu_report_payment"
-        name="Báo cáo dòng tiền"
-        parent="menu_motorbike_rental_finance_reporting"
-        action="action_motorbike_rental_payment_report"
-        sequence="10"
-    />
-
-    <menuitem
-        id="menu_report_charge"
-        name="Báo cáo phụ phí"
-        parent="menu_motorbike_rental_finance_reporting"
-        action="action_motorbike_rental_charge_report"
-        sequence="20"
-    />
+    <!-- Hai menu báo cáo riêng đã bỏ khỏi module; Odoo dọn bản ghi menu cũ khi nâng cấp. -->
 
         <!-- Ẩn icon Hóa đơn gốc của Odoo ngoài màn hình chính -->
     <record id="account.menu_finance" model="ir.ui.menu">

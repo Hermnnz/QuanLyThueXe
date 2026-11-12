@@ -73,7 +73,9 @@ class RentalContract(models.Model):
     deposit_amount = fields.Monetary(
         string='Tiền đặt cọc',
         required=True,
-        default=_DEFAULT_RENTAL_DEPOSIT,
+        compute='_compute_deposit_amount',  # Tự tính cọc, nhân viên không nhập số tiền tùy ý.
+        store=True,  # Lưu số tiền vào database để Finance và quyết toán đọc lại.
+        precompute=True,  # Tính ngay khi tạo hợp đồng, trước khi Finance tạo phiếu cọc.
         currency_field='currency_id',
     )
     line_ids = fields.One2many(
@@ -143,6 +145,15 @@ class RentalContract(models.Model):
                 contract.end_date = fields.Datetime.add(
                     contract.start_date, days=contract.rental_days
                 )
+
+    @api.depends('line_ids', 'line_ids.subfleet')  # Tính lại khi thêm/bỏ xe hoặc đánh dấu xe thay thế.
+    def _compute_deposit_amount(self):  # Tính cọc 1 triệu/xe gốc cho bản nháp; giữ cọc đã chốt sau khi ký.
+        for contract in self:  # Xử lý riêng từng hợp đồng.
+            if contract.state == 'draft':  # Chỉ hợp đồng nháp được cập nhật số tiền cọc.
+                original_lines = contract.line_ids.filtered(lambda line: not line.subfleet)  # Bỏ xe thay thế để đổi A sang B không thu thêm cọc.
+                contract.deposit_amount = len(original_lines) * _DEFAULT_RENTAL_DEPOSIT  # Mỗi dòng là một xe: 3 xe = 3 triệu; chưa có xe = 0.
+            else:  # Đã ký, đang thuê, hoàn tất hoặc hủy: giữ nguyên tiền cọc lịch sử.
+                contract.deposit_amount = contract.deposit_amount  # Không tính lại cọc khi thêm xe thay thế sau khi ký.
 
     @api.depends('line_ids.subtotal', 'currency_id')
     def _compute_total_amount(self):

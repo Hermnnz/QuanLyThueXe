@@ -63,7 +63,8 @@
                         <group string="Chi phí">
                             <field name="currency_id" invisible="1"/>
                             <field name="rental_days" readonly="state != 'draft'"/>
-                            <field name="deposit_amount" readonly="state != 'draft'"/>
+                            <!-- Cọc tự tính 1 triệu/xe gốc; chỉ hiển thị, không cho nhập tay. -->
+                            <field name="deposit_amount" readonly="1"/>
                             <field name="total_amount"/>
                         </group>
                     </group>

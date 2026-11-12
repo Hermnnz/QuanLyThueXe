@@ -98,34 +98,4 @@
     </field>
 
     </record>
-
-
-    
-    <!-- Pivot View biểu đồ-->
-    <record id="view_motorbike_rental_charge_pivot" model="ir.ui.view">
-        <field name="name">motorbike.rental.charge.pivot</field>
-        <field name="model">motorbike.rental.charge</field>
-        <field name="arch" type="xml">
-            <pivot string="Phân tích phụ phí phát sinh" sample="1">
-                <field name="charge_date" interval="month" type="row"/>
-                <field name="price_catalog_id" type="row"/>
-                <field name="quantity" type="measure"/>
-                <field name="amount" type="measure"/>
-            </pivot>
-        </field>
-    </record>
-
-
-    <!--Graph View biểu đồ-->
-    <record id="view_motorbike_rental_charge_graph" model="ir.ui.view">
-        <field name="name">motorbike.rental.charge.graph</field>
-        <field name="model">motorbike.rental.charge</field>
-        <field name="arch" type="xml">
-            <graph string="Biểu đồ phụ phí phát sinh" type="bar" sample="1">
-                <field name="price_catalog_id"/>
-                <field name="charge_date" interval="month"/>
-                <field name="amount"/>
-            </graph>
-        </field>
-    </record>
 </odoo>

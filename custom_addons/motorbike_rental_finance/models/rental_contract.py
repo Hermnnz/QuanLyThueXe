@@ -378,6 +378,7 @@ class RentalContract(models.Model):
         # Hàm được gọi tự bỏ qua hợp đồng không còn nháp và phiếu cọc đã xác nhận.
         if (
             "deposit_amount" in vals
+            or "line_ids" in vals  # Thêm/bỏ xe làm cọc tự tính thay đổi; phải cập nhật phiếu cọc nháp theo.
             or "customer_id" in vals
             or "currency_id" in vals
         ):
@@ -477,11 +478,3 @@ class RentalContract(models.Model):
             contract.total_penalty_amount = penalties  # Cập nhật tổng phụ phí hiển thị trên hợp đồng.
             # Làm tròn theo quy tắc của đồng tiền, tránh tạo khoản thu/hoàn do sai số số thực.
             contract.settlement_balance = contract.currency_id.round(balance)
-
-    # 6. Các hàm Action / Nghiệp vụ (nút bấm button)
-    def action_settlement(self):  # Chặn quy trình quyết toán riêng cũ và hướng dẫn xác nhận thu/hoàn ngay trên hóa đơn.
-        # action_settlement là tên hàm của nút quyết toán trước đây; giữ tên hàm để thao tác cũ
-        # nếu còn gọi tới sẽ nhận được hướng dẫn rõ ràng, thay vì lỗi "không tìm thấy hàm".
-        # raise nghĩa là phát sinh lỗi có chủ đích; UserError giúp Odoo hiện thông báo cho nhân viên.
-        # Hàm này không tạo phiếu tiền và không đổi trạng thái hợp đồng.
-        raise UserError("Vui lòng xác nhận thu/hoàn tiền ngay trên hóa đơn của hợp đồng.")

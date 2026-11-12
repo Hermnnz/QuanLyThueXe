@@ -23,3 +23,6 @@ venv/
 /archive/year-demo-20261002/
 /archive/before-week6-scope-20261002/
 scratch/
+
+# Tài liệu và báo cáo chỉ lưu trên máy, không đưa lên Git.
+/docs/

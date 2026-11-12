@@ -12,7 +12,7 @@
     "depends": [
         "base",
         "account",        
-        "spreadsheet_dashboard",  # Thêm module Dashboard của Odoo
+        "spreadsheet_dashboard_account",  # Kế thừa đúng Dashboard hóa đơn chuẩn Odoo.
         "motorbike_rental_operation",   # Thêm module Vận hành của Giang
     ],
 
@@ -25,6 +25,8 @@
         "views/account_move_views.xml",
         "views/account_move_off.xml",  # Hạn chế giao diện kế toán gốc; nạp sau form hóa đơn Finance.
         "views/finance_actions.xml",
+        "views/rental_finance_report_views.xml",  # Các màn hình chi tiết khi xem số liệu từ Dashboard.
+        "data/rental_finance_dashboard.xml",  # Nạp trực tiếp bố cục Dashboard đã bỏ phần thừa, dùng trình hiển thị chuẩn Odoo.
         "views/finance_menu.xml",
         # Bộ cấp số cho các phiếu thanh toán.
         "data/rental_payment_sequence.xml",
