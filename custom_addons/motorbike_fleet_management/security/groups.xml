@@ -1,18 +1,32 @@
 <odoo>
+    <!-- 1. Danh mục hiển thị riêng cho module: Quản lý Đội xe -->
+    <record id="module_category_motorbike_fleet" model="ir.module.category">
+        <field name="name">Quản lý Đội xe</field>
+        <field name="description">Phân quyền cho phân hệ Quản lý Đội xe máy điện.</field>
+        <field name="sequence">32</field>
+    </record>
+
+    <!-- 2. Nhân viên quản lý xe -->
     <record id="group_fleet_staff" model="res.groups">
         <field name="name">Nhân viên quản lý xe</field>
-        <field name="category_id" ref="base.module_category_human_resources_fleet"/>
+        <field name="category_id" ref="module_category_motorbike_fleet"/>
         <field name="implied_ids" eval="[(4, ref('fleet.fleet_group_user'))]"/>
     </record>
-    <record id="group_fleet_manager" model="res.groups">
-        <field name="name">Quản lý xe</field>
-        <field name="category_id" ref="base.module_category_human_resources_fleet"/>
-        <field name="implied_ids" eval="[(4, ref('fleet.fleet_group_manager')), (4, ref('group_fleet_staff'))]"/>
-    </record>
+
+    <!-- 3. Kỹ thuật viên xe điện -->
     <record id="group_motorbike_technician" model="res.groups">
         <field name="name">Kỹ thuật viên xe điện</field>
+        <field name="category_id" ref="module_category_motorbike_fleet"/>
         <field name="implied_ids" eval="[(4, ref('group_fleet_staff'))]"/>
     </record>
+
+    <!-- 4. Quản lý xe -->
+    <record id="group_fleet_manager" model="res.groups">
+        <field name="name">Quản lý xe</field>
+        <field name="category_id" ref="module_category_motorbike_fleet"/>
+        <field name="implied_ids" eval="[(4, ref('fleet.fleet_group_manager')), (4, ref('group_motorbike_technician'))]"/>
+    </record>
+
     <!-- Rental officers manage shared electric vehicles, not personal driver cars.
          Native global multi-company rules still apply. ACLs remain unchanged. -->
     <record id="rule_electric_vehicle_officer" model="ir.rule">

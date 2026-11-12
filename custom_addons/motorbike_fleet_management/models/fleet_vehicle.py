@@ -6,14 +6,15 @@ from odoo.exceptions import ValidationError, UserError
 
 
 class FleetVehicle(models.Model):
+    """Hồ sơ phương tiện xe máy điện: Quản lý vòng đời, biển số, ODO và khả dụng cho thuê."""
     _inherit = 'fleet.vehicle'
 
-    is_electric_motorbike = fields.Boolean('Xe máy điện', tracking=True)
+    is_electric_motorbike = fields.Boolean('Xe máy điện', default=True, tracking=True)
     license_plate = fields.Char(copy=False)
     odometer = fields.Float(
         string='Số ODO hiện tại (km)', compute=None, inverse=None, store=True, default=0.0,
         help='Tổng số km xe đã chạy, tự động cập nhật sau mỗi chuyến thuê.')
-    vehicle_code = fields.Char('Mã xe', copy=False, index=True)
+    vehicle_code = fields.Char('M\u00e3 xe', copy=False, index=True, default=lambda self: self._find_next_available_code())
     license_plate_key = fields.Char(compute='_compute_identity_keys', store=True, copy=False, index=True)
     vehicle_code_key = fields.Char(compute='_compute_identity_keys', store=True, copy=False, index=True)
     if hasattr(models, 'Constraint'):
@@ -40,44 +41,176 @@ class FleetVehicle(models.Model):
     rental_blocked = fields.Boolean('Khóa thuê', tracking=True)
     block_reason = fields.Text('Lý do khóa')
     next_service_date = fields.Date('Ngày bảo dưỡng tiếp theo')
+    custom_image_128 = fields.Image('Ảnh riêng phương tiện', max_width=1024, max_height=1024)
+    image_128 = fields.Image(
+        string='Ảnh phương tiện',
+        compute='_compute_image_128',
+        inverse='_inverse_image_128',
+        readonly=False,
+    )
+
+    @api.depends('custom_image_128', 'model_id.image_128')
+    def _compute_image_128(self):
+        """Ưu tiên hiển thị ảnh riêng của xe, nếu chưa có thì lấy ảnh mặc định của dòng xe."""
+        for vehicle in self:
+            vehicle.image_128 = vehicle.custom_image_128 or vehicle.model_id.image_128
+
+    def _inverse_image_128(self):
+        """Lưu ảnh người dùng tải lên trực tiếp vào trường ảnh riêng custom_image_128."""
+        for vehicle in self:
+            vehicle.custom_image_128 = vehicle.image_128
+
+    # Helper tĩnh chuẩn hóa mã xe: bỏ toàn bộ khoảng trắng thừa và viết in hoa
+    @staticmethod
+    def _clean_code(val):
+        """Chuẩn hóa mã xe: Xóa toàn bộ khoảng trắng thừa và viết in hoa."""
+        return ''.join((val or '').split()).upper()
+
+    @classmethod
+    def _format_license_plate(cls, val):
+        """Tự động định dạng biển số xe máy điện Việt Nam chuẩn (VD: 59-MD1 086.72, 29-E1 123.45)."""
+        if not val:
+            return val
+        val = str(val).strip().upper()
+        key = re.sub(r'[\W_]+', '', val)
+        if not key:
+            return val
+
+        # 1. Biển 5 số đuôi: 123.45
+        # 1A. Sê-ri 3 ký tự (VD: 59-MD1 086.72)
+        m = re.match(r'^(\d{2})([A-Z]{2}\d)(\d{3})(\d{2})$', key)
+        if m:
+            p, s, n1, n2 = m.groups()
+            return f"{p}-{s} {n1}.{n2}"
+        # 1B. Sê-ri 2 ký tự (1 chữ + 1 số như E1, hoặc 2 chữ như AB: 29-E1 123.45)
+        m = re.match(r'^(\d{2})([A-Z]\d|[A-Z]{2})(\d{3})(\d{2})$', key)
+        if m:
+            p, s, n1, n2 = m.groups()
+            return f"{p}-{s} {n1}.{n2}"
+
+        # 2. Biển 4 số đuôi: 1234 (Biển 4 số truyền thống)
+        # Sê-ri 2 ký tự (1 chữ + 1 số như H3, K1 hoặc 2 chữ như AA, AB: 29-H3 1234)
+        m = re.match(r'^(\d{2})([A-Z]\d|[A-Z]{2})(\d{4})$', key)
+        if m:
+            p, s, n = m.groups()
+            return f"{p}-{s} {n}"
+        # Sê-ri 1 chữ (VD: 29-H 1234)
+        m = re.match(r'^(\d{2})([A-Z])(\d{4})$', key)
+        if m:
+            p, s, n = m.groups()
+            return f"{p}-{s} {n}"
+
+        # 3. Biển 5 số đuôi với sê-ri 1 chữ
+        m = re.match(r'^(\d{2})([A-Z])(\d{3})(\d{2})$', key)
+        if m:
+            p, s, n1, n2 = m.groups()
+            return f"{p}-{s} {n1}.{n2}"
+
+        return val
+
+    @api.onchange('license_plate')
+    def _onchange_license_plate(self):
+        """Tự động kích hoạt chuẩn hóa biển số ngay khi người dùng nhập trên giao diện form."""
+        if self.license_plate:
+            self.license_plate = self._format_license_plate(self.license_plate)
+
+    # Helper kiểm tra hãng hoặc dòng xe có còn đang hoạt động không
+    def _check_active_catalog(self, model_id, msg):
+        """Kiểm tra tính hợp lệ: Hãng xe và dòng xe phải đang mở hoạt động trong hệ thống."""
+        model = self.env['fleet.vehicle.model'].browse(model_id)
+        if model and (not model.active or not model.brand_id.active):
+            raise UserError(msg)
 
     @api.depends('license_plate', 'vehicle_code')
     def _compute_identity_keys(self):
+        """Tính toán khóa định danh chuẩn hóa của mã xe và biển số phục vụ chống trùng lặp."""
         for vehicle in self:
             vehicle.license_plate_key = re.sub(r'[\W_]+', '', vehicle.license_plate or '').upper() or False
-            vehicle.vehicle_code_key = ''.join((vehicle.vehicle_code or '').split()).upper() or False
+            vehicle.vehicle_code_key = self._clean_code(vehicle.vehicle_code) or False
+
+    @api.model
+    def _find_next_available_code(self, reserved_codes=None):
+        """Thuật toán tự động sinh mã xe XExxxxx tuần tự và lấp đầy khoảng trống nhỏ nhất."""
+        reserved = set(reserved_codes or [])
+        records = self.sudo().with_context(active_test=False).search_read(
+            [('vehicle_code', '=like', 'XE%')], ['vehicle_code']
+        )
+        used_nums = set()
+        for rec in records:
+            val = (rec.get('vehicle_code') or '').strip().upper()
+            if val.startswith('XE') and val[2:].isdigit():
+                try:
+                    used_nums.add(int(val[2:]))
+                except ValueError:
+                    pass
+        for val in reserved:
+            val = (val or '').strip().upper()
+            if val.startswith('XE') and val[2:].isdigit():
+                try:
+                    used_nums.add(int(val[2:]))
+                except ValueError:
+                    pass
+        candidate = 1
+        while candidate in used_nums:
+            candidate += 1
+        return f"XE{candidate:05d}"
+
+    @api.model
+    def default_get(self, fields_list):
+        """Tự động gợi ý mã xe tiếp theo khả dụng khi người dùng mở form tạo xe mới."""
+        res = super().default_get(fields_list)
+        if 'is_electric_motorbike' in fields_list:
+            res.setdefault('is_electric_motorbike', True)
+        return res
 
     @api.model_create_multi
     def create(self, vals_list):
+        """Tự động cấp mã xe không trùng lặp và gán trạng thái ban đầu khi tạo phương tiện."""
         prepared = []
+        reserved_in_batch = set()
         for values in vals_list:
             values = dict(values)
-            code = ''.join((values.get('vehicle_code') or '').split()).upper()
-            while not code:
-                candidate = self.env['ir.sequence'].next_by_code('motorbike.fleet.vehicle')
-                if not candidate:
-                    raise UserError('Chưa cấu hình bộ cấp mã phương tiện.')
-                if not self.sudo().with_context(active_test=False).search_count([('vehicle_code_key', '=', candidate)]):
-                    code = candidate
+            if 'is_electric_motorbike' not in values:
+                values['is_electric_motorbike'] = True
+            code = self._clean_code(values.get('vehicle_code'))
+            if not code:
+                code = self._find_next_available_code(reserved_codes=reserved_in_batch)
+            elif code.startswith('XE') and (self.sudo().with_context(active_test=False).search_count([('vehicle_code_key', '=', code)]) or code in reserved_in_batch):
+                code = self._find_next_available_code(reserved_codes=reserved_in_batch)
+            reserved_in_batch.add(code)
             values['vehicle_code'] = code
             if values.get('license_plate'):
-                values['license_plate'] = values['license_plate'].strip().upper()
-            vehicle_model = self.env['fleet.vehicle.model'].browse(values.get('model_id'))
-            if vehicle_model and (not vehicle_model.active or not vehicle_model.brand_id.active):
-                raise UserError('Không tạo xe từ hãng hoặc dòng xe đã ngừng sử dụng.')
+                formatted_plate = self._format_license_plate(values['license_plate'])
+                clean_plate = re.sub(r'[\W_]+', '', formatted_plate)
+                if clean_plate:
+                    dup = self.sudo().with_context(active_test=False).search([('license_plate_key', '=', clean_plate)], limit=1)
+                    if dup:
+                        raise ValidationError(f"Biển số '{formatted_plate}' đã được sử dụng cho xe {dup.vehicle_code} ('{dup.license_plate}'). Hệ thống không cho phép trùng biển số.")
+                values['license_plate'] = formatted_plate
+            self._check_active_catalog(values.get('model_id'), 'Không tạo xe từ hãng hoặc dòng xe đã ngừng sử dụng.')
             if values.get('active') is False or values.get('operational_status') == 'inactive':
                 values.update(active=False, operational_status='inactive', technical_ready=False)
             prepared.append(values)
         return super().create(prepared)
 
     def write(self, vals):
+        """Kiểm soát cập nhật hồ sơ xe, chuẩn hóa biển số và xác thực chuyển đổi trạng thái."""
         vals = dict(vals)
         if 'vehicle_code' in vals:
-            vals['vehicle_code'] = ''.join((vals['vehicle_code'] or '').split()).upper()
+            vals['vehicle_code'] = self._clean_code(vals['vehicle_code'])
             if not vals['vehicle_code']:
                 raise ValidationError('Không được xóa mã phương tiện đã cấp.')
         if vals.get('license_plate'):
-            vals['license_plate'] = vals['license_plate'].strip().upper()
+            formatted_plate = self._format_license_plate(vals['license_plate'])
+            clean_plate = re.sub(r'[\W_]+', '', formatted_plate)
+            if clean_plate:
+                dup = self.sudo().with_context(active_test=False).search([
+                    ('license_plate_key', '=', clean_plate),
+                    ('id', 'not in', self.ids),
+                ], limit=1)
+                if dup:
+                    raise ValidationError(f"Biển số '{formatted_plate}' đã được sử dụng cho xe {dup.vehicle_code} ('{dup.license_plate}'). Hệ thống không cho phép trùng biển số.")
+            vals['license_plate'] = formatted_plate
         electric = self.filtered('is_electric_motorbike')
         if 'odometer' in vals and electric:
             new_odo = vals['odometer']
@@ -96,8 +229,6 @@ class FleetVehicle(models.Model):
                 raise UserError('Chỉ khôi phục các xe ngừng hoạt động trong cùng một thao tác.')
             vals.update(operational_status='pending_inspection', technical_ready=False)
         for vehicle in electric:
-            if vals.get('active') is False and vehicle.operational_status == 'renting':
-                raise UserError('Không ngừng sử dụng xe đang thuê; cần nhận trả trước.')
             if vals.get('is_electric_motorbike') is False:
                 if (vehicle.operational_status in ('renting', 'maintenance')
                         or self.env['fleet.vehicle.log.services'].sudo().with_context(active_test=False).search_count([
@@ -106,9 +237,7 @@ class FleetVehicle(models.Model):
             if vehicle.operational_status != 'available' and vals.get('operational_status') == 'available':
                 raise ValidationError('Dùng nghiệp vụ nhận trả hoặc nút xác nhận đạt kỹ thuật để đưa xe về Sẵn sàng.')
         if 'model_id' in vals:
-            model = self.env['fleet.vehicle.model'].browse(vals['model_id'])
-            if model and (not model.active or not model.brand_id.active):
-                raise UserError('Không chọn hãng hoặc dòng xe đã ngừng sử dụng.')
+            self._check_active_catalog(vals['model_id'], 'Không chọn hãng hoặc dòng xe đã ngừng sử dụng.')
         return super().write(vals)
 
     def _write_operational_state(self, values):
@@ -118,15 +247,34 @@ class FleetVehicle(models.Model):
 
     def unlink(self):
         # Preserve vehicle identity and all business references, even for sudo.
+        """Cấm xóa phương tiện trong bất kỳ trường hợp nào; bắt buộc dùng tính năng Lưu trữ."""
         raise UserError('Không được xóa phương tiện trong bất kỳ trường hợp nào. Hãy dùng Lưu trữ / Ngừng sử dụng.')
 
     @api.constrains('odometer', 'is_electric_motorbike')
     def _check_current_odometer(self):
+        """Ràng buộc chỉ số ODO xe phải là số hữu hạn và không âm."""
         for vehicle in self.filtered('is_electric_motorbike'):
             if not math.isfinite(vehicle.odometer) or vehicle.odometer < 0:
                 raise UserError('ODO hiện tại phải là số hữu hạn, không âm.')
 
+    @api.constrains('license_plate')
+    def _check_unique_license_plate(self):
+        """Kiểm tra biển số xe không được trùng lặp với các xe khác trong hệ thống."""
+        for vehicle in self:
+            if not vehicle.license_plate_key:
+                continue
+            duplicate = self.sudo().with_context(active_test=False).search([
+                ('license_plate_key', '=', vehicle.license_plate_key),
+                ('id', '!=', vehicle.id),
+            ], limit=1)
+            if duplicate:
+                raise ValidationError(
+                    f"Biển số '{vehicle.license_plate}' đã trùng với xe {duplicate.vehicle_code} "
+                    f"('{duplicate.license_plate}'). Hệ thống chuẩn hóa tự động và chặn trùng dù chèn khoảng trắng, gạch ngang, dấu chấm hay đổi chữ hoa/thường."
+                )
+
     def action_open_rental_services(self):
+        """Mở danh sách các phiếu bảo dưỡng liên quan trực tiếp đến xe máy điện này."""
         self.ensure_one()
         self.check_access('read')
         action = self.env['ir.actions.actions']._for_xml_id(
@@ -137,6 +285,7 @@ class FleetVehicle(models.Model):
 
     def _running_blocking_services(self):
         # Check all records after access to the vehicle has been checked by the caller.
+        """Lọc các phiếu bảo dưỡng đang thực hiện có bật tùy chọn tạm chặn thuê xe."""
         return self.env['fleet.vehicle.log.services'].sudo().search([
             ('vehicle_id', 'in', self.ids), ('state', '=', 'running'),
             ('blocks_rental', '=', True), ('active', '=', True)])
@@ -144,7 +293,11 @@ class FleetVehicle(models.Model):
     @api.constrains('is_electric_motorbike', 'operational_status', 'technical_ready',
                     'rental_blocked', 'block_reason', 'active')
     def _check_rental_condition(self):
-        for vehicle in self.filtered('is_electric_motorbike'):
+        """Kiểm tra xe có đáp ứng đủ điều kiện sẵn sàng để bàn giao cho khách thuê hay không."""
+        electric = self.filtered('is_electric_motorbike')
+        # Batch prefetch các xe đang bảo dưỡng để tránh truy vấn lặp trong vòng lặp kiểm tra
+        blocking_ids = set(electric._running_blocking_services().mapped('vehicle_id').ids) if electric else set()
+        for vehicle in electric:
             if vehicle.rental_blocked and not (vehicle.block_reason or '').strip():
                 raise ValidationError('Cần nhập lý do khi khóa thuê xe.')
             if (vehicle.operational_status == 'inactive') != (not vehicle.active):
@@ -155,11 +308,23 @@ class FleetVehicle(models.Model):
                 raise ValidationError('Xe sẵn sàng phải đạt điều kiện kỹ thuật.')
             if vehicle.operational_status in ('pending_inspection', 'maintenance') and vehicle.technical_ready:
                 raise ValidationError('Xe chờ kiểm tra hoặc bảo dưỡng chưa được đánh dấu đạt kỹ thuật.')
-            if vehicle._running_blocking_services() and (
+            if vehicle.id in blocking_ids and (
                     vehicle.operational_status != 'maintenance' or vehicle.technical_ready):
                 raise ValidationError('Xe đang bảo dưỡng chặn thuê phải ở trạng thái bảo dưỡng và chưa đạt kỹ thuật.')
 
+    def action_save_and_view(self):
+        """Lưu form xe mới và chuyển ngay sang chế độ xem chi tiết hồ sơ phương tiện."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'fleet.vehicle',
+            'view_mode': 'form',
+            'res_id': self.id,
+            'target': 'current',
+        }
+
     def action_confirm_technical_ready(self):
+        """Xác nhận xe đã kiểm tra đạt chuẩn kỹ thuật và chuyển sang trạng thái Sẵn sàng."""
         self.check_access('write')
         for vehicle in self:
             if not vehicle.is_electric_motorbike or not vehicle.active:
@@ -172,6 +337,7 @@ class FleetVehicle(models.Model):
 
     @api.model
     def _rental_period(self, start, end):
+        """Chuẩn hóa khoảng thời gian thuê xe sang định dạng Datetime chuẩn UTC."""
         try:
             start, end = fields.Datetime.to_datetime(start), fields.Datetime.to_datetime(end)
         except (TypeError, ValueError):
@@ -181,6 +347,7 @@ class FleetVehicle(models.Model):
         return start, end
 
     def _maintenance_overlaps(self, start, end):
+        """Kiểm tra lịch bảo dưỡng có bị trùng lặp với khoảng thời gian khách đặt thuê hay không."""
         self.ensure_one()
         # Only work already in progress blocks rental. Drafts reserve no time.
         return any(not service.actual_start or service.actual_start < end
@@ -194,6 +361,11 @@ class FleetVehicle(models.Model):
         """
         self.check_access('read')
         start, end = self._rental_period(start, end)
+        # Batch prefetch các xe đang có lịch bảo dưỡng trùng khoảng thời gian thuê (tránh N+1)
+        blocking_ids = {
+            s.vehicle_id.id for s in self._running_blocking_services()
+            if not s.actual_start or s.actual_start < end
+        }
         result = []
         for vehicle in self:
             reasons = []
@@ -207,12 +379,13 @@ class FleetVehicle(models.Model):
                 reasons.append('not_technical_ready')
             if vehicle.rental_blocked:
                 reasons.append('rental_blocked')
-            if vehicle._maintenance_overlaps(start, end):
+            if vehicle.id in blocking_ids:
                 reasons.append('blocking_maintenance')
             result.append({'vehicle_id': vehicle.id, 'fleet_ok': not reasons, 'reasons': reasons})
         return result
 
     def _record_operation_odometer(self, value, measured_at):
+        """Ghi nhận chỉ số ODO từ quy trình giao/trả xe và tự sinh bản ghi lịch sử ODO."""
         self.ensure_one()
         if value is None:
             return
