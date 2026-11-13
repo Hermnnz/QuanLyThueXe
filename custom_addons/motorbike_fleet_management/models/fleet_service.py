@@ -1,11 +1,34 @@
 import math
+import re
 
 from odoo import api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
 
 class FleetVehicleLogServices(models.Model):
+    """Quản lý vòng đời phiếu bảo dưỡng xe máy điện, cấp mã tự động và phân công kỹ thuật viên."""
     _inherit = 'fleet.vehicle.log.services'
+
+    service_code = fields.Char(
+        string='Mã phiếu', copy=False, index=True,
+        default=lambda self: self._find_next_available_code(),
+    )
+    service_code_key = fields.Char(
+        compute='_compute_service_code_key', store=True, copy=False, index=True,
+    )
+
+    if hasattr(models, 'Constraint'):
+        _service_code_unique = models.Constraint('UNIQUE(service_code)', 'Mã phiếu bảo dưỡng đã tồn tại.')
+        _normalized_service_code_unique = models.Constraint(
+            'UNIQUE(service_code_key)',
+            'Mã phiếu bảo dưỡng đã tồn tại (không phân biệt hoa thường/khoảng trắng).'
+        )
+    else:
+        _sql_constraints = [
+            ('service_code_unique', 'UNIQUE(service_code)', 'Mã phiếu bảo dưỡng đã tồn tại.'),
+            ('normalized_service_code_unique', 'UNIQUE(service_code_key)',
+             'Mã phiếu bảo dưỡng đã tồn tại (không phân biệt hoa thường/khoảng trắng).'),
+        ]
 
     is_electric_motorbike = fields.Boolean(related='vehicle_id.is_electric_motorbike')
     vehicle_code = fields.Char(related='vehicle_id.vehicle_code', string='Mã phương tiện', readonly=True)
@@ -13,7 +36,43 @@ class FleetVehicleLogServices(models.Model):
     customer_phone = fields.Char(string='Số điện thoại khách hàng')
     service_type_id = fields.Many2one(default=lambda self: self.env.ref(
         'motorbike_fleet_management.service_type_electric_maintenance', raise_if_not_found=False))
-    technician_id = fields.Many2one('res.partner', string='Kỹ thuật viên')
+
+    def _domain_technician_id(self):
+        """Lọc danh sách kỹ thuật viên: Chỉ lấy người dùng thuộc nhóm Thợ, loại trừ Quản lý/Admin."""
+        tech_group = self.env.ref('motorbike_fleet_management.group_motorbike_technician', raise_if_not_found=False)
+        manager_group = self.env.ref('motorbike_fleet_management.group_fleet_manager', raise_if_not_found=False)
+        if not tech_group:
+            return []
+        domain = [('user_ids.groups_id', 'in', [tech_group.id])]
+        if manager_group:
+            domain.append(('user_ids.groups_id', 'not in', [manager_group.id]))
+        return domain
+
+    technician_id = fields.Many2one(
+        'res.partner',
+        string='Kỹ thuật viên',
+        domain=_domain_technician_id,
+    )
+    is_fleet_manager = fields.Boolean(compute='_compute_is_fleet_manager')
+
+    def _compute_is_fleet_manager(self):
+        """Xác định người dùng hiện tại có thuộc nhóm Quản lý xe hoặc Quản trị hệ thống hay không."""
+        user = self.env.user
+        is_mgr = bool(user.has_group('motorbike_fleet_management.group_fleet_manager') or user.has_group('base.group_system'))
+        for record in self:
+            record.is_fleet_manager = is_mgr
+
+    can_claim_ticket = fields.Boolean(compute='_compute_can_claim_ticket')
+
+    def _compute_can_claim_ticket(self):
+        """Kiểm tra quyền hiển thị nút Nhận việc dành riêng cho kỹ thuật viên trên phiếu Mới."""
+        user = self.env.user
+        is_tech = user.has_group('motorbike_fleet_management.group_motorbike_technician')
+        is_manager = user.has_group('motorbike_fleet_management.group_fleet_manager') or user.has_group('base.group_system')
+        can_claim = bool(is_tech and not is_manager)
+        for record in self:
+            record.can_claim_ticket = bool(can_claim and record.state == 'new' and record.is_electric_motorbike)
+
     result = fields.Text('Kết quả / công việc đã thực hiện', copy=False)
     next_service_date = fields.Date('Ngày bảo dưỡng tiếp theo')
     maintenance_type = fields.Selection([
@@ -21,25 +80,89 @@ class FleetVehicleLogServices(models.Model):
     ], default='preventive', required=True, string='Loại bảo dưỡng')
     actual_start = fields.Datetime('Ngày bắt đầu', copy=False)
     actual_end = fields.Datetime('Ngày kết thúc', copy=False)
-    blocks_rental = fields.Boolean('Ghi nhận chặn thuê', default=True)
+    blocks_rental = fields.Boolean('Tạm khóa xe khi bảo dưỡng', default=True)
     cost = fields.Monetary(related='amount', readonly=False, string='Chi phí')
-    state = fields.Selection(copy=False)
+    state = fields.Selection([
+        ('new', 'Mới'),
+        ('running', 'Đang thực hiện'),
+        ('done', 'Hoàn tất'),
+        ('cancelled', 'Đã hủy'),
+    ], string='Trạng thái', copy=False)
+
+    @api.model
+    def _clean_code(cls, val):
+        """Chuẩn hóa mã phiếu: Xóa toàn bộ khoảng trắng và chuyển thành chữ in hoa."""
+        if not val:
+            return False
+        return re.sub(r'\s+', '', str(val)).upper()
+
+    @api.depends('service_code')
+    def _compute_service_code_key(self):
+        """Tự động tính khóa chuẩn hóa của mã phiếu phục vụ kiểm tra trùng lặp không phân biệt hoa thường."""
+        for service in self:
+            service.service_code_key = self._clean_code(service.service_code) or False
+
+    @api.model
+    def _find_next_available_code(self, reserved_codes=None):
+        """Tự động sinh mã phiếu BDxxxxx tăng tuần tự và lấp đầy khoảng trống nếu có."""
+        reserved = set(reserved_codes or [])
+        records = self.sudo().with_context(active_test=False).search_read(
+            [('service_code', '=like', 'BD%')], ['service_code']
+        )
+        used_nums = set()
+        for rec in records:
+            val = (rec.get('service_code') or '').strip().upper()
+            if val.startswith('BD') and val[2:].isdigit():
+                try:
+                    used_nums.add(int(val[2:]))
+                except ValueError:
+                    pass
+        for val in reserved:
+            val = (val or '').strip().upper()
+            if val.startswith('BD') and val[2:].isdigit():
+                try:
+                    used_nums.add(int(val[2:]))
+                except ValueError:
+                    pass
+        candidate = 1
+        while candidate in used_nums:
+            candidate += 1
+        return f"BD{candidate:05d}"
+
+    @api.depends('service_code', 'service_type_id', 'vehicle_id.name')
+    def _compute_display_name(self):
+        """Định dạng tên hiển thị của phiếu bảo dưỡng theo chuẩn [Mã] Loại dịch vụ - Xe."""
+        super()._compute_display_name()
+        for service in self:
+            if service.service_code:
+                type_name = service.service_type_id.name or 'Bảo dưỡng'
+                vehicle_name = f" - {service.vehicle_id.name}" if service.vehicle_id else ""
+                service.display_name = f"[{service.service_code}] {type_name}{vehicle_name}"
 
     @api.constrains('vehicle_id', 'actual_start',
                     'actual_end', 'amount', 'next_service_date', 'date', 'state', 'blocks_rental')
     def _check_maintenance_values(self):
+        """Ràng buộc kiểm tra chi phí không âm, ngày kết thúc sau ngày bắt đầu và mốc hẹn hợp lý."""
         for service in self.filtered('is_electric_motorbike'):
             if not math.isfinite(service.amount) or service.amount < 0:
                 raise ValidationError('Chi phí bảo dưỡng phải là số hữu hạn, không âm.')
-            for start, end in [(service.actual_start, service.actual_end)]:
-                if end and not start:
-                    raise ValidationError('Cần nhập thời gian bắt đầu trước thời gian kết thúc.')
-                if start and end and end < start:
-                    raise ValidationError('Thời gian kết thúc không được trước thời gian bắt đầu.')
+            if service.actual_end and not service.actual_start:
+                raise ValidationError('Cần nhập thời gian bắt đầu trước thời gian kết thúc.')
+            if service.actual_start and service.actual_end and service.actual_end < service.actual_start:
+                raise ValidationError('Thời gian kết thúc không được trước thời gian bắt đầu.')
             if service.next_service_date and service.date and service.next_service_date <= service.date:
                 raise ValidationError('Mốc bảo dưỡng tiếp theo phải sau ngày hồ sơ bảo dưỡng.')
 
+    @api.constrains('technician_id')
+    def _check_technician_id(self):
+        """Chặn phân công Quản lý/Admin làm kỹ thuật viên sửa chữa trực tiếp trên phiếu."""
+        manager_group = self.env.ref('motorbike_fleet_management.group_fleet_manager', raise_if_not_found=False)
+        for service in self.filtered('technician_id'):
+            if manager_group and manager_group in service.technician_id.user_ids.groups_id:
+                raise ValidationError('Không được phân công Quản lý/Admin làm kỹ thuật viên sửa chữa.')
+
     def _check_start_vehicle(self):
+        """Kiểm tra xe không bị chặn thuê trước khi bắt đầu thực hiện bảo dưỡng."""
         for service in self.filtered('is_electric_motorbike'):
             vehicle = service.vehicle_id
             if not service.active or not vehicle.active:
@@ -50,6 +173,7 @@ class FleetVehicleLogServices(models.Model):
                 raise UserError('Xe đang được thuê; chưa thể bắt đầu bảo dưỡng chặn thuê.')
 
     def _start_vehicle_maintenance(self):
+        """Khóa xe sang trạng thái Bảo dưỡng và lưu lại trạng thái trước đó khi bắt đầu sửa."""
         for vehicle in self.filtered(lambda s: s.is_electric_motorbike and s.blocks_rental).vehicle_id:
             vals = {'operational_status': 'maintenance', 'technical_ready': False}
             if vehicle.operational_status != 'maintenance':
@@ -57,30 +181,38 @@ class FleetVehicleLogServices(models.Model):
             vehicle._write_operational_state(vals)
 
     def _release_vehicle_maintenance(self):
+        """Khôi phục trạng thái vận hành của xe về trạng thái trước đó sau khi kết thúc bảo dưỡng."""
         for vehicle in self.filtered(lambda s: s.is_electric_motorbike and s.blocks_rental).vehicle_id:
             if not vehicle._running_blocking_services() and vehicle.operational_status == 'maintenance':
                 finished = self.filtered(lambda s: s.vehicle_id == vehicle)
-                passed = bool(finished) and all(s.state == 'done' for s in finished)
-                is_previously_available = (vehicle.pre_maintenance_status == 'available')
-                target_status = 'available' if (passed and is_previously_available) else 'pending_inspection'
-                target_ready = bool(passed and is_previously_available)
+                # Xe chỉ trở về Sẵn sàng nếu trước khi bảo dưỡng xe đã sẵn sàng và tất cả phiếu đều hoàn tất (passed)
+                ready = bool(finished) and all(s.state == 'done' for s in finished) and vehicle.pre_maintenance_status == 'available'
                 vehicle._write_operational_state({
-                    'operational_status': target_status,
-                    'technical_ready': target_ready,
+                    'operational_status': 'available' if ready else 'pending_inspection',
+                    'technical_ready': ready,
                     'pre_maintenance_status': False})
+
+    # Helper nội bộ bóc tách customer_id từ giao diện/bên ngoài để tự động điền tên và số điện thoại
+    def _pop_customer_vals(self, values):
+        """Tách thông tin khách hàng ra khỏi dữ liệu cập nhật để xử lý riêng theo luồng."""
+        customer_id = values.pop('customer_id', None)
+        if customer_id and not values.get('customer_name'):
+            if isinstance(customer_id, int):
+                partner = self.env['res.partner'].browse(customer_id)
+                values['customer_name'] = partner.name
+                if not values.get('customer_phone') and (partner.phone or partner.mobile):
+                    values['customer_phone'] = partner.phone or partner.mobile
+            elif isinstance(customer_id, str):
+                values['customer_name'] = customer_id
 
     @api.model_create_multi
     def create(self, vals_list):
+        """Tự động cấp mã BDxxxxx và xử lý khóa xe nếu phiếu được tạo ở trạng thái Đang thực hiện."""
+        prepared = []
+        reserved_in_batch = set()
         for values in vals_list:
-            cid = values.pop('customer_id', None)
-            if cid and not values.get('customer_name'):
-                if isinstance(cid, int):
-                    partner = self.env['res.partner'].browse(cid)
-                    values['customer_name'] = partner.name
-                    if not values.get('customer_phone') and (partner.phone or partner.mobile):
-                        values['customer_phone'] = partner.phone or partner.mobile
-                elif isinstance(cid, str):
-                    values['customer_name'] = cid
+            values = dict(values)
+            self._pop_customer_vals(values)
             vehicle = self.env['fleet.vehicle'].browse(
                 values.get('vehicle_id') or self.env.context.get('default_vehicle_id'))
             if vehicle.is_electric_motorbike:
@@ -94,8 +226,19 @@ class FleetVehicleLogServices(models.Model):
                          for key in ('amount', 'cost') if 'default_' + key in self.env.context}
                 costs.update(values)
                 self._validate_cost_input(costs)
+
+            # Auto-assign service_code if not set or colliding
+            code = self._clean_code(values.get('service_code'))
+            if not code:
+                code = self._find_next_available_code(reserved_codes=reserved_in_batch)
+            elif code.startswith('BD') and (self.sudo().with_context(active_test=False).search_count([('service_code_key', '=', code)]) or code in reserved_in_batch):
+                code = self._find_next_available_code(reserved_codes=reserved_in_batch)
+            reserved_in_batch.add(code)
+            values['service_code'] = code
+            prepared.append(values)
+
         # Completed historical records may be imported; they do not change today's vehicle state.
-        services = super().create(vals_list)
+        services = super().create(prepared)
         running = services.filtered(lambda s: s.is_electric_motorbike and s.state == 'running')
         running._check_start_vehicle()
         for service in running:
@@ -108,9 +251,8 @@ class FleetVehicleLogServices(models.Model):
     def _validate_cost_input(self, values):
         # Monetary fields round before ORM constraints run. Reject invalid input
         # here so import/RPC returns a business error rather than a rounding crash.
-        for key in ('amount', 'cost'):
-            if key not in values:
-                continue
+        """Kiểm tra chi phí bảo dưỡng đầu vào phải là số thực hữu hạn và không âm."""
+        for key in {'amount', 'cost'} & set(values):
             try:
                 value = float(values[key] or 0)
             except (TypeError, ValueError, OverflowError):
@@ -119,16 +261,18 @@ class FleetVehicleLogServices(models.Model):
                 raise ValidationError('Chi phí bảo dưỡng phải là số hữu hạn, không âm.')
 
     def write(self, vals):
+        """Kiểm soát vòng đời phiếu bảo dưỡng, ràng buộc đổi thợ, chốt chặn hoàn tất và ghi nhận thời gian."""
         self.check_access('write')
-        cid = vals.pop('customer_id', None)
-        if cid and not vals.get('customer_name'):
-            if isinstance(cid, int):
-                partner = self.env['res.partner'].browse(cid)
-                vals['customer_name'] = partner.name
-                if not vals.get('customer_phone') and (partner.phone or partner.mobile):
-                    vals['customer_phone'] = partner.phone or partner.mobile
-            elif isinstance(cid, str):
-                vals['customer_name'] = cid
+        self._pop_customer_vals(vals)
+        if 'technician_id' in vals and not self.env.context.get('is_claim_ticket_action'):
+            user = self.env.user
+            if not (user.has_group('motorbike_fleet_management.group_fleet_manager') or user.has_group('base.group_system')):
+                raise UserError('Chỉ Quản lý xe mới có quyền phân công Kỹ thuật viên.')
+        if 'service_code' in vals:
+            cleaned = self._clean_code(vals['service_code'])
+            if not cleaned:
+                raise ValidationError('Không được xóa mã phiếu bảo dưỡng đã cấp.')
+            vals['service_code'] = cleaned
         target = self.env['fleet.vehicle'].browse(vals.get('vehicle_id'))
         electric = self.filtered(lambda s: s.is_electric_motorbike or target.is_electric_motorbike)
         if electric:
@@ -149,6 +293,10 @@ class FleetVehicleLogServices(models.Model):
                 raise UserError('Chuyển trạng thái bảo dưỡng không hợp lệ.')
         starting = changed if vals.get('state') == 'running' else self.browse()
         ending = changed.filtered(lambda s: s.state == 'running') if vals.get('state') in ('done', 'cancelled') else self.browse()
+        for service in starting:
+            tech = vals.get('technician_id', service.technician_id)
+            if not tech:
+                raise UserError('Vui lòng phân công Kỹ thuật viên phụ trách trước khi bắt đầu thực hiện.')
         starting._check_start_vehicle()
         for service in changed:
             if vals.get('state') == 'done' and not (vals.get('result', service.result) or '').strip():
@@ -179,16 +327,39 @@ class FleetVehicleLogServices(models.Model):
 
     def unlink(self):
         # Tập rỗng không có hồ sơ nào để xóa; cho phép Odoo tiếp tục xử lý hóa đơn.
+        """Cấm xóa phiếu bảo dưỡng để bảo toàn lịch sử kỹ thuật phục vụ kiểm định phương tiện."""
         if not self:
             return True
         # Giữ hồ sơ bảo dưỡng ở mọi trạng thái để bảo toàn lịch sử.
         raise UserError('Không được xóa hồ sơ bảo dưỡng; hãy hủy hoặc lưu trữ nếu cần.')
 
+    def action_claim_ticket(self):
+        """Kỹ thuật viên tự nhận việc: Gán chính mình vào phiếu và chuyển sang Đang thực hiện."""
+        user = self.env.user
+        if user.has_group('motorbike_fleet_management.group_fleet_manager') or user.has_group('base.group_system'):
+            raise UserError('Quản lý/Admin không nhận việc; thao tác này chỉ dành riêng cho Kỹ thuật viên.')
+        if not user.has_group('motorbike_fleet_management.group_motorbike_technician'):
+            raise UserError('Chỉ Kỹ thuật viên xe điện mới có quyền nhận việc.')
+        for service in self:
+            if service.state != 'new':
+                raise UserError('Chỉ có thể nhận các phiếu đang ở trạng thái Mới.')
+            service.with_context(is_claim_ticket_action=True).write({
+                'technician_id': user.partner_id.id,
+                'state': 'running',
+            })
+        return True
+
     def action_start(self):
+        """Bắt đầu thực hiện bảo dưỡng: Bắt buộc đã phân công kỹ thuật viên phụ trách."""
+        for service in self:
+            if service.is_electric_motorbike and not service.technician_id:
+                raise UserError('Vui lòng phân công Kỹ thuật viên phụ trách trước khi bắt đầu thực hiện.')
         return self.write({'state': 'running'})
 
     def action_done(self):
+        """Chuyển trạng thái phiếu bảo dưỡng sang Hoàn tất."""
         return self.write({'state': 'done'})
 
     def action_cancel(self):
+        """Hủy bỏ phiếu bảo dưỡng."""
         return self.write({'state': 'cancelled'})
