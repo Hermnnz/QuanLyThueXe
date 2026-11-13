@@ -331,7 +331,7 @@ class RentalOperationTicketVehicle(models.Model):
                 'is_selected': False,
             })
             if rec.vehicle_id and not rec.subfleet:
-                rec.vehicle_id.write({'operational_status': 'renting'})
+                rec.vehicle_id.sudo().write({'operational_status': 'renting'})
         self._sync_delivery_receipt_state()
 
     @api.model_create_multi
@@ -355,7 +355,7 @@ class RentalOperationTicketVehicle(models.Model):
             if rec.status == 'renting':
                 rec._sync_contract_in_progress()
                 if rec.vehicle_id:
-                    rec.vehicle_id.write({'operational_status': 'renting'})
+                    rec.vehicle_id.sudo().write({'operational_status': 'renting'})
         return records
 
     def _sync_delivery_receipt_state(self):
@@ -412,7 +412,7 @@ class RentalOperationTicketVehicle(models.Model):
                         )[:1]
                         if not original:
                             raise UserError(_('Không tìm thấy xe A trong hợp đồng.'))
-                        ex.contract_line_b_id = self.env['rental.contract.line'].with_context(
+                        ex.contract_line_b_id = self.env['rental.contract.line'].sudo().with_context(
                             allow_vehicle_exchange=True
                         ).create({
                             'contract_id': ticket.contract_id.id,
@@ -420,6 +420,8 @@ class RentalOperationTicketVehicle(models.Model):
                             'vehicle_type_id': original.vehicle_type_id.id,
                             'daily_rate': original.daily_rate,
                             'subfleet': True,
+                            'return_deadline': original.return_deadline,  # Xe B kế thừa hạn trả của A, không lấy hạn muộn nhất của xe khác.
+                            'billing_line_id': (original.billing_line_id or original).id,  # A→B→C vẫn chỉ tính tiền vào cùng một dòng thuê gốc.
                             'notes': _('Đổi xe: thay cho %s') % ex.vehicle_a_id.display_name,
                         })
                     ex.write({'status': 'done'})
@@ -448,7 +450,7 @@ class RentalOperationTicketVehicle(models.Model):
                 rec.ticket_id.actual_delivery_date = fields.Datetime.now()
             rec._sync_contract_in_progress()
             if rec.vehicle_id:
-                rec.vehicle_id.write({'operational_status': 'renting'})
+                rec.vehicle_id.sudo().write({'operational_status': 'renting'})
         self._sync_delivery_receipt_state()
         self._sync_return_receipt_state()
         self._check_and_sync_vehicle_exchanges()
@@ -477,7 +479,7 @@ class RentalOperationTicketVehicle(models.Model):
                     if not rec.ticket_id.actual_return_date:
                         rec.ticket_id.actual_return_date = fields.Datetime.now()
             if rec.vehicle_id:
-                rec.vehicle_id.write({
+                rec.vehicle_id.sudo().write({
                     'operational_status': 'pending_inspection',
                     'technical_ready': False,
                 })
@@ -512,14 +514,15 @@ class RentalOperationTicketVehicle(models.Model):
                     name = rec._get_vehicle_label()
                     raise UserError(f'Xe {name} đã được thu hồi hoàn tất, không được phép chỉnh sửa Giờ thu hồi xe!')
 
+        # Quyền sửa dòng vận hành đã được kiểm tra trước khi đồng bộ trạng thái xe bằng quyền hệ thống.
         res = super(RentalOperationTicketVehicle, self).write(vals)
         if 'status' in vals:
             for rec in self:
                 if rec.vehicle_id:
                     if vals['status'] == 'renting' or (vals['status'] == 'delivering' and not rec.subfleet):
-                        rec.vehicle_id.write({'operational_status': 'renting'})
+                        rec.vehicle_id.sudo().write({'operational_status': 'renting'})
                     elif vals['status'] == 'returned':
-                        rec.vehicle_id.write({
+                        rec.vehicle_id.sudo().write({
                             'operational_status': 'pending_inspection',
                             'technical_ready': False,
                         })

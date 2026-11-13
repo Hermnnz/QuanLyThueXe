@@ -50,7 +50,8 @@ class TestWeek7Fleet(TransactionCase):
         self.assertEqual(service.cost, 500000)
         service.action_done()
         self.assertEqual(service.state, 'done')
-        service.unlink()
+        with self.assertRaises(UserError):
+            service.unlink()
 
     def test_vehicle_validation(self):
         for values in [{'operational_status': 'available'}, {'rental_blocked': True},
@@ -100,6 +101,28 @@ class TestWeek7Fleet(TransactionCase):
             self.vehicle.action_confirm_technical_ready()
         second.action_cancel()
         self.assertEqual(self.vehicle.operational_status, 'pending_inspection')
+
+    def test_maintenance_release_respects_previous_status(self):
+        # 1. Xe tu pending_inspection -> bao duong xong -> van o pending_inspection
+        self.vehicle.write({'operational_status': 'pending_inspection', 'technical_ready': False})
+        service1 = self.service(result='Da sua xong')
+        service1.action_start()
+        self.assertEqual(self.vehicle.operational_status, 'maintenance')
+        service1.action_done()
+        self.assertEqual(self.vehicle.operational_status, 'pending_inspection')
+        self.assertFalse(self.vehicle.technical_ready)
+        # Quan ly duyet ky thuat -> moi sang available
+        self.vehicle.action_confirm_technical_ready()
+        self.assertEqual(self.vehicle.operational_status, 'available')
+        self.assertTrue(self.vehicle.technical_ready)
+
+        # 2. Xe tu available -> bao duong xong -> tu dong ve available
+        service2 = self.service(result='Bao duong dinh ky xong')
+        service2.action_start()
+        self.assertEqual(self.vehicle.operational_status, 'maintenance')
+        service2.action_done()
+        self.assertEqual(self.vehicle.operational_status, 'available')
+        self.assertTrue(self.vehicle.technical_ready)
 
     def test_nonblocking_and_cancel_draft(self):
         self.vehicle.action_confirm_technical_ready()
@@ -199,7 +222,8 @@ class TestWeek7Fleet(TransactionCase):
             'service_id': service.id, 'result': 'Đã sửa'}).action_complete()
         with self.assertRaises(AccessError), self.cr.savepoint():
             service.unlink()
-        service.with_user(manager).unlink()
+        with self.assertRaises(UserError), self.cr.savepoint():
+            service.with_user(manager).unlink()
         with self.assertRaises(AccessError), self.cr.savepoint():
             self.vehicle.with_user(outsider).action_confirm_technical_ready()
 
@@ -214,7 +238,8 @@ class TestWeek7Fleet(TransactionCase):
         ordinary = self.env['fleet.vehicle'].create({'model_id': self.model.id})
         service = self.env['fleet.vehicle.log.services'].create({'vehicle_id': ordinary.id})
         service.write({'state': 'done'})
-        service.write({'state': 'new'})
+        with self.assertRaises(UserError), self.cr.savepoint():
+            service.write({'state': 'new'})
         self.vehicle.operational_status = 'renting'
         with self.assertRaises(UserError), self.cr.savepoint():
             service.write({'vehicle_id': self.vehicle.id, 'state': 'running'})

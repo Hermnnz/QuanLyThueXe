@@ -1,0 +1,71 @@
+# -*- coding: utf-8 -*-
+import base64
+import logging
+import os
+from pathlib import Path
+
+from odoo import fields, models, tools
+from odoo.tools.misc import file_path
+
+_logger = logging.getLogger(__name__)
+
+_MODEL_IMAGE_MAPPING = {
+    'model_vinfast_evo200': 'vinfast_evo200.jpg',
+    'model_vinfast_evo200_lite': 'vinfast_evo200_lite.webp',
+    'model_vinfast_feliz_s': 'vinfast_feliz_s.webp',
+    'model_vinfast_klara_s': 'vinfast_klara_s.jpg',
+    'model_vinfast_vento_s': 'vinfast_vento_s.jpg',
+    'model_vinfast_theon_s': 'vinfast_theon_s.jpg',
+    'model_vinfast_ludo': 'vinfast_ludo.jpg',
+    'model_vinfast_impes': 'vinfast_impes.png',
+    'model_vinfast_klara_a2': 'vinfast_klara_a2.jpg',
+    'model_vinfast_feliz': 'vinfast_feliz.webp',
+    'model_datbike_weaver': 'datbike_weaver.jpg',
+    'model_datbike_weaver_200': 'datbike_weaver_200.jpg',
+    'model_datbike_weaver_pp': 'datbike_weaver_pp.jpg',
+    'model_datbike_quantum': 'datbike_quantum.jpg',
+    'model_datbike_quantum_s1': 'datbike_quantum_s1.jpg',
+    'model_datbike_quantum_s2': 'datbike_quantum_s2.jpg',
+    'model_datbike_quantum_s3': 'datbike_quantum_s3.jpg',
+    'model_datbike_era': 'datbike_era.webp',
+}
+
+
+class FleetVehicleModel(models.Model):
+    """Quản lý dòng xe máy điện và tự động hóa nạp ảnh đại diện thực tế từ thư mục static."""
+    _inherit = 'fleet.vehicle.model'
+
+    vehicle_type = fields.Selection(
+        selection=[('car', 'Car'), ('bike', 'Bike')],
+        default='bike',
+        required=True,
+    )
+    image_128 = fields.Image(
+        string='Ảnh dòng xe',
+        max_width=512,
+        max_height=512,
+        readonly=False,
+        store=True,
+        help='Ảnh chụp thực tế của dòng xe máy điện.',
+    )
+
+    def _register_hook(self):
+        """Tự động nạp ảnh thực tế cho các dòng xe máy điện từ static/src/img nếu chưa có ảnh."""
+        super()._register_hook()
+        # Đảm bảo môi trường khác khi kéo code về (kể cả database cũ đã tồn tại)
+        # vẫn tự động nạp ảnh thực tế cho các dòng xe nếu chưa có ảnh.
+        updated = False
+        for xml_id, img_file in _MODEL_IMAGE_MAPPING.items():
+            model = self.env.ref(f'motorbike_fleet_management.{xml_id}', raise_if_not_found=False)
+            if model and not model.image_128:
+                try:
+                    img_path = file_path(f'motorbike_fleet_management/static/src/img/{img_file}')
+                    if img_path and os.path.isfile(img_path):
+                        # Nạp dữ liệu ảnh dưới dạng base64 trực tiếp qua Path
+                        model.sudo().write({'image_128': base64.b64encode(Path(img_path).read_bytes())})
+                        updated = True
+                except Exception as e:
+                    _logger.warning('Không thể nạp ảnh tự động cho %s: %s', xml_id, e)
+        # Khóa an toàn: không commit khi đang chạy test để bảo toàn rollback của TransactionCase
+        if updated and not tools.config.get('test_enable'):
+            self.env.cr.commit()

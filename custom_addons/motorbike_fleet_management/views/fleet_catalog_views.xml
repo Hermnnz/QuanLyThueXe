@@ -8,12 +8,14 @@
       <xpath expr="//sheet" position="replace">
         <sheet>
           <widget name="web_ribbon" title="Đã lưu trữ" bg_color="text-bg-danger" invisible="active"/>
-          <field name="image_128" widget="image" class="oe_avatar"/>
+          <field name="image_128" widget="image" class="oe_avatar" readonly="0"/>
           <group string="Thông tin dòng xe">
-            <field name="name" string="Tên dòng xe"/>
+            <field name="name" string="Tên dòng xe" placeholder="Ví dụ: Quantum S3" required="1"/>
+            <field name="brand_id" string="Hãng xe" placeholder="Chọn hoặc tạo hãng xe..." required="1"/>
+            <field name="vehicle_type" invisible="not id"/>
+          </group>
+          <group string="Trạng thái" invisible="not id">
             <field name="active" string="Đang sử dụng"/>
-            <field name="brand_id" string="Hãng xe"/>
-            <field name="vehicle_type" string="Loại phương tiện"/>
           </group>
         </sheet>
       </xpath>
@@ -48,7 +50,7 @@
     <field name="inherit_id" ref="fleet.fleet_vehicle_model_brand_view_form"/>
     <field name="arch" type="xml">
       <xpath expr="//field[@name='name']" position="after">
-        <field name="active" string="Đang sử dụng"/>
+            <field name="active" string="Đang sử dụng"/>
       </xpath>
     </field>
   </record>

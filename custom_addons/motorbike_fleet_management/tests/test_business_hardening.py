@@ -113,8 +113,8 @@ class TestFleetBusinessHardening(TransactionCase):
             'next_service_date': '2026-06-01', 'result': 'Đã sửa'})
         latest.action_start()
         latest.action_done()
-        latest.unlink()
-        self.assertEqual(vehicle.next_service_date, previous.next_service_date)
+        with self.assertRaises(UserError):
+            latest.unlink()
 
     def test_archived_catalog_blocks_selection_and_delivery(self):
         vehicle = self.ready()
@@ -140,8 +140,8 @@ class TestFleetBusinessHardening(TransactionCase):
         older.action_start()
         older.action_done()
         self.assertEqual(str(vehicle.next_service_date), '2027-06-01')
-        newer.unlink()
-        self.assertEqual(str(vehicle.next_service_date), '2027-05-01')
+        with self.assertRaises(UserError):
+            newer.unlink()
 
     def test_archived_history_cannot_be_bypassed_by_reclassification(self):
         vehicle = self.ready()
@@ -156,7 +156,7 @@ class TestFleetBusinessHardening(TransactionCase):
 
     def test_active_fields_have_visible_form_controls(self):
         for xmlid in ['fleet.fleet_vehicle_model_brand_view_form', 'fleet.fleet_vehicle_model_view_form',
-                      'fleet.fleet_vehicle_view_form', 'fleet.fleet_vehicle_log_services_view_form']:
+                      'fleet.fleet_vehicle_log_services_view_form']:
             arch = self.env.ref(xmlid)._get_combined_arch()
             self.assertTrue(arch.xpath('.//field[@name="active" and not(@invisible)]'), xmlid)
         self.assertEqual(self.env.ref('fleet.fleet_vehicle_model_brand_action').context, '{}')

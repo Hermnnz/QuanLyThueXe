@@ -8,7 +8,8 @@ class RentalContract(models.Model):
     def action_confirm(self):
         """Ký hợp đồng thành công rồi tạo một phiếu vận hành Chưa thực hiện."""
         result = super().action_confirm()  # Chỉ tạo phiếu sau khi hợp đồng và hai khoản tiền đã được xác nhận.
-        Ticket = self.env['rental.operation.ticket']  # Model lưu phiếu vận hành.
+        # Hệ thống tạo phiếu sau khi đã kiểm tra quyền ký; nhân viên hợp đồng không được tự sửa vận hành.
+        Ticket = self.env['rental.operation.ticket'].sudo()
         VehicleLine = self.env['rental.operation.ticket.vehicle']  # Model đọc tình trạng ngoại quan xe.
 
         for contract in self:  # Một thao tác có thể xác nhận nhiều hợp đồng.
@@ -54,7 +55,8 @@ class RentalContract(models.Model):
         res = super(RentalContract, self).action_cancel() if hasattr(super(RentalContract, self), 'action_cancel') else True
         for contract in self:
             tickets = self.env['rental.operation.ticket'].search([('contract_id', '=', contract.id)])
-            tickets.action_contract_cancelled()
+            # Đồng bộ hủy từ hợp đồng; không cấp quyền sửa phiếu vận hành cho nhân viên hợp đồng.
+            tickets.sudo().action_contract_cancelled()
         return res
 
     def write(self, vals):
@@ -73,7 +75,7 @@ class RentalContract(models.Model):
         if vals.get('state') == 'cancelled':
             for contract in self:
                 tickets = self.env['rental.operation.ticket'].search([('contract_id', '=', contract.id)])
-                tickets.action_contract_cancelled()
+                tickets.sudo().action_contract_cancelled()  # Hủy tự động sau khi hợp đồng đã hủy hợp lệ.
         return res
 
 

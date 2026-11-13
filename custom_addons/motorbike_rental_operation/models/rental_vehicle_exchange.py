@@ -200,12 +200,18 @@ class RentalVehicleExchange(models.Model):
             # trạng thái chưa giao xe, ngày & giờ giao trống, địa chỉ nhận mặc định tại cửa hàng
             if rec.ticket_id:
                 ext_condition = self.env['rental.operation.ticket.vehicle']._get_vehicle_exterior_condition(rec.vehicle_b_id)
+                original_line = contract.line_ids.filtered(lambda line: line.vehicle_id == rec.vehicle_a_id)[:1]  # Lấy hạn riêng của xe A trước khi đổi.
+                deadline = original_line.return_deadline or contract.end_date  # B không nhận nhầm lịch của xe khác đã gia hạn.
+                local_end = fields.Datetime.context_timestamp(rec, deadline)  # Ngày/giờ thu hồi hiển thị theo múi giờ người dùng.
                 t_line_vals = {
                     'ticket_id': rec.ticket_id.id,
                     'vehicle_id': rec.vehicle_b_id.id,
                     'vehicle_price': daily_rate,
                     'status': 'waiting',
                     'subfleet': True,
+                    'date_checkin': deadline,  # Giữ đủ mốc thời gian để kiểm tra và thu hồi xe B.
+                    'return_date': local_end.date(),  # Ngày dự kiến thu hồi xe thay thế.
+                    'return_time': local_end.strftime('%H:%M'),  # Giờ dự kiến thu hồi xe thay thế.
                     'delivery_date': False,
                     'delivery_time': False,
                     'delivery_location': 'Tại cửa hàng',

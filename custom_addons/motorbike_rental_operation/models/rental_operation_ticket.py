@@ -121,8 +121,8 @@ class RentalOperationTicket(models.Model):
                     checkout_time = loc_dt.strftime('%H:%M')
                 checkin_date = False
                 checkin_time = False
-                if self.contract_id.end_date:
-                    loc_dt_in = fields.Datetime.context_timestamp(self, self.contract_id.end_date)
+                if line.return_deadline:  # Tạo lại lịch vận hành vẫn phải giữ hạn riêng của từng xe.
+                    loc_dt_in = fields.Datetime.context_timestamp(self, line.return_deadline)
                     checkin_date = loc_dt_in.date()
                     checkin_time = loc_dt_in.strftime('%H:%M')
                 vehicle_vals = {
@@ -135,7 +135,7 @@ class RentalOperationTicket(models.Model):
                     'delivery_time': checkout_time or False,
                     'return_time': checkin_time or False,
                     'date_checkout': self.contract_id.start_date,
-                    'date_checkin': self.contract_id.end_date,
+                    'date_checkin': line.return_deadline,  # Không kéo xe A/C theo xe B đã gia hạn.
                     'actual_delivery_date': False,
                     'actual_return_date': False,
                     'status': 'waiting',

@@ -22,17 +22,22 @@ class RentalContract(models.Model):
         "contract_id",
         string="Lịch sử thanh toán",
     )
+    
     upfront_received_check = fields.Boolean(string="Đã nhận cọc và tiền thuê", copy=False)  # Sao chép hợp đồng không sao chép dấu tích đã nhận tiền.
-    upfront_payment_method = fields.Selection(  # Phương thức khách đã dùng để trả cả tiền cọc và tiền thuê.
+    
+    upfront_payment_method = fields.Selection(  # Phương thức thanh toán
         [("cash", "Tiền mặt"), ("bank_transfer", "Chuyển khoản"), ("credit_card", "Thẻ")],  # Các giá trị kỹ thuật phải khớp với phiếu tiền.
         string="Phương thức nhận tiền",  # Tên hiển thị cạnh ô xác nhận đã nhận đủ tiền.
         copy=False,  # Sao chép hợp đồng không tự nhận lại phương thức của giao dịch cũ.
     )
+    
     invoice_ids = fields.One2many(
         "account.move",
         "contract_id",
         string="Hóa đơn",
     )
+    
+    
     settlement_status = fields.Selection(
         selection=[
             ("unsettled", "Chưa quyết toán"),
@@ -60,14 +65,7 @@ class RentalContract(models.Model):
 
     # 4. Các hàm Constraints ( @api.constrains , _sql_constraints )
 
-    def _check_returned_before_invoice(self):  # Kiểm tra từng hợp đồng đã được thu hồi đủ xe trước khi cho lập hóa đơn.
-        """Dùng chung một điều kiện thu hồi cho mọi đường lập hóa đơn thuê xe.
-
-        Operations là nơi xác nhận giao/nhận. Finance chỉ đọc các dòng đó,
-        không tự sửa trạng thái phiếu vận hành hoặc trạng thái xe Fleet.
-        Hàm có thể nhận nhiều hợp đồng; một hợp đồng chưa đủ điều kiện
-        sẽ làm thao tác lập/xác nhận hóa đơn bị từ chối bằng UserError.
-        """
+    def _check_returned_before_invoice(self):  # Kiểm tra hợp đồng thu đủ xe chưa trước khi lập hóa đơn
         for contract in self:
             # Một hợp đồng có thể có nhiều phiếu; phải xét tất cả phiếu
             # liên quan, không chỉ lấy phiếu đầu tiên hoặc phiếu đã xong.
@@ -77,7 +75,7 @@ class RentalContract(models.Model):
             operation_lines = tickets.mapped('vehicle_detail_ids')
 
             # Đối chiếu danh sách xe thực tế: một phiếu đã trả hết xe của
-            # riêng nó vẫn chưa đủ nếu còn xe hợp đồng chưa có dòng vận hành.
+            # riêng nó vẫn chưa đủ nếu còn xe hợp đồng chưa có dòng vận hành.        
             contract_vehicles = contract.line_ids.mapped('vehicle_id')
             operation_vehicles = operation_lines.mapped('vehicle_id')
             missing_vehicles = contract_vehicles - operation_vehicles
@@ -98,6 +96,17 @@ class RentalContract(models.Model):
                     % contract.name
                 )
 
+
+
+    """ tự tạo hoặc cập nhật phiếu thu tiền thuê theo hợp đồng:
+
+- Chỉ xử lý hợp đồng còn **Nháp**.
+- Nếu đã có phiếu **xác nhận thu tiền** thì giữ nguyên.
+- Nếu chưa thu: cập nhật phiếu cũ hoặc tạo phiếu Nháp mới theo tổng tiền hợp đồng.
+- Nếu tổng tiền bằng 0: hủy phiếu Nháp hiện có.
+
+Mục đích: **giữ phiếu thu khớp với hợp đồng khi chỉnh sửa, chưa xác nhận khách đã trả tiền**.""" 
+
     def _sync_draft_rent_payment(self):  # Tạo hoặc cập nhật phiếu tiền thuê Nháp.
         Payment = self.env["motorbike.rental.payment"].sudo()  # Lấy model phiếu tiền.
         for contract in self:  # Xử lý từng hợp đồng.
@@ -106,7 +115,7 @@ class RentalContract(models.Model):
 
             rents = Payment.search([("contract_id", "=", contract.id), ("transaction_type", "=", "rental_payment")])  # Tìm phiếu thuê đã có.
             if rents.filtered(lambda p: p.state == "confirmed"):  # Đã xác nhận thu tiền thì giữ nguyên.
-                continue  # Không tự sửa số tiền đã thu.
+                continue  
 
             rent = rents.filtered(lambda p: p.state in ("draft", "cancelled"))[:1]  # Dùng lại phiếu Nháp hoặc Đã hủy.
             amount = contract.total_amount  # Lấy tổng tiền thuê từ hợp đồng.
@@ -122,6 +131,11 @@ class RentalContract(models.Model):
             else:  # Chưa có phiếu tiền thuê.
                 Payment.create({**values, "contract_id": contract.id, "transaction_type": "rental_payment", "payment_method": "cash", "state": "draft"})  # Tạo phiếu Nháp.
 
+
+
+
+    """Khi tạo hợp đồng mới, tự tạo **phiếu thu cọc** nếu có tiền cọc và chưa có phiếu, đồng thời chuẩn bị **phiếu thu tiền thuê**.
+       Các phiếu đều ở trạng thái **Nháp**, chưa xác nhận đã thu tiền."""
     @api.model_create_multi
     def create(self, vals_list):
         contracts = super().create(vals_list)
@@ -149,38 +163,39 @@ class RentalContract(models.Model):
         contracts._sync_draft_rent_payment()  # Tạo phiếu nếu hợp đồng đã có xe và giá.
         return contracts
 
-    def _sync_draft_deposit_payment(self):  # Đồng bộ hoặc dùng lại phiếu cọc chưa xác nhận của hợp đồng nháp, không tạo phiếu thứ hai.
-        # self là tập hợp đồng Odoo đang xử lý, có thể gồm một hoặc nhiều bản ghi.
-        # for ... in ... lần lượt lấy từng hợp đồng và đặt vào biến contract.
-        for contract in self:
 
-            # draft là tên kỹ thuật của trạng thái Nháp.
-            # != nghĩa là "khác"; continue bỏ qua hợp đồng này và chuyển sang hợp đồng tiếp theo.
+
+
+    """
+    Hàm này **đồng bộ phiếu thu cọc khi sửa hợp đồng Nháp**:
+
+    - Có phiếu chưa xác nhận: cập nhật theo tiền cọc mới, dùng lại cả phiếu đã hủy.
+    - Chưa có phiếu: tạo phiếu Nháp mới.
+    - Tiền cọc bằng 0: hủy các phiếu chưa xác nhận.
+    - Có nhiều phiếu chưa xác nhận: báo lỗi để xử lý trùng.
+    - Đã có phiếu xác nhận thu cọc: giữ nguyên.
+    """
+    def _sync_draft_deposit_payment(self):  # Đồng bộ hoặc dùng lại phiếu cọc chưa xác nhận của hợp đồng nháp, không tạo phiếu thứ hai.
+        for contract in self:
             if contract.state != "draft":
                 continue
 
-            # env["tên.model"] truy cập đối tượng quản lý dữ liệu của model thanh toán.
             # sudo cho phép hệ thống chuẩn bị phiếu nháp dù nhân viên sửa hợp đồng
-            # chưa có quyền Finance, giống cách tự tạo cọc lúc tạo hợp đồng.
             # Hàm này không xác nhận đã thu tiền và không sửa phiếu đã xác nhận.
             payments = self.env["motorbike.rental.payment"].sudo()
 
-            # search tìm các bản ghi thỏa đồng thời những điều kiện trong danh sách.
             # Mỗi bộ ba gồm (tên trường, phép so sánh, giá trị cần so sánh).
             deposits = payments.search([
                 ("contract_id", "=", contract.id),  # contract.id là mã số hợp đồng đang sửa trong database.
                 ("transaction_type", "=", "deposit"),  # deposit là giao dịch cọc; không lấy tiền thuê/hoàn/thu thêm.
             ])
 
-            # filtered lọc bản ghi; lambda là cách viết hàm kiểm tra ngắn cho từng phiếu.
-            # Một tập có bản ghi được Python hiểu là True, tập rỗng được hiểu là False.
             # Đã có phiếu cọc xác nhận thì không tự sửa hoặc tạo lại phiếu cọc:
             # số tiền đã thu là lịch sử thực tế, không được đổi theo số cọc mới trên hợp đồng.
             if deposits.filtered(lambda payment: payment.state == "confirmed"):
                 continue
 
             # Dùng lại phiếu nháp hoặc đã hủy, không tạo phiếu cọc thứ hai.
-            # Tên biến draft_deposits được giữ lại, nhưng gồm cả phiếu đã hủy có thể đưa về nháp.
             # in kiểm tra trạng thái có thuộc một trong hai giá trị bên dưới hay không.
             draft_deposits = deposits.filtered(
                 lambda payment: payment.state in ("draft", "cancelled")
@@ -191,11 +206,10 @@ class RentalContract(models.Model):
             # vì model thanh toán yêu cầu số tiền trên mỗi phiếu phải lớn hơn 0.
             if contract.currency_id.is_zero(contract.deposit_amount):
                 draft_deposits.write({"state": "cancelled"})  # write cập nhật trạng thái, không xóa phiếu.
-                continue  # Đã xử lý trường hợp không thu cọc, không cần chạy nhánh tạo/cập nhật bên dưới.
+                continue  
 
             # len đếm số bản ghi. Nếu dữ liệu cũ có nhiều phiếu chưa xác nhận thì không tự sửa tất cả thành cùng số tiền,
             # vì làm vậy có thể nhân đôi hoặc nhân ba số cọc phải thu.
-            # UserError dừng thao tác và hiện hướng dẫn để nhân viên xử lý dữ liệu chưa rõ ràng.
             if len(draft_deposits) > 1:
                 raise UserError(
                     "Hợp đồng có nhiều phiếu cọc chưa xác nhận. "
@@ -203,7 +217,6 @@ class RentalContract(models.Model):
                 )
 
             # Dictionary là tập cặp tên trường và giá trị mới cần lưu.
-            # .id lấy mã bản ghi khách/đồng tiền để gán vào trường liên kết Many2one.
             values = {
                 "customer_id": contract.customer_id.id,  # Đồng bộ đúng khách đang ghi trên hợp đồng.
                 "currency_id": contract.currency_id.id,  # Đồng bộ đúng đồng tiền hợp đồng.
@@ -217,19 +230,25 @@ class RentalContract(models.Model):
                 draft_deposits.write({**values, "state": "draft"})
 
             else:  # Chưa có phiếu cọc; ví dụ lúc tạo hợp đồng cọc bằng 0 nhưng bây giờ bắt đầu yêu cầu cọc.
-                # update bổ sung các cặp tên trường/giá trị vào dictionary đã chuẩn bị.
                 values.update({
                     "contract_id": contract.id,  # Liên kết phiếu mới với hợp đồng đang sửa.
-                    "transaction_type": "deposit",  # Giao dịch cọc, không phải một khoản phụ phí.
-                    "payment_method": "cash",  # Mặc định tiền mặt; nhân viên vẫn chọn lại được trước khi thu.
-                    "state": "draft",  # Chỉ chuẩn bị phiếu, chưa xác nhận khách đã nộp tiền.
+                    "transaction_type": "deposit", 
+                    "payment_method": "cash",  
+                    "state": "draft",  
                     "note": "Phiếu thu cọc tự tạo từ hợp đồng %s." % contract.name,  # %s được thay bằng mã hợp đồng.
                 })
                 payments.create(values)  # create tạo một bản ghi cọc nháp mới từ các giá trị đã chuẩn bị.
 
+
+
+    """
+    Hàm này kiểm tra đã thu đủ tiền cọc và tiền thuê trước khi ký hợp đồng.
+
+    Chỉ tính phiếu đã xác nhận, đúng hợp đồng, khách hàng và đồng tiền. 
+    Nếu thiếu khoản nào, hệ thống chặn ký và báo số tiền còn thiếu của khoản đó
+    """
+    
     def _check_upfront_payments(self):
-        # Contract access was checked by write(). Read receipts for these
-        # contracts only, so Rental users need no Finance write privileges.
         for contract in self:
             payments = self.env["motorbike.rental.payment"].sudo().search([
                 ("contract_id", "=", contract.id),
@@ -258,9 +277,20 @@ class RentalContract(models.Model):
                     % (contract.name, "\n".join(missing)))
 
     @api.onchange("deposit_amount", "line_ids", "start_date", "end_date", "customer_id", "currency_id")  # Theo dõi thông tin ảnh hưởng tiền hoặc khách.
-    def _onchange_upfront_details(self):  # Bỏ dấu tích ngay khi nhân viên sửa thông tin trên form hợp đồng.
+    def _onchange_upfront_details(self):  # Bỏ tích dấu ngay khi nhân viên sửa thông tin trên form hợp đồng.
         self.upfront_received_check = False  # Buộc nhân viên kiểm tra lại hai khoản trước khi ký.
 
+
+        """
+    Hàm này **xác nhận thu tiền rồi mới ký hợp đồng**:
+
+    - Yêu cầu tích đã nhận tiền và chọn phương thức thanh toán.
+    - Kiểm tra có đúng một phiếu cọc và một phiếu tiền thuê, khớp khách hàng,
+    đồng tiền và số tiền.
+    - Tự xác nhận các phiếu còn Nháp, sau đó ký hợp đồng.
+
+    Nếu có lỗi, toàn bộ thao tác được hoàn tác.
+        """
     def action_confirm(self):  # Xác nhận hai phiếu đã thu rồi mới xác nhận hợp đồng.
         for contract in self:  # Xử lý từng hợp đồng được chọn.
             if not contract.upfront_received_check:  # Chưa tích xác nhận đã nhận cả cọc và tiền thuê thì chưa được ký.
@@ -279,6 +309,13 @@ class RentalContract(models.Model):
                     receipt.with_context(_contract_confirm=_CONTRACT_CONFIRM).action_confirm()  # Truyền dấu nội bộ để xác nhận phiếu nháp trong cùng thao tác ký.
         return super().action_confirm()  # Ký hợp đồng sau khi hai phiếu đã xác nhận; lỗi sẽ hoàn tác toàn bộ thao tác.
 
+    
+    
+    """Hàm này kiểm tra xe đã bắt đầu được giao chưa 
+    trước khi cho hủy hợp đồng và hoàn cọc.
+    Nếu có bất kỳ xe nào khác trạng thái Chờ giao, 
+    hệ thống chặn hủy và yêu cầu thu hồi xe, kết thúc hợp đồng qua hóa đơn"""
+    
     def _check_cancel_before_delivery(self):  # Kiểm tra hợp đồng chưa bắt đầu giao bất kỳ xe nào trước khi cho hoàn cọc và hủy.
         for contract in self:  # Một thao tác có thể kiểm tra nhiều hợp đồng, nên xét từng hợp đồng.
             tickets = self.env["rental.operation.ticket"].sudo().search([("contract_id", "=", contract.id)])  # Tìm tất cả phiếu vận hành, kể cả phiếu người dùng không xem được.
@@ -287,6 +324,16 @@ class RentalContract(models.Model):
             if any(line.status != "waiting" for line in lines):  # Chỉ waiting nghĩa là chưa bắt đầu giao xe.
                 raise UserError("Xe đã bắt đầu được giao; hãy thu hồi xe và kết thúc hợp đồng qua hóa đơn.")  # Không hủy trực tiếp khi đã giao xe.
 
+
+
+        """
+        Hàm xử lý hủy hợp đồng:
+        Đã ký, chưa giao xe: mở phiếu hoàn cọc, dùng lại phiếu Nháp nếu có; 
+            chưa hủy hợp đồng ngay và không hoàn tiền thuê.
+        Còn Nháp: chưa thu tiền thì hủy hợp đồng và phiếu thu Nháp; 
+             đã thu tiền thì yêu cầu xử lý tiền trước.
+        Đã bắt đầu giao xe hoặc ở trạng thái khác: chặn hủy.
+        """
     def action_cancel(self):  # Hủy hợp đồng nháp hoặc mở phiếu hoàn cọc nếu đã ký nhưng chưa giao xe.
         if self.filtered(lambda contract: contract.state == "confirmed"):  # Hợp đồng đã ký phải hoàn cọc thật trước khi hủy.
             self.ensure_one()  # Giao diện phiếu hoàn tiền chỉ mở cho một hợp đồng mỗi lần.
@@ -326,6 +373,13 @@ class RentalContract(models.Model):
         receipts.filtered(lambda payment: payment.state == "draft").action_cancel()  # Hủy phiếu còn nháp, không xóa dữ liệu.
         return result  # Trả kết quả về giao diện Odoo.
 
+
+
+    """
+    Hàm này **chặn xóa hợp đồng đã có phiếu tiền**, kể cả phiếu Nháp hoặc Đã hủy,
+    để giữ liên kết và lịch sử giao dịch.
+    Nếu không có phiếu tiền thì tiếp tục xóa theo quy tắc của hệ thống."""
+    
     def unlink(self):  # Odoo gọi hàm này khi người dùng yêu cầu xóa một hoặc nhiều hợp đồng.
         # sudo cho phép kiểm tra cả phiếu tiền mà người đang xóa hợp đồng không có quyền xem.
         # search_count đếm mọi phiếu thuộc các hợp đồng này, kể cả phiếu nháp hoặc đã hủy.
@@ -336,6 +390,16 @@ class RentalContract(models.Model):
             raise UserError("Hợp đồng đã có phiếu tiền, không thể xóa; hãy xử lý và hủy hợp đồng.")
         return super().unlink()  # Không có phiếu tiền thì dùng quy tắc xóa hợp đồng của Core.
 
+
+        """
+        Hàm này chạy mỗi khi cập nhật hợp đồng, để:
+
+    Ký hợp đồng: kiểm tra đã thu đủ cọc và tiền thuê.
+    Hoàn tất hợp đồng: yêu cầu thu hồi đủ xe, có hóa đơn đã xác nhận, hoàn tất thu/hoàn tiền và số dư bằng 0.
+    Sửa tiền cọc, xe, ngày thuê, khách hoặc đồng tiền: cập nhật các phiếu thu Nháp tương ứng.
+    Nếu không đủ điều kiện thì báo lỗi và không lưu thay đổi.
+
+        """
     def write(self, vals):  # Đồng bộ cọc nháp và kiểm tra thu đủ tiền trước khi ký, xác nhận hóa đơn trước khi đóng hợp đồng.
         """write là hàm Odoo gọi khi cập nhật một hoặc nhiều bản ghi đã có.
 
@@ -378,6 +442,7 @@ class RentalContract(models.Model):
         # Hàm được gọi tự bỏ qua hợp đồng không còn nháp và phiếu cọc đã xác nhận.
         if (
             "deposit_amount" in vals
+            or "line_ids" in vals  # Thêm/bỏ xe làm cọc tự tính thay đổi; phải cập nhật phiếu cọc nháp theo.
             or "customer_id" in vals
             or "currency_id" in vals
         ):
@@ -391,7 +456,17 @@ class RentalContract(models.Model):
             self._sync_draft_rent_payment()  # Cập nhật phiếu khi hợp đồng còn Nháp.
         return result  # Trả nguyên kết quả cập nhật của Odoo, không thay cách xử lý của các module khác.
 
+
+
+
     # 5. Các hàm tính toán ( @api.depends , @api.onchange )
+    
+        """
+        Hàm này tính số tiền thực tế doanh nghiệp còn giữ của khách trong một hợp đồng:
+        Tiền cọc + tiền thuê + tiền thu thêm - tiền đã hoàn.
+        Chỉ tính phiếu đã xác nhận, đúng khách, đúng đồng tiền và có số tiền hợp lệ;
+        bỏ qua phiếu Nháp hoặc Đã hủy.
+        """
     def _get_confirmed_net_received(self):  # Tính tiền thực thu ròng của một hợp đồng từ các phiếu thu/hoàn đã xác nhận.
         """Trả về tiền đã nhận của khách trừ tiền đã hoàn cho khách.
 
@@ -432,6 +507,8 @@ class RentalContract(models.Model):
 
         return received - refunded  # Trả số tiền thực thu ròng, chưa làm tròn để chỉ làm tròn số dư cuối cùng.
 
+
+
     # Các trường bên dưới thay đổi thì Odoo phải tính lại số dư được lưu trong database.
     # Không phụ thuộc deposit_amount: thay số cọc phải thu không đồng nghĩa tiền thực thu thay đổi.
     @api.depends(
@@ -448,15 +525,21 @@ class RentalContract(models.Model):
         "payment_ids.customer_id",  # Sửa khách trên phiếu thì cần kiểm tra lại phiếu có khớp hợp đồng không.
         "payment_ids.currency_id",  # Sửa đồng tiền trên phiếu thì cần kiểm tra lại khả năng cộng vào số dư.
     )
-    def _compute_settlement_preview(self):  # Tính tổng phụ phí đã duyệt và số dư còn phải thu thêm hoặc hoàn cho từng hợp đồng.
-        """Số dư = tiền thuê + phụ phí đã duyệt - tiền thực thu ròng.
+    
+    
 
-        Dương: khách còn phải trả thêm. Âm: doanh nghiệp còn phải hoàn khách.
-        Bằng 0: các khoản phải thanh toán đã được bù đủ bởi tiền thực thu ròng.
-        Ví dụ thuê 1 triệu, phụ phí 300 nghìn, đã thu thuê 1 triệu và cọc
-        2 triệu: số dư là -1,7 triệu, tức cần hoàn lại khách 1,7 triệu.
-        Sau khi xác nhận hoàn đủ 1,7 triệu, số dư được tính lại thành 0.
+    def _compute_settlement_preview(self):  # Tính tổng phụ phí đã duyệt và số dư còn phải thu thêm hoặc hoàn cho từng hợp đồng.
         """
+        Hàm này tính tổng phụ phí đã duyệt và số tiền cần thu thêm hoặc hoàn lại khách.
+
+            Số dư = Tiền thuê + Phụ phí đã duyệt - Tiền thực thu ròng.
+
+            Dương: khách phải trả thêm.
+            Âm: doanh nghiệp phải hoàn khách.
+            Bằng 0: đã thanh toán đủ.
+            Kết quả được làm tròn theo đồng tiền và cập nhật lên hợp đồng.
+        """
+        
         # Odoo có thể yêu cầu tính nhiều hợp đồng cùng lúc; phải gán đủ hai trường cho từng bản ghi.
         for contract in self:
             # Chỉ phụ phí đã xác nhận mới là khoản khách phải trả; bỏ qua phụ phí nháp/đã hủy.
@@ -477,11 +560,3 @@ class RentalContract(models.Model):
             contract.total_penalty_amount = penalties  # Cập nhật tổng phụ phí hiển thị trên hợp đồng.
             # Làm tròn theo quy tắc của đồng tiền, tránh tạo khoản thu/hoàn do sai số số thực.
             contract.settlement_balance = contract.currency_id.round(balance)
-
-    # 6. Các hàm Action / Nghiệp vụ (nút bấm button)
-    def action_settlement(self):  # Chặn quy trình quyết toán riêng cũ và hướng dẫn xác nhận thu/hoàn ngay trên hóa đơn.
-        # action_settlement là tên hàm của nút quyết toán trước đây; giữ tên hàm để thao tác cũ
-        # nếu còn gọi tới sẽ nhận được hướng dẫn rõ ràng, thay vì lỗi "không tìm thấy hàm".
-        # raise nghĩa là phát sinh lỗi có chủ đích; UserError giúp Odoo hiện thông báo cho nhân viên.
-        # Hàm này không tạo phiếu tiền và không đổi trạng thái hợp đồng.
-        raise UserError("Vui lòng xác nhận thu/hoàn tiền ngay trên hóa đơn của hợp đồng.")

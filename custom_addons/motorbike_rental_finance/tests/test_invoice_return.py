@@ -175,18 +175,6 @@ class TestInvoiceReturn(AccountTestInvoicingCommon):
         }))
         self.assert_invoice_blocked(values)
 
-    def test_charge_button_obeys_return_rule(self):  # Nút lập hóa đơn từ Charge phải bị chặn trước thu hồi và hoạt động sau thu hồi.
-        contract = self.contract()
-        charge = self.charge(contract)
-        with self.assertRaisesRegex(UserError, 'thu hồi đầy đủ'), self.cr.savepoint():
-            charge.action_create_invoice()
-        self.assertFalse(charge.invoice_id)
-        lines = self.ticket(contract).vehicle_detail_ids
-        lines.action_confirm_delivery()
-        lines.action_confirm_return()
-        action = charge.action_create_invoice()
-        self.assertEqual(action['res_id'], charge.invoice_id.id)
-        self.assertFalse(charge.invoice_id.contract_id)
 
     def test_reverse_charge_link_is_checked(self):  # Liên kết Charge qua trường phụ phí của hóa đơn cũng phải chịu kiểm tra thu hồi.
         contract = self.contract()

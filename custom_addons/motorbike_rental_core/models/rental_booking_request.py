@@ -3,8 +3,6 @@ import unicodedata
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
-from .rental_contract import _DEFAULT_RENTAL_DEPOSIT
-
 
 class RentalBookingRequest(models.Model):
     _name = 'rental.booking.request'
@@ -222,7 +220,7 @@ class RentalBookingRequest(models.Model):
                 ('vehicle_id', 'in', vehicle_ids),
                 ('contract_id.state', 'in', ('confirmed', 'in_progress')),
                 ('contract_id.start_date', '<', self.end_date),
-                ('contract_id.end_date', '>', self.start_date),
+                ('return_deadline', '>', self.start_date),
             ],
             limit=1,
         )
@@ -240,7 +238,7 @@ class RentalBookingRequest(models.Model):
             'currency_id': currency.id,
             'start_date': self.start_date,
             'end_date': self.end_date,
-            'deposit_amount': _DEFAULT_RENTAL_DEPOSIT,
+            # Không gán cọc cố định: hợp đồng tự tính 1 triệu cho mỗi xe từ website.
             'notes': self.notes,
             'line_ids': [
                 (0, 0, {

@@ -1,7 +1,7 @@
 from datetime import timedelta
 from unittest.mock import patch
 from odoo import fields
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -111,8 +111,8 @@ class TestPeriodicMaintenance(TransactionCase):
         vehicle = self.anchored()
         service = self.complete(vehicle)
         self.assertEqual(vehicle.service_next_odo, 1500)
-        service.unlink()
-        self.assertEqual(vehicle.service_next_odo, 1100)
+        with self.assertRaises(UserError):
+            service.unlink()
 
     def test_vehicle_policy_is_independent_of_same_model(self):
         first, second = self.anchored(), self.anchored()
