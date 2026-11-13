@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!-- Root Menu -->
-    <menuitem id="menu_rental_operation_root" name="Vận Hành Thuê Xe" sequence="10"/>
+    <menuitem id="menu_rental_operation_root" name="Vận Hành Thuê Xe" sequence="10" groups="motorbike_fleet_management.group_fleet_staff"/>
 
     <!-- Sub Menus -->
     <menuitem id="menu_rental_operation_ticket" name="Giao/Thu Hồi Xe" parent="menu_rental_operation_root" sequence="10" action="action_rental_operation_ticket"/>

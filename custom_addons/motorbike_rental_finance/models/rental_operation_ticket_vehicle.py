@@ -11,7 +11,8 @@ class RentalOperationTicketVehicle(models.Model):
             return result
 
         for ticket in self.mapped("ticket_id").filtered(lambda t: t.state == "done"):
-            contract = ticket.contract_id  # Mỗi phiếu vận hành gắn với một hợp đồng.
+            contract = ticket.contract_id.sudo()  # Hệ thống đọc dữ liệu quyết toán; nhân viên vận hành không được mở Finance.
+            # Mỗi phiếu vận hành gắn với một hợp đồng.
             if contract.invoice_ids.filtered(
                 lambda inv: inv.move_type == "out_invoice" and inv.state != "cancel"
             ):
@@ -35,7 +36,7 @@ class RentalOperationTicketVehicle(models.Model):
                 "charge_id": c.id,
             }) for c in charges]  # Mỗi phụ phí đã duyệt trở thành một dòng hóa đơn.
 
-            self.env["account.move"].create({
+            self.env["account.move"].sudo().create({  # Chỉ tự tạo bản nháp sau khi đã thu hồi đủ xe.
                 "move_type": "out_invoice",  # Hóa đơn bán hàng cho khách.
                 "contract_id": contract.id,  # Liên kết với hợp đồng vừa trả đủ xe.
                 "partner_id": contract.customer_id.id,  # Lấy đúng khách của hợp đồng.

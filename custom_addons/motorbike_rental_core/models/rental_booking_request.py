@@ -220,7 +220,7 @@ class RentalBookingRequest(models.Model):
                 ('vehicle_id', 'in', vehicle_ids),
                 ('contract_id.state', 'in', ('confirmed', 'in_progress')),
                 ('contract_id.start_date', '<', self.end_date),
-                ('contract_id.end_date', '>', self.start_date),
+                ('return_deadline', '>', self.start_date),
             ],
             limit=1,
         )

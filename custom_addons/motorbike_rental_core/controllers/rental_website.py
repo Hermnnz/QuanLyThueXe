@@ -242,7 +242,7 @@ class RentalWebsite(http.Controller):
         busy_lines = request.env['rental.contract.line'].sudo().search([
             ('contract_id.state', 'in', ['confirmed', 'in_progress']),
             ('contract_id.start_date', '<', end_date),
-            ('contract_id.end_date', '>', start_date),
+            ('return_deadline', '>', start_date),
         ])
         busy_vehicle_ids = set(busy_lines.mapped('vehicle_id').ids)
         available_vehicles = fleet_ready_vehicles.filtered(
