@@ -1,6 +1,7 @@
 <!-- Thẻ gốc chứa các khai báo giao diện của module Odoo. -->
 <odoo>
-    <!-- Chỉ dùng khi mở chi tiết từ biểu đồ Odoo; không tạo thêm menu báo cáo riêng. -->
+
+
     <!-- Tạo view dạng danh sách; ID này dùng để cập nhật đúng view khi nâng cấp module. -->
     <record id="view_rental_finance_report_list" model="ir.ui.view">
         <!-- Tên kỹ thuật của view danh sách, phục vụ tra cứu/cấu hình trong Odoo. -->
@@ -33,6 +34,9 @@
         </field>
     <!-- Kết thúc bản ghi view danh sách. -->
     </record>
+
+
+
     <!-- Tạo view pivot, tức bảng tổng hợp có thể nhóm theo hàng/cột. -->
     <record id="view_rental_finance_report_pivot" model="ir.ui.view">
         <!-- Tên kỹ thuật của view pivot để phân biệt với view danh sách. -->

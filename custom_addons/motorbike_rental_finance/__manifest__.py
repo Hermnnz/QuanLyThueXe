@@ -23,7 +23,6 @@
         "views/rental_charge_views.xml",
         "views/rental_contract_views.xml",   
         "views/account_move_views.xml",
-        "views/account_move_off.xml",  # Hạn chế giao diện kế toán gốc; nạp sau form hóa đơn Finance.
         "views/finance_actions.xml",
         "views/rental_finance_report_views.xml",  # Các màn hình chi tiết khi xem số liệu từ Dashboard.
         "data/rental_finance_dashboard.xml",  # Nạp trực tiếp bố cục Dashboard đã bỏ phần thừa, dùng trình hiển thị chuẩn Odoo.

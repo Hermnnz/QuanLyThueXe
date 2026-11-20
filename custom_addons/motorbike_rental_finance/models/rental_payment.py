@@ -395,10 +395,10 @@ class MotorbikeRentalPayment(models.Model):
           
           
     """
-    Hàm tạo mã
     Hàm này điều chỉnh bộ đánh số phiếu để tiếp nối dữ liệu cũ khi cài hoặc cập nhật module.
     Với từng loại phiếu cọc, tiền thuê, hoàn tiền và thu thêm, 
-    hàm tìm số thứ tự lớn nhất đã dùng rồi đặt số tiếp theo lớn hơn số đó. Tính cả phiếu đã hủy để tránh trùng mã, và không giảm bộ đếm hiện tại. 
+    hàm tìm số thứ tự lớn nhất đã dùng rồi đặt số tiếp theo lớn hơn số đó. 
+    Tính cả phiếu đã hủy để tránh trùng mã, và không giảm bộ đếm hiện tại. 
     """
     @api.model
     def _initialize_payment_sequences(self):  # Đặt bộ cấp số tiếp nối số thứ tự lớn nhất trong mã cũ khi cài hoặc cập nhật module.

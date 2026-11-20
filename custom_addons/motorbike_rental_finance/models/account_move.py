@@ -1,4 +1,6 @@
 # 1. Đầu file: Các dòng import
+import math
+
 from odoo import api, fields, models, Command
 from odoo.exceptions import UserError  # UserError: dừng thao tác và hiện thông báo dễ đọc cho người dùng.
 from .rental_payment import _INVOICE_SETTLEMENT  # Lấy dấu riêng để hóa đơn tự tạo phiếu thu/hoàn.
@@ -21,6 +23,39 @@ class AccountMove(models.Model):
         "invoice_id",
         string="Khoản phí",
     )
+
+    # Tiền đã nhận ban đầu lấy từ phiếu cọc và phiếu thuê thực tế đã xác nhận.
+    rental_received_amount = fields.Monetary(
+        string="Tiền đã nhận",
+        compute="_compute_rental_received_amount",  # Odoo tự tính, người dùng không nhập tay.
+        currency_field="currency_id",  # Hiển thị theo đồng tiền của hóa đơn.
+    )
+
+    
+    
+    """Tính tiền cọc và tiền thuê ban đầu đã xác nhận để hiển thị trên hóa đơn."""
+    
+    @api.depends(
+        "contract_id", "contract_id.customer_id", "currency_id",
+        "contract_id.payment_ids", "contract_id.payment_ids.state",
+        "contract_id.payment_ids.amount", "contract_id.payment_ids.transaction_type",
+        "contract_id.payment_ids.customer_id", "contract_id.payment_ids.currency_id",
+    )
+    def _compute_rental_received_amount(self):  # Cộng cọc và tiền thuê ban đầu đã thực thu của hợp đồng.
+        for move in self:  # Một lần tính có thể xử lý nhiều hóa đơn.
+            contract = move.contract_id  # Lấy hợp đồng được chọn trên hóa đơn.
+            # Chỉ lấy phiếu đã xác nhận, đúng khách và đồng tiền; bỏ phiếu nháp, hủy, thu thêm và hoàn tiền.
+            payments = contract.payment_ids.filtered(
+                lambda payment: payment.state == "confirmed"
+                and payment.transaction_type in ("deposit", "rental_payment")
+                and payment.customer_id == contract.customer_id
+                and payment.currency_id == move.currency_id
+            ) if contract else self.env["motorbike.rental.payment"]
+            move.rental_received_amount = sum(payments.mapped("amount"))  # Cộng số tiền trên các phiếu hợp lệ.
+
+
+
+
 
     # Monetary là kiểu trường lưu/hiển thị số tiền trong Odoo.
     # string là nhãn tiếng Việt trên giao diện; tên biến tiếng Anh là tên kỹ thuật trong code.
@@ -61,15 +96,92 @@ class AccountMove(models.Model):
         copy=False,  # Không tự dùng lại phương thức của hóa đơn được sao chép.
     )
 
+
+
     # 4. Các hàm Constraints ( @api.constrains , _sql_constraints )
+    """
+    hàm kiểm tra đã xác nhận thu hồi hết xe của các hợp đồng liên quan đến hóa đơn chưa.
+    Nếu chưa đủ thì báo lỗi, chặn thao tác đang thực hiện.
+    """
+    @api.model
+    def _check_returned_before_invoice(self, contracts):  # Kiểm tra hợp đồng thu đủ xe chưa trước khi lập hóa đơn
+        for contract in contracts:
+            # Một hợp đồng có thể có nhiều phiếu; phải xét tất cả phiếu
+            # liên quan, không chỉ lấy phiếu đầu tiên hoặc phiếu đã xong.
+            tickets = self.env['rental.operation.ticket'].search([
+                ('contract_id', '=', contract.id),
+            ])
+            operation_lines = tickets.mapped('vehicle_detail_ids')
 
-    def _check_rental_return_before_invoice(self):  # Tìm các hợp đồng của hóa đơn và kiểm tra đã thu hồi đủ xe.
-        """Kiểm tra cả hóa đơn chọn hợp đồng và hóa đơn tạo từ phụ phí.
+            # Đối chiếu danh sách xe thực tế: một phiếu đã trả hết xe của
+            # riêng nó vẫn chưa đủ nếu còn xe hợp đồng chưa có dòng vận hành.        
+            contract_vehicles = contract.line_ids.mapped('vehicle_id')
+            operation_vehicles = operation_lines.mapped('vehicle_id')
+            missing_vehicles = contract_vehicles - operation_vehicles
 
-        Chỉ áp dụng cho hóa đơn khách hàng (out_invoice). Hóa đơn thông
-        thường không liên quan hợp đồng/Charge thuê xe có tập hợp đồng rỗng
-        nên không bị áp dụng điều kiện thu hồi của phân hệ thuê xe.
+            # Không cho qua trường hợp danh sách rỗng. Với các dòng đã có,
+            # chỉ 'returned' là xác nhận thu hồi; waiting/delivering/renting
+            # đều còn thiếu bước nhận trả. Không suy ra đã trả từ trạng thái
+            # Fleet, vì xe trả về vẫn có thể đang pending_inspection.
+            if (
+                not contract_vehicles
+                or not operation_lines
+                or missing_vehicles
+                or any(line.status != 'returned' for line in operation_lines)
+            ):
+                raise UserError(
+                    'Chưa thể lập hóa đơn cho hợp đồng %s. '
+                    'Cần xác nhận thu hồi đầy đủ các xe trước.'
+                    % contract.name
+                )
+
+
+    @api.model
+    def _create_rental_invoice_after_return(self, contracts):
+        """Tạo hóa đơn nháp sau thu hồi đủ xe, bỏ qua hợp đồng đã có hóa đơn chưa hủy.
+
+        Hóa đơn gồm tiền thuê và phụ phí đã duyệt chưa nằm trên hóa đơn hiệu lực.
+        Giữ quyền hệ thống cho việc tự tạo nháp; kế toán xác nhận theo quyền của mình.
         """
+        for contract in contracts:
+            contract = contract.sudo()
+            if contract.invoice_ids.filtered(
+                lambda invoice: invoice.move_type == "out_invoice" and invoice.state != "cancel"
+            ):
+                continue
+            self._check_returned_before_invoice(contract)
+            charges = contract.charge_ids.filtered(
+                lambda charge: charge.state == "confirmed"
+                and (not charge.invoice_id or charge.invoice_id.state == "cancel")
+            )
+            lines = [Command.create({
+                "name": f"Tiền thuê - {contract.name}",
+                "quantity": 1,
+                "price_unit": contract.total_amount,
+            })]
+            lines += [Command.create({
+                "name": f"Phụ phí: {charge.name}",
+                "quantity": charge.quantity,
+                "price_unit": charge.unit_price,
+                "charge_id": charge.id,
+            }) for charge in charges]
+            self.sudo().create({
+                "move_type": "out_invoice",
+                "contract_id": contract.id,
+                "partner_id": contract.customer_id.id,
+                "currency_id": contract.currency_id.id,
+                "invoice_date": fields.Date.context_today(self),
+                "invoice_line_ids": lines,
+                "rental_charges_ids": [Command.set(charges.ids)],
+            })
+
+
+
+        """
+        Hàm này tìm các hợp đồng liên quan đến hóa đơn, 
+        rồi gọi hàm kiểm tra thu hồi đủ xe phía trên.
+        """
+    def _check_rental_return_before_invoice(self):  # Tìm các hợp đồng của hóa đơn và kiểm tra đã thu hồi đủ xe.
         for move in self.filtered(lambda record: record.move_type == 'out_invoice'):
             # Dùng phép hợp recordset (|) để không kiểm tra trùng hợp đồng.
             # Phải xét Charge trên dòng hóa đơn và liên kết ngược vì đường
@@ -79,16 +191,36 @@ class AccountMove(models.Model):
                 | move.invoice_line_ids.mapped('charge_id.contract_id')
                 | move.rental_charges_ids.mapped('contract_id')
             )
-            contracts._check_returned_before_invoice()
+            self._check_returned_before_invoice(contracts)
 
-    # Constraint chạy ở server khi tạo/lưu hoặc thay liên kết nghiệp vụ;
-    # không chỉ dựa vào onchange hay điều kiện ẩn nút trên giao diện.
+
+
+
+        """
+        khi tạo hoặc cập nhật hóa đơn có các trường được liệt kê, 
+        hãy tự chạy hàm kiểm tra ngay bên dưới.
+        vd: Khi tạo hóa đơn nháp thì tự chạy kiểm tra, chưa thu hết xe thì đéo cho tạo
+        """
     @api.constrains(
         'contract_id', 'move_type', 'invoice_line_ids', 'rental_charges_ids'
     )
     def _check_rental_invoice_return(self):  # Chặn lưu hóa đơn thuê xe nếu các hợp đồng liên quan chưa thu hồi đủ xe.
         self._check_rental_return_before_invoice()
 
+
+
+
+
+
+        """
+        Hàm này bảo vệ hóa đơn khách hàng đã xác nhận và gắn với hợp đồng đã hoàn tất:
+
+        Không cho hủy hoặc đưa hóa đơn về Nháp.
+        Không cho gỡ hay đổi hợp đồng liên kết.
+        Không cho đổi loại hóa đơn.
+        Mục đích là giữ nguyên hóa đơn đã dùng để kết thúc hợp đồng, tránh thay đổi làm sai dữ liệu đã chốt.
+        Các cập nhật khác vẫn theo quy tắc của Odoo
+        """
     def write(self, vals):  # Chặn hủy hoặc đưa về nháp hóa đơn đã xác nhận của hợp đồng hoàn tất.
         # write là hàm Odoo gọi khi lưu thay đổi vào bản ghi đã tồn tại.
         # self là tập hóa đơn đang được sửa, có thể gồm nhiều hóa đơn.
@@ -104,8 +236,6 @@ class AccountMove(models.Model):
             # 1. out_invoice: hóa đơn bán hàng cho khách.
             # 2. posted: hóa đơn đã được xác nhận.
             # 3. done: hợp đồng liên kết đã hoàn tất.
-            #
-            # and nghĩa là "và": phải thỏa tất cả điều kiện.
             # Nếu chưa chọn hợp đồng thì điều kiện cuối không thỏa,
             # nên hóa đơn thông thường không bị áp dụng quy tắc này.
             is_closed_rental_invoice = (
@@ -114,7 +244,6 @@ class AccountMove(models.Model):
                 and move.contract_id.state == "done"
             )
 
-            # not nghĩa là phủ định điều kiện.
             # continue bỏ qua hóa đơn không thuộc trường hợp cần khóa,
             # rồi chuyển sang kiểm tra hóa đơn tiếp theo.
             if not is_closed_rental_invoice:
@@ -164,148 +293,202 @@ class AccountMove(models.Model):
         # Các điều kiện và quyền sửa khác của Odoo vẫn được giữ nguyên.
         return super().write(vals)
 
-    def action_post(self):  # Xác nhận hóa đơn, tự ghi phiếu thu thêm/hoàn tiền và đóng hợp đồng khi đủ điều kiện.
-        """Gom việc kết thúc thuê xe vào một lần bấm Xác nhận hóa đơn.
 
-        self là tập hóa đơn Odoo đang xử lý, có thể gồm một hoặc nhiều hóa đơn.
-        move là biến đại diện cho một hóa đơn; contract là hợp đồng của hóa đơn đó.
-        Trình tự: kiểm tra -> xác nhận hóa đơn -> ghi tiền -> đóng hợp đồng.
-        Các bước dùng chung một giao dịch database (transaction). Nếu một bước
-        phát sinh lỗi và lỗi được trả về cho người dùng, Odoo hoàn tác các thay đổi
-        trong giao dịch; không giữ một hóa đơn xác nhận dở hoặc phiếu tiền tạo dở.
-        """
-        # Dấu chấm gọi hàm của đối tượng self. Dùng lại kiểm tra thu hồi đủ xe đã có,
-        # bao gồm cả hóa đơn liên kết gián tiếp với hợp đồng thông qua phụ phí.
+
+
+
+    """
+    Xác nhận hóa đơn và quyết toán hợp đồng:
+    - Kiểm tra đã thu hồi đủ xe, hợp đồng đang thuê, đúng khách và đồng tiền.
+    - Không xác nhận nhiều hóa đơn kết thúc cho cùng hợp đồng trong một lần.
+    - Không còn phụ phí nháp; tổng hóa đơn bằng tiền thuê cộng phụ phí đã duyệt.
+    - Nếu số dư khác 0, yêu cầu xác nhận đã thu/hoàn tiền và chọn phương thức.
+    - Xác nhận hóa đơn, lưu số dư đã chốt, tạo phiếu thu/hoàn nếu cần,
+    rồi đánh dấu đã quyết toán và hoàn tất hợp đồng.
+    """
+    
+    def action_post(self):
+        """Xác nhận hóa đơn, ghi phiếu thu hoặc hoàn và đóng hợp đồng thuê."""
+        # 1. Kiểm tra đã trả đủ xe, kể cả hóa đơn liên kết qua phụ phí.
         self._check_rental_return_before_invoice()
-
-        # filtered giữ lại những bản ghi thỏa điều kiện; không tạo/xóa hóa đơn trong database.
-        # lambda move: ... là hàm ngắn nhận một hóa đơn và trả về True (giữ) hoặc False (bỏ qua).
-        # and nghĩa là "và": phải thỏa cả ba điều kiện thì mới kết thúc hợp đồng ở đây.
         rental_invoices = self.filtered(
-            lambda move: (
-                move.move_type == "out_invoice"  # out_invoice = hóa đơn bán hàng cho khách.
-                and move.contract_id  # Phải có chọn hợp đồng; hóa đơn riêng từ phụ phí không tự đóng hợp đồng.
-                and move.state == "draft"  # draft = nháp; chỉ chốt tiền khi hóa đơn đang chờ xác nhận.
-            )
+            lambda move: move.move_type == "out_invoice" and move.contract_id and move.state == "draft"
         )
-
-        # mapped("contract_id") lấy tập hợp đồng và tự loại bản ghi trùng; len đếm số bản ghi.
-        # Nếu số hợp đồng ít hơn số hóa đơn thì có hai hóa đơn cùng kết thúc một hợp đồng.
         if len(rental_invoices.mapped("contract_id")) != len(rental_invoices):
             raise UserError("Mỗi hợp đồng chỉ được xác nhận một hóa đơn kết thúc.")
 
-        # [] là danh sách Python rỗng. Ta sẽ lưu từng cặp (hóa đơn, số dư trước khi ghi tiền).
-        # Cần giữ số dư cũ vì phiếu thu/hoàn tạo ở bước sau sẽ làm số dư hợp đồng về 0.
-        settlements = []
+        # 2. Kiểm tra từng hóa đơn và giữ số dư trước khi ghi phiếu làm số dư về 0.
+        settlements = [(move, move._check_rental_settlement_before_post()) for move in rental_invoices]
 
-        for move in rental_invoices:  # for ... in ...: lần lượt xử lý từng hóa đơn trong tập đã lọc.
-            contract = move.contract_id  # Lấy đối tượng hợp đồng, không chỉ mã số id của nó.
-            currency = contract.currency_id  # currency = đồng tiền; dùng để so sánh số tiền đúng độ làm tròn.
+        # 3. Để Odoo xác nhận và đánh số hóa đơn theo quy trình gốc.
+        result = super().action_post()
 
-            # != nghĩa là "khác"; in_progress là giá trị kỹ thuật của trạng thái "Đang thuê".
-            # Điều kiện này cũng ngăn xác nhận thêm một hóa đơn kết thúc sau khi hợp đồng đã đóng.
-            if contract.state != "in_progress":
-                raise UserError("Chỉ được kết thúc hợp đồng đang thuê.")
-
-            # partner_id là khách hàng trên hóa đơn; customer_id là khách hàng trên hợp đồng.
-            # or nghĩa là "hoặc": chỉ cần sai khách hoặc sai đồng tiền là phải dừng thao tác.
-            if (
-                move.partner_id != contract.customer_id
-                or move.currency_id != currency
-            ):
-                raise UserError("Khách hàng và tiền tệ trên hóa đơn phải khớp hợp đồng.")
-
-            # filtered trả tập rỗng nếu không còn phụ phí nháp; tập có bản ghi được hiểu là True.
-            # Phụ phí nháp chưa được chốt nên không thể kết thúc hợp đồng ngay lúc này.
-            if contract.charge_ids.filtered(lambda charge: charge.state == "draft"):
-                raise UserError("Vui lòng xác nhận hoặc hủy phụ phí nháp trước.")
-
-            # expected_total = tổng tiền dự kiến: tiền thuê cộng toàn bộ phụ phí đã duyệt.
-            # amount_total là tổng tiền cuối cùng trên hóa đơn, bao gồm thuế nếu có.
-            # Luồng này đang áp dụng tổng hóa đơn = tiền thuê + phụ phí, không thêm khoản thuế/giảm giá riêng.
-            expected_total = contract.total_amount + contract.total_penalty_amount
-            # is_zero kiểm tra "bằng 0 theo độ làm tròn của tiền tệ", tránh so sánh số thực trực tiếp bằng ==.
-            # Nếu hiệu hai tổng không bằng 0 thì hóa đơn bị thiếu/thừa tiền so với hợp đồng.
-            if not currency.is_zero(move.amount_total - expected_total):
-                raise UserError("Tổng hóa đơn phải bằng tiền thuê và phụ phí đã duyệt.")
-
-            # settlement_balance đã tính cả tiền thuê trả trước, cọc và các khoản thu/hoàn đã xác nhận.
-            balance = contract.settlement_balance
-
-            if not currency.is_zero(balance):  # Chỉ yêu cầu xác nhận tiền khi còn chênh lệch cần xử lý.
-                if not move.rental_money_confirmed:  # not đảo điều kiện: chưa tích ô xác nhận thì dừng.
-                    raise UserError("Vui lòng xác nhận đã thu thêm hoặc hoàn đủ tiền cho khách.")
-                if not move.rental_payment_method:  # Phải biết khoản thu/hoàn được xử lý bằng cách nào.
-                    raise UserError("Vui lòng chọn phương thức thu/hoàn.")
-
-            # append thêm một phần tử vào danh sách. (move, balance) là tuple, tức một cặp giá trị.
-            settlements.append((move, balance))
-
-        # super() gọi cách xác nhận hóa đơn gốc của Odoo và các phần mở rộng kế thừa trước lớp này.
-        # Phải giữ bước này để Odoo tạo bút toán, đánh số hóa đơn và kiểm tra quyền/quy tắc kế toán.
-        result = super().action_post()  # Lưu kết quả để trả nguyên kết quả đó về giao diện ở cuối hàm.
-
-        # Python tách từng cặp đã lưu thành hai biến move và balance; không đọc lại số dư sau khi ghi tiền.
+        # 4. Ghi phiếu thu hoặc hoàn rồi mới đóng từng hợp đồng.
         for move, balance in settlements:
-            contract = move.contract_id  # Lấy lại hợp đồng của hóa đơn vừa được xác nhận.
-            # Gán trường Odoo bằng dấu = sẽ ghi giá trị; không chỉ đổi một biến Python trong bộ nhớ.
-            move.rental_balance_at_post = balance
+            move._finish_rental_settlement(balance)
+        return result
 
-            if not contract.currency_id.is_zero(balance):  # Nếu vừa đủ tiền thì không tạo phiếu có số tiền 0.
-                # env là môi trường Odoo; env["tên.model"] truy cập đối tượng quản lý dữ liệu của model đó.
-                # create({...}) tạo một bản ghi từ dictionary, tức tập các cặp "tên trường": giá trị.
-                # Không dùng sudo(): nhân viên phải có quyền Finance để ghi nhận khoản tiền này.
-                # with_context truyền dấu nhận diện cho riêng thao tác tự tạo phiếu từ hóa đơn.
-                self.env["motorbike.rental.payment"].with_context(
-                    _invoice_settlement=_INVOICE_SETTLEMENT
-                ).create({
-                    "customer_id": contract.customer_id.id,  # .id lấy mã số database của khách hàng.
-                    "contract_id": contract.id,  # Liên kết khoản tiền với hợp đồng đang kết thúc.
-                    "invoice_id": move.id,  # Liên kết khoản tiền với đúng hóa đơn vừa xác nhận.
-                    # Cú pháp A if điều_kiện else B: chọn A nếu đúng, ngược lại chọn B.
-                    "transaction_type": (
-                        "additional_payment" if balance > 0 else "refund"  # Dương: thu thêm; âm: hoàn khách.
-                    ),
-                    "amount": abs(balance),  # abs lấy trị tuyệt đối; số tiền trên phiếu luôn dương.
-                    "currency_id": contract.currency_id.id,  # Dùng đúng đồng tiền của hợp đồng/hóa đơn.
-                    "payment_method": move.rental_payment_method,  # Phương thức nhân viên vừa chọn.
-                    "state": "confirmed",  # confirmed = đã xác nhận; nhân viên đã xác nhận tiền ngay trên hóa đơn.
-                    "note": "Thu/hoàn tiền khi xác nhận hóa đơn %s." % move.name,  # %s được thay bằng số hóa đơn.
-                })
 
-            # Phải ghi nhận khoản tiền trước để số dư hợp đồng về 0, sau đó mới đánh dấu "Đã quyết toán".
-            contract.settlement_status = "settled"  # settled = đã quyết toán; không gán khi phiếu tiền còn nháp.
-            contract.action_done()  # Gọi hàm kết thúc hợp đồng của Core; vẫn đi qua kiểm tra trong write().
 
-        return result  # Trả kết quả xác nhận gốc để giao diện Odoo tiếp tục xử lý như bình thường.
+    
+    
+    
+    
+
+    """
+    Kiểm tra trước khi xác nhận hóa đơn:
+    - Hợp đồng đang thuê; khách hàng và đồng tiền khớp hợp đồng.
+    - Không còn phụ phí nháp; tổng hóa đơn bằng tiền thuê cộng phụ phí đã duyệt.
+    - Nếu số dư khác 0, phải xác nhận đã thu/hoàn tiền và chọn phương thức.
+    Không đạt thì báo lỗi; đạt thì trả về số dư để xử lý thu thêm hoặc hoàn khách.
+"""
+
+    def _check_rental_settlement_before_post(self):
+        """Kiểm tra điều kiện quyết toán và trả về số cần thu hoặc hoàn trên hợp đồng."""
+        contract = self.contract_id
+        currency = contract.currency_id
+        if contract.state != "in_progress":
+            raise UserError("Chỉ được kết thúc hợp đồng đang thuê.")
+        if self.partner_id != contract.customer_id or self.currency_id != currency:
+            raise UserError("Khách hàng và tiền tệ trên hóa đơn phải khớp hợp đồng.")
+        if contract.charge_ids.filtered(lambda charge: charge.state == "draft"):
+            raise UserError("Vui lòng xác nhận hoặc hủy phụ phí nháp trước.")
+
+        penalties, balance = self._get_rental_settlement_totals(contract)
+        expected_total = contract.total_amount + penalties
+        if not currency.is_zero(self.amount_total - expected_total):
+            raise UserError("Tổng hóa đơn phải bằng tiền thuê và phụ phí đã duyệt.")
+
+        # Dương là còn thiếu, âm là còn dư, bằng 0 thì không cần xác nhận thu/hoàn.
+        if not currency.is_zero(balance):
+            if not self.rental_money_confirmed:
+                raise UserError("Vui lòng xác nhận đã thu thêm hoặc hoàn đủ tiền cho khách.")
+            if not self.rental_payment_method:
+                raise UserError("Vui lòng chọn phương thức thu/hoàn.")
+        return balance
+
+
+
+
+    
+    """
+    Hoàn tất quyết toán sau khi xác nhận hóa đơn:
+    - Lưu số dư đã chốt để giữ lịch sử thu/hoàn trên hóa đơn.
+    - Số dư dương: tạo phiếu thu thêm; âm: tạo phiếu hoàn; bằng 0: không tạo phiếu.
+    - Phiếu được xác nhận ngay, gắn đúng khách, hợp đồng, hóa đơn và phương thức thu/hoàn.
+    - Đánh dấu đã quyết toán và chuyển hợp đồng sang Hoàn tất.
+    """
+
+    def _finish_rental_settlement(self, balance):
+        """Lưu số tiền đã chốt, ghi phiếu tiền và hoàn tất hợp đồng."""
+        contract = self.contract_id
+        # Hóa đơn giữ số đã chốt để xem lại sau khi số dư hợp đồng về 0.
+        self.rental_balance_at_post = balance
+
+        if not contract.currency_id.is_zero(balance):
+            # Dấu nội bộ cho phép luồng hóa đơn ghi phiếu theo quyền Finance của người dùng.
+            self.env["motorbike.rental.payment"].with_context(
+                _invoice_settlement=_INVOICE_SETTLEMENT
+            ).create({
+                "customer_id": contract.customer_id.id,
+                "contract_id": contract.id,
+                "invoice_id": self.id,
+                "transaction_type": "additional_payment" if balance > 0 else "refund",
+                "amount": abs(balance),
+                "currency_id": contract.currency_id.id,
+                "payment_method": self.rental_payment_method,
+                "state": "confirmed",
+                "note": "Thu/hoàn tiền khi xác nhận hóa đơn %s." % self.name,
+            })
+
+        # Hợp đồng kiểm tra lại hóa đơn và số dư trước khi chuyển sang Hoàn tất.
+        contract.settlement_status = "settled"
+        contract.action_done()
 
     # 5. Các hàm tính toán ( @api.depends , @api.onchange )
     # @api.depends là decorator (dòng khai báo bổ sung cho hàm bên dưới).
     # Nó báo cho Odoo biết những trường nào thay đổi thì phải tính lại các trường compute.
+    
+
+    @api.model
+    def _get_rental_settlement_totals(self, contract):
+        """Tính phụ phí đã duyệt và số dư thu/hoàn từ dữ liệu gốc của hợp đồng.
+
+        Số dư = Tiền thuê + Phụ phí - (Cọc + Thuê đã thu + Thu thêm - Đã hoàn).
+        Chỉ tính phiếu hợp lệ đã xác nhận; dương là thu thêm, âm là hoàn khách.
+        Không tạo phiếu tiền và không cần có hóa đơn đã lưu để tính.
+        """
+        if not contract:
+            return 0.0, 0.0
+        contract.ensure_one()
+        payments = contract.payment_ids.filtered(
+            lambda payment: (
+                payment.state == "confirmed"
+                and payment.customer_id == contract.customer_id
+                and payment.currency_id == contract.currency_id
+                and math.isfinite(payment.amount)
+                and payment.amount > 0
+            )
+        )
+        received = sum(payments.filtered(
+            lambda payment: payment.transaction_type in (
+                "deposit", "rental_payment", "additional_payment",
+            )
+        ).mapped("amount"))
+        refunded = sum(payments.filtered(
+            lambda payment: payment.transaction_type == "refund"
+        ).mapped("amount"))
+        penalties = sum(contract.charge_ids.filtered(
+            lambda charge: charge.state == "confirmed"
+        ).mapped("amount"))
+        balance = contract.currency_id.round(
+            contract.total_amount + penalties - (received - refunded)
+        )
+        return penalties, balance
+
+
+
+
+
+    """Hiển thị tiền cần thu/hoàn khi hóa đơn nháp;
+    sau xác nhận giữ nguyên số tiền đã chốt để xem lại lịch sử."""
+
     @api.depends(
-        "contract_id.settlement_balance",  # Số dư của hợp đồng thay đổi thì hóa đơn nháp phải cập nhật số thu/hoàn.
+        "contract_id", "contract_id.total_amount", "contract_id.customer_id",
+        "contract_id.currency_id", "contract_id.currency_id.rounding",
+        "contract_id.charge_ids", "contract_id.charge_ids.state",
+        "contract_id.charge_ids.amount", "contract_id.payment_ids",
+        "contract_id.payment_ids.state", "contract_id.payment_ids.amount",
+        "contract_id.payment_ids.transaction_type",
+        "contract_id.payment_ids.customer_id", "contract_id.payment_ids.currency_id",
         "state",  # Chuyển khỏi nháp thì chuyển sang hiển thị con số đã chốt.
         "rental_balance_at_post",  # Ghi số đã chốt thì cập nhật ngay số tiền đang hiển thị.
     )
     def _compute_rental_settlement(self):  # Tính số thu/hoàn hiện tại khi hóa đơn nháp và giữ số đã chốt sau khi xác nhận.
-        """Tách số dùng để biết chiều giao dịch và số dùng để nhân viên đọc.
-
-        Ví dụ balance = -1.700.000: cần hoàn khách, amount = 1.700.000.
-        Nếu hoàn đủ tiền thì số dư hợp đồng trở về 0. Hóa đơn đã xác nhận
-        vẫn đọc số đã chốt để biết lúc đó đã hoàn khách 1.700.000.
-        """
         for move in self:  # self có thể chứa nhiều hóa đơn; phải gán đủ giá trị cho từng hóa đơn.
             if move.state == "draft":  # == là phép so sánh bằng, khác với dấu = dùng để gán giá trị.
-                # or 0.0 nghĩa là dùng 0 nếu chưa chọn hợp đồng hoặc chưa có giá trị số dư.
-                balance = move.contract_id.settlement_balance or 0.0
+                # Tính trực tiếp từ dữ liệu gốc; chưa chọn hợp đồng thì trả về 0.
+                _, balance = move._get_rental_settlement_totals(move.contract_id)
             else:  # else là nhánh còn lại: hóa đơn không còn ở trạng thái nháp.
                 balance = move.rental_balance_at_post  # Đọc số đã chốt, không đọc số dư hợp đồng lúc này.
 
             move.rental_balance = balance  # Giữ dấu âm/dương để XML quyết định hiện phần thu hay phần hoàn.
             move.rental_settlement_amount = abs(balance)  # abs(-1.700.000) = 1.700.000, dễ đọc trên giao diện.
 
-    # Odoo yêu cầu liệt kê các trường cần lắng nghe trong onchange.
-    # Không liệt kê chính ô xác nhận, tránh vừa tích đã bị bỏ tích.
+
+
+
+    """
+         @api.onchange: chạy khi người dùng đổi thông tin trên form, 
+        để tự điền hoặc điều chỉnh dữ liệu trước khi lưu.
+            
+        Hàm này tự bỏ tích “Đã xác nhận thu/hoàn tiền” khi thông tin hóa đơn 
+        Nháp thay đổi, như khách hàng, dòng hóa đơn, số dư hoặc phương thức thanh toán.
+            
+        Mục đích là buộc nhân viên kiểm tra và tích xác nhận lại theo thông tin mới, tránh giữ xác nhận cũ.
+    """
+
+
     @api.onchange(
         "contract_id", "partner_id", "currency_id",
         "invoice_date", "invoice_date_due", "invoice_payment_term_id",
@@ -315,6 +498,16 @@ class AccountMove(models.Model):
     def _onchange_reset_money_confirmation(self):  # Bỏ tích xác nhận tiền khi thông tin hóa đơn thay đổi.
         if self.state == "draft":  # Chỉ áp dụng khi hóa đơn còn nháp.
             self.rental_money_confirmed = False  # False là bỏ tích.
+
+
+
+
+
+        """
+        Khi chọn hoặc đổi hợp đồng, hàm tự điền khách hàng, đồng tiền và thay các dòng hóa đơn bằng tiền thuê cùng phụ phí đã xác nhận.
+        Phụ phí thuộc hóa đơn chưa hủy sẽ được bỏ qua để tránh tính trùng.
+        Nếu bỏ chọn hợp đồng, hàm xóa các dòng hóa đơn và liên kết phụ phí, nhưng vẫn giữ khách hàng và đồng tiền
+        """
 
     @api.onchange("contract_id")
     def _onchange_contract_id(self):
@@ -376,12 +569,30 @@ class AccountMoveLine(models.Model):
         string="Mục bảng giá",
     )
 
-    # Dòng hóa đơn có thể được thêm/sửa trực tiếp qua ORM/RPC, không đi
-    # qua write() trên hóa đơn cha. Kiểm tra tại dòng để bao phủ đường này.
+    
+    
+    
+    
+    
+    """
+    Đoạn này kiểm tra đã thu hồi đủ xe khi lưu dòng hóa đơn có phụ phí.
+
+    Ví dụ: hợp đồng thuê 3 xe, mới trả 2 xe. Khi đưa phụ phí của hợp đồng vào hóa đơn và lưu, hệ thống báo lỗi;
+    phải xác nhận thu hồi xe còn lại mới lưu được.
+    """
     @api.constrains('charge_id', 'move_id')
     def _check_rental_return_before_invoice_line(self):  # Kiểm tra hóa đơn cha khi một dòng được gắn Charge hoặc chuyển sang hóa đơn khác.
         self.mapped('move_id')._check_rental_return_before_invoice()
 
+
+
+
+        """
+        Hàm này tự điền thông tin vào dòng hóa đơn khi chọn phụ phí, gồm: 
+        tên, số lượng, đơn giá và danh mục giá lấy từ phụ phí đó.
+
+        Ví dụ chọn phí “Hỏng gương”, số lượng 1, đơn giá 200.000 đồng → dòng hóa đơn tự nhận các thông tin tương ứng.
+        """
     @api.onchange("charge_id")
     def _onchange_charge_id(self):
         if self.charge_id:
@@ -390,6 +601,15 @@ class AccountMoveLine(models.Model):
             self.price_unit = self.charge_id.unit_price
             self.price_catalog_id = self.charge_id.price_catalog_id
 
+
+
+
+        """
+        Hàm này tự điền tên và đơn giá vào dòng hóa đơn khi chọn danh mục giá, 
+        nhưng chỉ khi dòng đó chưa liên kết với phụ phí.
+
+        Nếu đã chọn phụ phí thì không ghi đè, để giữ thông tin lấy từ phụ phí đó.
+        """
     @api.onchange("price_catalog_id")
     def _onchange_price_catalog_id(self):
         if self.price_catalog_id and not self.charge_id:
