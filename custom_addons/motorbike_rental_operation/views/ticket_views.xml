@@ -1,12 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
+    <!-- WINDOW ACTION MỞ PHIẾU VẬN HÀNH TỔNG (MẶC ĐỊNH LỌC ẨN CÁC PHIẾU HỢP ĐỒNG BỊ HỦY) -->
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
     <record id="action_rental_operation_ticket" model="ir.actions.act_window">
         <field name="name">Phiếu Vận Hành (Giao/Thu Hồi Xe)</field>
         <field name="res_model">rental.operation.ticket</field>
         <field name="view_mode">kanban,list,form</field>
-        <field name="context">{'search_default_active_operation': 1}</field>
+        <field name="context">{'search_default_active_operation': 1}</field> <!-- Tự kích hoạt bộ lọc active_operation (state != contract_cancelled) khi mới mở -->
     </record>
 
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
+    <!-- LIST VIEW DANH SÁCH PHIẾU VẬN HÀNH TỔNG (delete="0": cấm xóa phiếu) -->
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
     <record id="view_rental_operation_ticket_tree" model="ir.ui.view">
         <field name="name">rental.operation.ticket.list</field>
         <field name="model">rental.operation.ticket</field>
@@ -21,6 +27,7 @@
                 <field name="quick_delivery_location" string="Vị trí giao xe" width="180px" optional="show"/>
                 <field name="expected_checkout" width="175px"/>
                 <field name="expected_checkin" width="175px"/>
+                <!-- 4 cột thống kê nhanh số lượng xe theo từng trạng thái -->
                 <field name="waiting_count" string="Chờ giao" optional="show" width="90px"/>
                 <field name="delivering_count" string="Đang giao" optional="show" width="90px"/>
                 <field name="renting_count" string="Đang thuê" optional="show" width="90px"/>
@@ -34,15 +41,20 @@
         </field>
     </record>
 
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
+    <!-- FORM VIEW MÀN HÌNH CHÍNH PHIẾU VẬN HÀNH TỔNG (7 SMART BUTTON + 5 TAB NGHIỆP VỤ) -->
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
     <record id="view_rental_operation_ticket_form" model="ir.ui.view">
         <field name="name">rental.operation.ticket.form</field>
         <field name="model">rental.operation.ticket</field>
         <field name="arch" type="xml">
             <form string="Phiếu Vận Hành" delete="0">
                 <header>
+                    <!-- Thanh trạng thái tổng: tự động tính theo trạng thái các xe con (_compute_state) -->
                     <field name="state" widget="statusbar" statusbar_visible="waiting,in_progress,done"/>
                 </header>
                 <sheet>
+                    <!-- Các trường ẩn phục vụ tính domain và điều kiện ẩn/hiện (invisible) của các nút bấm -->
                     <field name="currency_id" invisible="1"/>
                     <field name="available_contract_ids" invisible="1"/>
                     <field name="waiting_count" invisible="1"/>
@@ -53,6 +65,7 @@
                     <field name="has_selected_receipts" invisible="1"/>
                     <field name="has_selected_return_receipts" invisible="1"/>
                     <field name="contract_state" invisible="1"/>
+                    <!-- Khối 7 nút thống kê (Smart Buttons) ở góc phải phía trên form -->
                     <div class="oe_button_box" name="button_box">
                         <button class="oe_stat_button" icon="fa-clock-o" type="object" name="action_view_vehicles">
                             <div class="o_stat_info">
@@ -102,6 +115,7 @@
                     </div>
                     <group>
                         <group string="Thông tin Hợp đồng &amp; Khách hàng">
+                            <!-- Domain lọc chỉ hiện các hợp đồng đã xác nhận và chưa có phiếu vận hành -->
                             <field name="contract_id" domain="[('id', 'in', available_contract_ids)]" options="{'no_create': True}" placeholder="Chọn hợp đồng để tự động điền..." readonly="state != 'waiting'"/>
                             <field name="customer_id" readonly="1"/>
                             <field name="customer_phone" widget="phone" readonly="1"/>
@@ -112,6 +126,7 @@
                         </group>
                     </group>
                     <notebook>
+                        <!-- TAB 1: DANH SÁCH TẤT CẢ XE BÀN GIAO + CÁC NÚT CẬP NHẬT LỊCH, ĐỔI XE, XUẤT BIÊN LAI -->
                         <page string="Tất cả xe bàn giao" name="vehicles">
                             <div class="mb-3 d-flex flex-wrap align-items-center gap-2">
                                 <button name="action_select_all_vehicles" type="object" string="Chọn tất cả" class="btn btn-secondary btn-sm" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done'"/>
@@ -188,6 +203,7 @@
                                  </form>
                              </field>
                         </page>
+                        <!-- TAB 2: DANH SÁCH BIÊN LAI GIAO XE + NÚT BẮT ĐẦU GIAO / XÁC NHẬN ĐÃ GIAO HÀNG LOẠT -->
                         <page string="Biên lai giao xe" name="delivery_receipts">
                             <div class="mb-3 d-flex flex-wrap align-items-center gap-2">
                                 <button name="action_select_all_receipts" type="object" string="Chọn tất cả" class="btn btn-secondary btn-sm" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done'"/>
@@ -281,6 +297,7 @@
                                 </form>
                             </field>
                         </page>
+                        <!-- TAB 3: DANH SÁCH BIÊN LAI THU HỒI XE + NÚT XÁC NHẬN ĐÃ THU HỒI HÀNG LOẠT -->
                         <page string="Biên lai thu hồi xe" name="return_receipts">
                             <div class="mb-3 d-flex flex-wrap align-items-center gap-2">
                                 <button name="action_select_all_return_receipts" type="object" string="Chọn tất cả" class="btn btn-secondary btn-sm" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done'"/>
@@ -373,6 +390,7 @@
                                 </form>
                             </field>
                         </page>
+                        <!-- TAB 4: NHẬT KÝ SỰ CỐ & HƯ HỎNG + NÚT LƯU THAY ĐỔI ĐỒNG BỘ SANG XƯỞNG FLEET -->
                         <page string="Sự cố &amp; Hư hỏng" name="incidents">
                             <div class="mb-2" invisible="state in ('done', 'contract_cancelled')">
                                 <button name="action_bulk_sync_incidents_to_fleet" type="object" string="Lưu thay đổi" class="btn btn-sm btn-primary" icon="fa-save" confirm="Xác nhận lưu thay đổi các sự cố?"/>
@@ -429,6 +447,7 @@
                                 </form>
                             </field>
                         </page>
+                        <!-- TAB 5: DANH SÁCH YÊU CẦU ĐỔI XE A -> B TRONG PHIẾU -->
                         <page string="Đổi xe" name="vehicle_exchanges">
                             <div class="mb-3 d-flex flex-wrap align-items-center gap-2">
                                 <button name="action_select_all_exchanges" type="object" string="Chọn tất cả" class="btn btn-secondary btn-sm" invisible="state in ('done', 'contract_cancelled') or contract_state == 'done'"/>
@@ -489,6 +508,9 @@
             </form>
         </field>
     </record>
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
+    <!-- SEARCH VIEW: TÌM KIẾM, LỌC TRẠNG THÁI & NHÓM PHIẾU VẬN HÀNH -->
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
     <record id="view_rental_operation_ticket_search" model="ir.ui.view">
         <field name="name">rental.operation.ticket.search</field>
         <field name="model">rental.operation.ticket</field>
@@ -499,7 +521,7 @@
                 <field name="quick_delivery_location" string="Vị trí giao xe"/>
                 <field name="customer_id"/>
                 <field name="customer_phone"/>
-                <filter string="Phiếu vận hành" name="active_operation" domain="[('state', '!=', 'contract_cancelled')]"/>
+                <filter string="Phiếu vận hành" name="active_operation" domain="[('state', '!=', 'contract_cancelled')]"/> <!-- Bộ lọc mặc định ẩn phiếu có hợp đồng bị hủy -->
                 <separator/>
                 <filter string="Chưa thực hiện" name="waiting" domain="[('state','=','waiting')]"/>
                 <filter string="Đang thực hiện" name="in_progress" domain="[('state','=','in_progress')]"/>
@@ -513,6 +535,9 @@
         </field>
     </record>
 
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
+    <!-- KANBAN VIEW: CHIA CỘT THEO TRẠNG THÁI VẬN HÀNH (state) & HIỂN THỊ ĐẾM XE TRÊN THẺ -->
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
     <record id="view_rental_operation_ticket_kanban" model="ir.ui.view">
         <field name="name">rental.operation.ticket.kanban</field>
         <field name="model">rental.operation.ticket</field>

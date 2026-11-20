@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
+<!-- DỮ LIỆU MẶC ĐỊNH BẢNG GIÁ PHỤ PHÍ & BỒI THƯỜNG (noupdate="1": chỉ nạp lần đầu cài module, không ghi đè khi nâng cấp) -->
+<!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
 <odoo noupdate="1">
-    <!-- 1. Danh mục Bồi thường sự cố & hư hỏng (Compensation) -->
+    <!-- <<<< 1. Danh mục Bồi thường sự cố & hư hỏng (category = compensation) -->
     <record id="price_catalog_lost_helmet" model="motorbike.rental.price.catalog">
         <field name="name">Bồi thường mất mũ bảo hiểm</field>
         <field name="code">BT-MU-BH</field>

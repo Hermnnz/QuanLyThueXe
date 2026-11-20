@@ -1,16 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Root Menu -->
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
+    <!-- CÂY MENU CHÍNH CỦA MODULE VẬN HÀNH THUÊ XE (sequence nhỏ xếp trước) -->
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
+    <!-- Menu gốc hiển thị trên thanh ứng dụng chính -->
     <menuitem id="menu_rental_operation_root" name="Vận Hành Thuê Xe" sequence="10"/>
 
-    <!-- Sub Menus -->
-    <menuitem id="menu_rental_operation_ticket" name="Giao/Thu Hồi Xe" parent="menu_rental_operation_root" sequence="10" action="action_rental_operation_ticket"/>
+    <!-- Các Menu con gắn với từng Window Action tương ứng -->
+    <menuitem id="menu_rental_operation_ticket" name="Giao/Thu Hồi Xe" parent="menu_rental_operation_root" sequence="10" action="action_rental_operation_ticket"/> <!-- Mở danh sách Phiếu vận hành tổng -->
     
-    <menuitem id="menu_rental_delivery_receipt" name="Biên Lai Giao Xe" parent="menu_rental_operation_root" sequence="15" action="action_rental_delivery_receipt"/>
+    <menuitem id="menu_rental_delivery_receipt" name="Biên Lai Giao Xe" parent="menu_rental_operation_root" sequence="15" action="action_rental_delivery_receipt"/> <!-- Mở danh sách Biên lai giao xe -->
 
-    <menuitem id="menu_rental_return_receipt" name="Biên Lai Thu Hồi Xe" parent="menu_rental_operation_root" sequence="16" action="action_rental_return_receipt"/>
+    <menuitem id="menu_rental_return_receipt" name="Biên Lai Thu Hồi Xe" parent="menu_rental_operation_root" sequence="16" action="action_rental_return_receipt"/> <!-- Mở danh sách Biên lai thu hồi xe -->
 
-    <menuitem id="menu_rental_incident_log" name="Sự cố &amp; Hư hỏng" parent="menu_rental_operation_root" sequence="20" action="action_rental_incident_log"/>
+    <menuitem id="menu_rental_incident_log" name="Sự cố &amp; Hư hỏng" parent="menu_rental_operation_root" sequence="20" action="action_rental_incident_log"/> <!-- Mở Nhật ký sự cố -->
     
-    <menuitem id="menu_rental_price_catalog" name="Bảng giá Phụ phí &amp; Bồi thường" parent="menu_rental_operation_root" sequence="30" action="action_rental_operation_price_catalog"/>
+    <menuitem id="menu_rental_price_catalog" name="Bảng giá Phụ phí &amp; Bồi thường" parent="menu_rental_operation_root" sequence="30" action="action_rental_operation_price_catalog"/> <!-- Mở Bảng giá sự cố -->
 </odoo>

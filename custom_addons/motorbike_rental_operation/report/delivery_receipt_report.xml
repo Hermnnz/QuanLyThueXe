@@ -1,18 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Action Report Definition -->
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
+    <!-- KHAI BÁO REPORT ACTION IN PDF BIÊN BẢN BÀN GIAO XE (GỌI TỪ rental_delivery_receipt.py & wizard) -->
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
     <record id="action_report_delivery_receipt" model="ir.actions.report">
         <field name="name">Biên Bản Bàn Giao Xe Máy</field>
         <field name="model">rental.delivery.receipt</field>
-        <field name="report_type">qweb-pdf</field>
+        <field name="report_type">qweb-pdf</field> <!-- Xuất file PDF bằng QWeb + wkhtmltopdf -->
         <field name="report_name">motorbike_rental_operation.report_delivery_receipt_template</field>
         <field name="report_file">motorbike_rental_operation.report_delivery_receipt_template</field>
-        <field name="print_report_name">'Bien_Ban_Ban_Giao_Xe_' + (object.name or '').replace('/', '_')</field>
-        <field name="binding_model_id" ref="model_rental_delivery_receipt"/>
+        <field name="print_report_name">'Bien_Ban_Ban_Giao_Xe_' + (object.name or '').replace('/', '_')</field> <!-- Tự đặt tên file PDF khi tải về -->
+        <field name="binding_model_id" ref="model_rental_delivery_receipt"/> <!-- Gắn thêm vào nút In (Print) trên thanh action của model biên lai -->
         <field name="binding_type">report</field>
     </record>
 
-    <!-- Master Template -->
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
+    <!-- TEMPLATE BỌC NGOÀI: LẶP QUA TỪNG BIÊN LAI TRONG docs (HỖ TRỢ IN 1 HOẶC NHIỀU BIÊN LAI CÙNG LÚC) -->
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
     <template id="report_delivery_receipt_template">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
@@ -21,7 +25,9 @@
         </t>
     </template>
 
-    <!-- Document Content Template -->
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
+    <!-- NỘI DUNG CHI TIẾT 1 TỜ BIÊN BẢN BÀN GIAO XE MÁY (5 MỤC I -> V + CHỮ KÝ HAI BÊN) -->
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
     <template id="report_delivery_receipt_document">
         <t t-call="web.basic_layout">
             <div class="page" style="font-family: 'Times New Roman', Times, serif; font-size: 13pt; line-height: 1.4; color: #000; padding: 10px 15px;">

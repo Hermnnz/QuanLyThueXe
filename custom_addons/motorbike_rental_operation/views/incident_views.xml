@@ -1,11 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
+    <!-- WINDOW ACTION MỞ MÀN HÌNH NHẬT KÝ SỰ CỐ & HƯ HỎNG (MẶC ĐỊNH MỞ KANBAN) -->
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
     <record id="action_rental_incident_log" model="ir.actions.act_window">
         <field name="name">Sự cố &amp; Hư hỏng</field>
         <field name="res_model">rental.operation.incident.log</field>
         <field name="view_mode">kanban,list,form</field>
     </record>
 
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
+    <!-- LIST VIEW NHẬT KÝ SỰ CỐ (CHỈ XEM TỔNG HỢP - VIỆC TẠO/SỬA THỰC HIỆN TRONG TAB SỰ CỐ CỦA PHIẾU VẬN HÀNH) -->
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
     <record id="view_rental_incident_log_tree" model="ir.ui.view">
         <field name="name">rental.operation.incident.log.list</field>
         <field name="model">rental.operation.incident.log</field>
@@ -29,12 +35,16 @@
         </field>
     </record>
 
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
+    <!-- FORM VIEW CHI TIẾT SỰ CỐ (CHỈ ĐỌC + NÚT XEM PHIẾU SỬA CHỮA BÊN FLEET NẾU ĐÃ ĐỒNG BỘ) -->
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
     <record id="view_rental_incident_log_form" model="ir.ui.view">
         <field name="name">rental.operation.incident.log.form</field>
         <field name="model">rental.operation.incident.log</field>
         <field name="arch" type="xml">
             <form string="Sự cố" create="0" edit="0" delete="0">
                 <header>
+                    <!-- Chỉ hiện nút mở phiếu Fleet khi sự cố đã được đồng bộ tạo service_id -->
                     <button name="action_open_fleet_service" type="object" string="Xem phiếu Bảo dưỡng &amp; Sửa chữa" class="btn-secondary" invisible="not service_id"/>
                     <field name="status" widget="statusbar" statusbar_visible="processing,resolved"/>
                 </header>
@@ -71,6 +81,9 @@
         </field>
     </record>
 
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
+    <!-- SEARCH VIEW (LỌC SỰ CỐ CẦN SỬA / KHÔNG CẦN SỬA, TRẠNG THÁI & NHÓM DỮ LIỆU) -->
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
     <record id="view_rental_incident_log_search" model="ir.ui.view">
         <field name="name">rental.operation.incident.log.search</field>
         <field name="model">rental.operation.incident.log</field>
@@ -94,6 +107,9 @@
         </field>
     </record>
 
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
+    <!-- KANBAN VIEW NHẬT KÝ SỰ CỐ (MẶC ĐỊNH CHIA CỘT THEO CỜ needs_repair) -->
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
     <record id="view_rental_incident_log_kanban" model="ir.ui.view">
         <field name="name">rental.operation.incident.log.kanban</field>
         <field name="model">rental.operation.incident.log</field>

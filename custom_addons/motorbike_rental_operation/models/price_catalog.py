@@ -1,42 +1,39 @@
 # -*- coding: utf-8 -*-
+"""Model Bảng giá Phụ phí & Bồi thường Sự cố (Price Catalog).
+
+- Mục đích: Quản lý danh mục đơn giá chuẩn cho các khoản phụ phí dịch vụ
+  (giao xe tận nơi, trả trễ...) và bồi thường hư hỏng/mất mát thiết bị.
+- Tự động sinh mã sự cố (incident_code) qua ir.sequence khi tạo mới.
+- Được liên kết trực tiếp từ Nhật ký sự cố (rental.operation.incident.log)
+  để tự động gợi ý đơn giá khi lập biên bản sự cố.
+"""
+
 from odoo import fields, models, api
 
-class MotorbikeRentalPriceCatalog(models.Model):
+class MotorbikeRentalPriceCatalog (models.Model):
     _name = "motorbike.rental.price.catalog"
     _description = "Bảng giá Phụ phí & Bồi thường Sự cố"
 
-    incident_code = fields.Char(string="Mã sự cố", required=True, copy=False, readonly=True, default="Mới")
+    incident_code = fields.Char (string = "Mã sự cố", 
+        required = True, copy= False, readonly = True, default = "Mới")
+
     name = fields.Char(string="Tên khoản giá/sự cố", required=True)
-    code = fields.Char(string="Ký hiệu", copy=True, help="Ký hiệu viết tắt (VD: BT-MU-BH, DV-GIAO-XE)")
-
-    @api.model_create_multi
-    def create(self, vals_list):
-        for vals in vals_list:
-            if not vals.get('incident_code') or vals.get('incident_code') == 'Mới':
-                vals['incident_code'] = self.env['ir.sequence'].next_by_code('motorbike.rental.price.catalog.incident') or 'Mới'
-        return super(MotorbikeRentalPriceCatalog, self).create(vals_list)
-
-    def _compute_display_name(self):
-        for rec in self:
-            inc_str = f"[{rec.incident_code}] " if rec.incident_code and rec.incident_code != 'Mới' else ""
-            sym_str = f"({rec.code}) " if rec.code else ""
-            rec.display_name = f"{inc_str}{sym_str}{rec.name}"
-
-    
+    code = fields.Char(string = "Ký hiệu", copy = True, help="Ký hiệu viết tắt (VD: BT-MU-BH, DV-GIAO-XE)")
+    # Phân loại
     category = fields.Selection([
         ("service", "Dịch vụ"),
         ("surcharge", "Phụ phí"),
         ("compensation", "Bồi thường hư hỏng")
     ], string="Loại bảng giá", required=True, default="compensation")
-    
+    # Tiền tệ
     currency_id = fields.Many2one(
         "res.currency",
-        string="Loại tiền",
-        required=True,
+        string = "Loại tiền", 
+        required = True, 
         default=lambda self: self.env.company.currency_id,
     )
     unit_price = fields.Monetary(string="Đơn giá", required=True, currency_field="currency_id")
-    
+    # Đơn vị
     unit = fields.Selection([
         ("time", "Lần"),
         ("hour", "Giờ"),
@@ -44,9 +41,25 @@ class MotorbikeRentalPriceCatalog(models.Model):
         ("item", "Cái"),
         ("set", "Bộ")
     ], string="Đơn vị", required=True, default="item")
-    
+    # Thời gian áp dụng
     effective_from = fields.Date(string="Ngày bắt đầu áp dụng")
     effective_to = fields.Date(string="Ngày kết thúc áp dụng")
     
     active = fields.Boolean(string="Đang áp dụng", default=True)
     note = fields.Text(string="Ghi chú")
+
+    # ============= HÀM SINH MÃ TỰ ĐỘNG ============ #
+    @api.model_create_multi
+    def create (self, vals_list):
+        for vals in vals_list:
+            if not vals.get('incident_code') or vals.get('incident_code') == "Mới":
+                # next by code: gọi tới code của hàm đó
+                vals['incident_code'] = self.env['ir.sequence'].next_by_code('motorbike.rental.price.catalog.incident') or "Mới"
+        return super(MotorbikeRentalPriceCatalog, self).create(vals_list)
+
+    # ======== Hàm hiển thị ghi đè, hiển thị thêm cả mã và code ======== #
+    def _compute_display_name(self):
+        for rec in self:
+            inc_str = f"[{rec.incident_code}] " if rec.incident_code and rec.incident_code != "Mới" else ""
+            sym_str = f"({rec.code}) " if rec.code else ""
+            rec.display_name = f"{inc_str}{sym_str}{rec.name}"

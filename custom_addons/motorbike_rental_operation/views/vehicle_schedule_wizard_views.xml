@@ -1,17 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
+    <!-- POPUP FORM CẬP NHẬT NHANH ĐỊA ĐIỂM & GIỜ GIAO / THU HỒI XE -->
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
     <record id="view_rental_vehicle_schedule_wizard_form" model="ir.ui.view">
         <field name="name">rental.vehicle.schedule.wizard.form</field>
         <field name="model">rental.vehicle.schedule.wizard</field>
         <field name="arch" type="xml">
             <form string="Cập nhật Địa điểm &amp; Giờ Giao / Thu hồi xe">
                 <sheet>
+                    <!-- Thanh thông báo số lượng xe đang được chọn để cập nhật -->
                     <div class="alert alert-info d-flex align-items-center mb-3" role="alert">
                         <i class="fa fa-info-circle fa-2x me-3 text-info"/>
                         <div>
                             Đang áp dụng cập nhật cho <strong><field name="vehicle_count" readonly="1"/> xe</strong> đang được chọn.
                         </div>
                     </div>
+                    <!-- Chia 2 cột: Bên trái nhập lịch Giao xe, bên phải nhập lịch Thu hồi xe -->
                     <group>
                         <group string="Thông tin Giao xe">
                             <field name="delivery_location" placeholder="Nhập địa điểm giao (VD: Tại cửa hàng, Khách sạn...)" required="1"/>
@@ -22,6 +27,7 @@
                             <field name="return_time" placeholder="VD: 12:00 hoặc 18:00"/>
                         </group>
                     </group>
+                    <!-- Bảng chỉ đọc xem trước danh sách các xe sẽ bị ảnh hưởng -->
                     <notebook>
                         <page string="Danh sách xe được chọn">
                             <field name="vehicle_ids" readonly="1">
@@ -38,7 +44,7 @@
                     </notebook>
                 </sheet>
                 <footer>
-                    <button name="action_apply" type="object" string="Cập nhật (Enter)" class="btn-primary" default="1"/>
+                    <button name="action_apply" type="object" string="Cập nhật (Enter)" class="btn-primary" default="1"/> <!-- Gọi action_apply trong rental_vehicle_schedule_wizard.py -->
                     <button string="Hủy bỏ" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>

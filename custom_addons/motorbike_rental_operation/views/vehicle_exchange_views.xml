@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
+    <!-- WINDOW ACTION & MENU ITEM CHO CHỨC NĂNG ĐỔI XE (GẮN DƯỚI MENU GỐC VẬN HÀNH) -->
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
     <!-- Action for Vehicle Exchange -->
     <record id="action_rental_vehicle_exchange" model="ir.actions.act_window">
         <field name="name">Đổi Xe</field>
@@ -10,13 +13,16 @@
         </field>
     </record>
 
-    <!-- Menu item under Vận Hành Thuê Xe -->
+    <!-- Menu item Đổi Xe nằm dưới menu gốc Vận Hành Thuê Xe -->
     <menuitem id="menu_rental_vehicle_exchange"
               name="Đổi Xe"
               parent="menu_rental_operation_root"
               sequence="25"
               action="action_rental_vehicle_exchange"/>
 
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
+    <!-- LIST VIEW (DANH SÁCH CÁC PHIẾU ĐỔI XE A -> B) -->
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
     <!-- List view -->
     <record id="view_rental_vehicle_exchange_tree" model="ir.ui.view">
         <field name="name">rental.vehicle.exchange.list</field>
@@ -24,13 +30,14 @@
         <field name="arch" type="xml">
             <list string="Đổi Xe">
                 <header>
-                    <button name="action_cancel" type="object" string="Hủy yêu cầu" class="btn-danger"/>
+                    <button name="action_cancel" type="object" string="Hủy yêu cầu" class="btn-danger"/> <!-- Nút hủy hàng loạt các dòng được chọn -->
                 </header>
                 <field name="is_selected" string="Chọn" width="45px"/>
                 <field name="name" string="Mã đổi xe" width="130px"/>
                 <field name="ticket_id" string="Phiếu vận hành" width="160px"/>
                 <field name="vehicle_a_id" string="Xe hỏng (A)" width="160px"/>
                 <field name="vehicle_b_id" string="Xe thay thế (B)" width="160px"/>
+                <!-- Badge màu trạng thái: Xác nhận (xanh dương), Hoàn thành (xanh lá), Hủy (đỏ) -->
                 <field name="status" widget="badge" readonly="1"
                        decoration-info="status == 'confirmed'"
                        decoration-success="status == 'done'"
@@ -43,6 +50,9 @@
         </field>
     </record>
 
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
+    <!-- FORM VIEW (CHI TIẾT PHIẾU ĐỔI XE & CHỌN XE THAY THẾ CÙNG DÒNG) -->
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
     <!-- Form view -->
     <record id="view_rental_vehicle_exchange_form" model="ir.ui.view">
         <field name="name">rental.vehicle.exchange.form</field>
@@ -50,10 +60,11 @@
         <field name="arch" type="xml">
             <form string="Chi Tiết Đổi Xe">
                 <header>
-                    <button name="action_cancel" type="object" string="Hủy yêu cầu" class="btn-secondary" invisible="status in ('done', 'cancelled')"/>
+                    <button name="action_cancel" type="object" string="Hủy yêu cầu" class="btn-secondary" invisible="status in ('done', 'cancelled')"/> <!-- Chỉ hiện nút Hủy khi chưa hoàn thành/chưa hủy -->
                     <field name="status" widget="statusbar" statusbar_visible="confirmed,done" readonly="1"/>
                 </header>
                 <sheet>
+                    <!-- 2 trường ẩn phục vụ tính domain lọc danh sách xe hợp lệ -->
                     <field name="available_vehicle_ids" invisible="1"/>
                     <field name="vehicle_a_model_id" invisible="1"/>
                     <div class="oe_title mb-2">
@@ -62,7 +73,8 @@
                     </div>
                     <group>
                         <group string="Thông tin xe đổi">
-                            <field name="vehicle_a_id" string="Xe hỏng (A)" required="1" readonly="id" options="{'no_create': True}"/>
+                            <field name="vehicle_a_id" string="Xe hỏng (A)" required="1" readonly="id" options="{'no_create': True}"/> <!-- readonly="id": đã tạo xong bản ghi thì khóa không cho sửa lại xe A -->
+                            <!-- Domain bắt buộc xe thay thế B phải đang 'available' và cùng model_id với xe A -->
                             <field name="vehicle_b_id" string="Xe thay thế (B)" required="1" readonly="id" domain="[('operational_status', '=', 'available'), ('model_id', '=', vehicle_a_model_id)]" options="{'no_create': True}"/>
                         </group>
                         <group string="Chi tiết yêu cầu">

@@ -1,11 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
+    <!-- POPUP FORM WIZARD XUẤT BIÊN LAI THU HỒI XE (HỖ TRỢ TỐI ĐA 6 TAB NHÓM XE) -->
+    <!-- Mỗi tab chỉ hiển thị khi cờ receipt_X_visible = True; nếu biên lai cũ đã 'returned' thì tự khóa readonly -->
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
     <record id="view_rental_return_receipt_wizard_form" model="ir.ui.view">
         <field name="name">rental.return.receipt.wizard.form</field>
         <field name="model">rental.return.receipt.wizard</field>
         <field name="arch" type="xml">
             <form string="Xác Nhận &amp; Xuất Biên Lai Thu Hồi Xe">
                 <sheet>
+                    <!-- Các trường ẩn điều khiển hiển thị tab (1..6) và liên kết biên lai thu hồi cũ để ghi đè -->
                     <field name="ticket_id" invisible="1"/>
                     <field name="receipt_1_visible" invisible="1"/>
                     <field name="receipt_2_visible" invisible="1"/>
@@ -22,7 +27,7 @@
                     <field name="receipt_6_receipt_id" invisible="1"/>
 
                     <notebook>
-                        <!-- TAB BIÊN LAI 1 -->
+                        <!-- TAB BIÊN LAI 1 (Các tab 2..6 bên dưới có cấu trúc giống hệt tab 1) -->
                         <page string="Biên lai 1" name="tab_receipt_1" invisible="not receipt_1_visible">
                             <field name="receipt_1_state" invisible="1"/>
                             <div class="alert alert-warning py-1 mb-2 d-flex align-items-center" invisible="receipt_1_state != 'returned'" role="alert">

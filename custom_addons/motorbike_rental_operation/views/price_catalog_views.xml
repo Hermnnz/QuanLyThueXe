@@ -1,29 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
+    <!-- WINDOW ACTION MỞ MÀN HÌNH BẢNG GIÁ PHỤ PHÍ & BỒI THƯỜNG (GẮN Ở menu_views.xml) -->
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
     <record id="action_rental_operation_price_catalog" model="ir.actions.act_window">
         <field name="name">Bảng giá Phụ phí &amp; Bồi thường</field>
         <field name="res_model">motorbike.rental.price.catalog</field>
         <field name="view_mode">list,form</field>
     </record>
 
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
+    <!-- LIST VIEW (BẢNG DANH SÁCH CÁC KHOẢN GIÁ) -->
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
     <record id="view_rental_operation_price_catalog_tree" model="ir.ui.view">
         <field name="name">motorbike.rental.price.catalog.list</field>
         <field name="model">motorbike.rental.price.catalog</field>
         <field name="arch" type="xml">
             <list string="Bảng giá">
-                <field name="currency_id" column_invisible="1"/>
+                <field name="currency_id" column_invisible="1"/> <!-- Ẩn cột tiền tệ nhưng bắt buộc có mặt để trường Monetary hiển thị đúng ký hiệu tiền -->
                 <field name="incident_code" string="Mã sự cố" width="120px"/>
                 <field name="code" string="Ký hiệu" width="130px"/>
                 <field name="name"/>
                 <field name="category"/>
                 <field name="unit_price"/>
                 <field name="unit"/>
-                <field name="effective_from" optional="show"/>
+                <field name="effective_from" optional="show"/> <!-- optional="show": hiện sẵn nhưng cho phép người dùng ẩn bớt cột -->
                 <field name="effective_to" optional="show"/>
             </list>
         </field>
     </record>
 
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
+    <!-- FORM VIEW (MÀN HÌNH CHI TIẾT TẠO/SỬA KHOẢN GIÁ) -->
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
     <record id="view_rental_operation_price_catalog_form" model="ir.ui.view">
         <field name="name">motorbike.rental.price.catalog.form</field>
         <field name="model">motorbike.rental.price.catalog</field>
@@ -31,7 +40,7 @@
             <form string="Bảng giá">
                 <sheet>
                     <group string="Thông tin chung">
-                        <field name="incident_code" readonly="1" force_save="1"/>
+                        <field name="incident_code" readonly="1" force_save="1"/> <!-- Chỉ đọc, force_save="1" ép gửi giá trị về server khi lưu -->
                         <field name="code" string="Ký hiệu"/>
                         <field name="name"/>
                         <field name="category"/>
@@ -54,6 +63,9 @@
         </field>
     </record>
 
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
+    <!-- SEARCH VIEW (THANH TÌM KIẾM, BỘ LỌC NHANH & NHÓM THEO LOẠI/ĐƠN VỊ) -->
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
     <record id="view_rental_operation_price_catalog_search" model="ir.ui.view">
         <field name="name">motorbike.rental.price.catalog.search</field>
         <field name="model">motorbike.rental.price.catalog</field>
@@ -62,9 +74,11 @@
                 <field name="incident_code" string="Mã sự cố"/>
                 <field name="code" string="Ký hiệu"/>
                 <field name="name"/>
+                <!-- Bộ lọc nhanh theo loại bảng giá -->
                 <filter name="filter_compensation" string="Bồi thường" domain="[('category','=','compensation')]"/>
                 <filter name="filter_surcharge" string="Phụ phí" domain="[('category','=','surcharge')]"/>
                 <filter name="filter_service" string="Dịch vụ" domain="[('category','=','service')]"/>
+                <!-- Nhóm dữ liệu (Group By) -->
                 <group expand="0" string="Nhóm theo">
                     <filter string="Loại bảng giá" name="group_category" context="{'group_by': 'category'}"/>
                     <filter string="Đơn vị" name="group_unit" context="{'group_by': 'unit'}"/>

@@ -1,4 +1,13 @@
 # -*- coding: utf-8 -*-
+"""Model Biên lai Thu hồi Xe & Trang thiết bị (Return Receipt).
+
+- Trạng thái (tự động tính qua _compute_state dựa theo các xe bên trong):
+  + Chưa thực hiện (pending): Còn xe trong biên lai chưa xác nhận thu hồi.
+  + Đã thu hồi (returned): Toàn bộ xe trong biên lai đã thu hồi về kho thành công.
+- Hỗ trợ gom nhiều xe trả cùng đợt/địa điểm thành 1 biên lai kiểm đếm phụ kiện và in PDF ký nhận.
+- Khi bấm Xác nhận thu hồi trên biên lai sẽ đồng bộ trạng thái returned cho toàn bộ xe bên trong.
+"""
+
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
 
@@ -14,7 +23,7 @@ class RentalReturnReceipt(models.Model):
     customer_id = fields.Many2one('res.partner', string='Khách hàng', required=True)
     customer_phone = fields.Char(string='Số điện thoại')
 
-    @api.onchange('customer_id')
+    @api.onchange('customer_id') # Cập nhật SĐT khi thay đổi khách hàng
     def _onchange_customer_id(self):
         if self.customer_id:
             self.customer_phone = self.customer_id.phone or self.customer_id.mobile or ''
@@ -53,7 +62,7 @@ class RentalReturnReceipt(models.Model):
     is_selected = fields.Boolean(string='Chọn', default=False)
     vehicle_count = fields.Integer(string='Số lượng xe', compute='_compute_vehicle_count')
 
-    @api.depends('vehicle_ids')
+    @api.depends('vehicle_ids') # Tính tổng xe trong phiếu thu hồi
     def _compute_vehicle_count(self):
         for rec in self:
             rec.vehicle_count = len(rec.vehicle_ids)
@@ -63,6 +72,7 @@ class RentalReturnReceipt(models.Model):
         ('returned', 'Đã thu hồi'),
     ], string='Trạng thái', default='pending', compute='_compute_state', store=True, readonly=False)
 
+    # Kiểm tra cập nhật trạng thái biên lai khi có 1 chiếc xe trong biên lai thay đổi
     @api.depends('vehicle_ids.status')
     def _compute_state(self):
         for rec in self:
@@ -75,10 +85,15 @@ class RentalReturnReceipt(models.Model):
             else:
                 rec.state = 'pending'
 
+
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    # HÀM XÁC NHẬN THU HỒI XE, CẬP NHẬT CÁC XE
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<    
     def action_confirm_return(self):
         """Xác nhận đã thu hồi xe: chuyển biên lai sang Đã thu hồi và cập nhật các xe"""
         now = fields.Datetime.now()
         for rec in self:
+            # <<< KIỂM TRA ĐIỀU KIỆN HỢP ĐỒNG VÀ BIÊN LAI
             if rec.ticket_id and rec.ticket_id.state == 'contract_cancelled':
                 raise UserError(_('Phiếu vận hành đã ở trạng thái "Hợp đồng bị hủy" và đã bị khóa!'))
             if rec.state == 'returned':
@@ -89,7 +104,7 @@ class RentalReturnReceipt(models.Model):
                 raise UserError(_('Biên lai "%s" chưa có danh sách xe thu hồi!') % (rec.name or ''))
 
             # Rule: Chỉ những xe đang ở trạng thái đã bàn giao ('renting') mới có thể thu hồi
-            not_delivered = rec.vehicle_ids.filtered(lambda v: v.status != 'renting')
+            not_delivered = rec.vehicle_ids.filtered(lambda v: v.status != 'renting') # Lấy những xe không phải đang thuê
             if not_delivered:
                 names = ', '.join(not_delivered.mapped(lambda v: v._get_vehicle_label()))
                 raise UserError(_(
@@ -100,12 +115,14 @@ class RentalReturnReceipt(models.Model):
                     'names': names,
                 })
 
-            # 1. Cập nhật các xe con trong biên lai
+            # 1. Cập nhật các xe con trong biên lai (CAAPJ NHAAJT VAOF BANGR CHI TIEETS VH, FLEET.VEHICLE)
             for vline in rec.vehicle_ids:
                 v_vals = {
                     'status': 'returned',
                     'is_selected': False,
                 }
+
+                # Ghi nhận ngày thu hồi và tình trạng ngoại quan thu hồi nếu chưa có
                 if not vline.actual_return_date:
                     v_vals['actual_return_date'] = now
                 if rec.return_visual_note:
@@ -113,14 +130,14 @@ class RentalReturnReceipt(models.Model):
                 vline.write(v_vals)
 
                 # Chuyển Fleet xe sang pending_inspection & technical_ready = False
-                if vline.vehicle_id:
+                if vline.vehicle_id: # Cập nhật model fleet.vehicle sang cần kiểm tra
                     vline.vehicle_id.write({
                         'operational_status': 'pending_inspection',
                         'technical_ready': False,
                     })
 
-            # Kiểm tra nếu tất cả xe trong phiếu đã được thu hồi
-            if rec.ticket_id:
+            # Kiểm tra nếu tất cả xe trong phiếu  đã được thu hồi
+            if rec.ticket_id: # Nếu tất cả xe đã thu hồi và phiếu vận hành chưa có ngày kết thúc thì lấy ngày hiện tại
                 all_returned = all(v.status == 'returned' for v in rec.ticket_id.vehicle_detail_ids)
                 if all_returned and not rec.ticket_id.actual_return_date:
                     rec.ticket_id.actual_return_date = now
@@ -132,25 +149,36 @@ class RentalReturnReceipt(models.Model):
             })
         return True
 
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    # HÀM CREATE MULTI
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<    
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
-            if not vals.get('name') or vals.get('name') == 'Mới':
+            if not vals.get('name') or vals.get('name') == 'Mới': # Tạo mã tự động
                 vals['name'] = self.env['ir.sequence'].next_by_code('rental.return.receipt') or 'BLTH'
-            if vals.get('ticket_id'):
+            if vals.get('ticket_id'): 
                 ticket = self.env['rental.operation.ticket'].browse(vals['ticket_id'])
                 if ticket.state == 'contract_cancelled':
                     raise UserError(_('Phiếu vận hành đã ở trạng thái "Hợp đồng bị hủy" và đã bị khóa, không thể tạo biên lai thu hồi xe!'))
-                if not vals.get('customer_id') and ticket.customer_id:
+
+                if not vals.get('customer_id') and ticket.customer_id: # Nếu biên lai chưa có khách hàng thì lấy theo phiếu vận hành
                     vals['customer_id'] = ticket.customer_id.id
+
             if not vals.get('customer_phone') and vals.get('customer_id'):
                 partner = self.env['res.partner'].browse(vals['customer_id'])
                 vals['customer_phone'] = partner.phone or partner.mobile or ''
         receipts = super(RentalReturnReceipt, self).create(vals_list)
         return receipts
+    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    #
+    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    # WRITE
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<  
     def write(self, vals):
-        for rec in self:
+        for rec in self: # Không cho chỉnh sửa biên lai nếu phiếu vận hành đã bị hủy hợp đồng
             if rec.ticket_id and rec.ticket_id.state == 'contract_cancelled':
                 raise UserError(_('Phiếu vận hành đã ở trạng thái "Hợp đồng bị hủy" và đã bị khóa, không thể chỉnh sửa biên lai!'))
 
@@ -169,7 +197,7 @@ class RentalReturnReceipt(models.Model):
 
         # Nếu có cập nhật các trường thông tin biên lai (ngoài is_selected và state)
         if any(k not in ('is_selected', 'state') for k in vals.keys()):
-            returned_recs = self.filtered(lambda r: r.state == 'returned')
+            returned_recs = self.filtered(lambda r: r.state == 'returned') # r ở đây là một bản ghi biên lai thu hồi
             if returned_recs:
                 # Nếu chỉ có duy nhất biên lai đã thu hồi hoàn tất được sửa
                 if len(self) == 1:
@@ -181,10 +209,18 @@ class RentalReturnReceipt(models.Model):
                 return True
 
         return super(RentalReturnReceipt, self).write(vals)
+    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    #
+    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    # Mở chi tiết các xe trong biên lai thu hồi xe dạng modal popup (chỉ xem) khi ở trang danh sách các biên lai
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<  
     def action_open_receipt_detail(self):
         """Mở chi tiết biên lai thu hồi xe dạng modal popup (chỉ xem)"""
         self.ensure_one()
+
+        # Lấy ID của View Form thu hồi xe đang hiển thị trên giao diện ('view_rental_return_receipt_form' ID XML đã tạo cho phiếu thu hồi xe)
         view_id = self.env.ref('motorbike_rental_operation.view_rental_return_receipt_form', raise_if_not_found=False)
         return {
             'name': _('Chi Tiết Biên Lai Thu Hồi: %s') % (self.name or ''),
@@ -202,7 +238,13 @@ class RentalReturnReceipt(models.Model):
                 'delete': False,
             },
         }
+    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    #
+    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    # LƯU THAY ĐỔI TRÊN BIÊN LAI THU HỒI XE, KHI CẬP NHẬT BIÊN LAI THU HỒI XE 
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<  
     def action_save_changes(self):
         """Lưu thay đổi trên biên lai thu hồi xe và đồng bộ thông tin nếu có"""
         self.ensure_one()
@@ -212,8 +254,9 @@ class RentalReturnReceipt(models.Model):
             raise UserError(_('Biên lai đã thu hồi hoàn tất, không thể chỉnh sửa!'))
 
         for veh in self.vehicle_ids:
-            if veh.status != 'returned':
+            if veh.status != 'returned': # Nếu chưa thu hồi mới cho sửa
                 v_vals = {}
+                # <<<< Cập nhật thông tin thu hồi xe (Có đặt cờ để không bị ghi đè khi chỉnh sửa chung)
                 if self.return_date and hasattr(veh, 'return_date') and veh.return_date != self.return_date:
                     v_vals['return_date'] = self.return_date
                     v_vals['is_custom_return_date'] = True
@@ -228,8 +271,11 @@ class RentalReturnReceipt(models.Model):
 
         return {'type': 'ir.actions.act_window_close'}
 
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    # HÀM KIỂM TRA VIỆC XÓA
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     def unlink(self):
-        if not self.env.context.get('allow_wizard_cleanup'):
+        if not self.env.context.get('allow_wizard_cleanup'): # 'allow_wizard_cleanup' được cấp khi wizard dọn dẹp
             raise UserError(_('Biên lai chỉ được phép xem, không được phép xóa!'))
         return super(RentalReturnReceipt, self).unlink()
 
@@ -237,3 +283,5 @@ class RentalReturnReceipt(models.Model):
         """In lại biên lai thu hồi xe dạng PDF"""
         self.ensure_one()
         return self.env.ref('motorbike_rental_operation.action_report_return_receipt').report_action(self)
+        # report_action: phương thức sẵn có trong Odoo để in báo cáo
+        # 'action_report_return_receipt': id của đối tượng được định nghĩa trong file XML => report/return_receipt_report.xml

@@ -3,8 +3,12 @@ from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
 
-@tagged('post_install', '-at_install')
+# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+# BỘ UNIT TEST TỰ ĐỘNG KIỂM THỬ CẦU NỐI FLEET <-> CORE <-> VẬN HÀNH
+# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+@tagged('post_install', '-at_install') # Chạy sau khi toàn bộ module đã cài đặt xong
 class TestFleetRentalBridge(TransactionCase):
+    # <<<< KHỞI TẠO DỮ LIỆU MẪU DÙNG CHUNG (KHÁCH HÀNG, HÃNG XE, XE SẴN SÀNG, BẢNG GIÁ)
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -16,6 +20,7 @@ class TestFleetRentalBridge(TransactionCase):
             'technical_ready': True, 'operational_status': 'available'})
         cls.price = cls.env['rental.vehicle.type'].create({'name': 'Bridge price', 'model_id': model.id, 'daily_rate': 100})
 
+    # <<<< HÀM TRỢ GIÚP TẠO NHANH HỢP ĐỒNG & PHIẾU VẬN HÀNH TRONG TEST
     def contract(self, **values):
         vals = {
             'customer_id': self.customer.id,
@@ -26,7 +31,7 @@ class TestFleetRentalBridge(TransactionCase):
                 'vehicle_type_id': self.price.id,
             })],
         }
-        if 'motorbike.rental.payment' in self.env.registry:
+        if 'motorbike.rental.payment' in self.env.registry: # Nếu có module thanh toán thì gán luôn cọc & xác nhận đã thu
             vals['deposit_amount'] = values.get('deposit_amount', 50)
             vals['upfront_received_check'] = True
             vals['upfront_payment_method'] = 'cash'
@@ -39,11 +44,14 @@ class TestFleetRentalBridge(TransactionCase):
             })
         return contract
 
-    def operation(self, contract):
+    def operation(self, contract): # Tạo nhanh phiếu vận hành cho hợp đồng và trả về dòng xe con
         return self.env['rental.operation.ticket'].create({
             'contract_id': contract.id, 'vehicle_detail_ids': [(0, 0, {'vehicle_id': self.vehicle.id})]
         }).vehicle_detail_ids
 
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    # TEST 1: CHẶN XÁC NHẬN HỢP ĐỒNG NẾU XE BỊ KHÓA, ĐANG BẢO TRÌ HOẶC CHƯA SẴN SÀNG KỸ THUẬT
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     def test_contract_rejects_blocked_unready_and_maintenance(self):
         contract = self.contract()
         self.vehicle.write({'rental_blocked': True, 'block_reason': 'Kiểm kê'})
@@ -64,6 +72,9 @@ class TestFleetRentalBridge(TransactionCase):
         with self.assertRaises(ValidationError), self.cr.savepoint():
             overlapping.action_confirm()
 
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    # TEST 2: TOÀN BỘ VÒNG ĐỜI GIAO XE -> THU HỒI -> HẬU KIỂM -> SỬA CHỮA -> SẴN SÀNG LẠI
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     def test_full_cycle_and_repair(self):
         contract = self.contract()
         contract.action_confirm()
@@ -95,7 +106,10 @@ class TestFleetRentalBridge(TransactionCase):
         self.assertEqual(self.vehicle.operational_status, 'available')
         self.assertEqual(self.env['fleet.vehicle.odometer'].search_count([('vehicle_id', '=', self.vehicle.id)]), 2)
 
-    def test_delivery_rechecks_conditions_after_reservation(self):
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    # TEST 3 – 7: KIỂM TRA RÀNG BUỘC GIAO XE, ODO GIẢM, QUYỀN USER & ĐỒNG BỘ TRẠNG THÁI HỢP ĐỒNG
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    def test_delivery_rechecks_conditions_after_reservation(self): # Kiểm tra lại điều kiện xe nếu bị khóa sau khi đặt chỗ
         contract = self.contract()
         contract.action_confirm()
         operation = self.operation(contract)
@@ -105,7 +119,7 @@ class TestFleetRentalBridge(TransactionCase):
         self.assertEqual(operation.status, 'waiting')
         self.assertEqual(self.vehicle.operational_status, 'available')
 
-    def test_return_rejects_decreasing_odo(self):
+    def test_return_rejects_decreasing_odo(self): # Chặn thu hồi nếu số km trả (odo_end) nhỏ hơn số km giao
         contract = self.contract()
         contract.action_confirm()
         operation = self.operation(contract)
@@ -116,12 +130,12 @@ class TestFleetRentalBridge(TransactionCase):
         self.assertEqual(operation.status, 'renting')
         self.assertEqual(self.vehicle.operational_status, 'renting')
 
-    def test_cannot_deliver_draft_contract(self):
+    def test_cannot_deliver_draft_contract(self): # Chặn giao xe nếu hợp đồng vẫn còn ở trạng thái Nháp
         operation = self.operation(self.contract())
         with self.assertRaises(UserError), self.cr.savepoint():
             operation.action_confirm_delivery()
 
-    def test_rental_user_can_complete_delivery_return(self):
+    def test_rental_user_can_complete_delivery_return(self): # Đảm bảo nhân viên vận hành thường (group_rental_user) đủ quyền giao & thu hồi
         group = self.env.ref('motorbike_rental_core.group_rental_user')
         user = self.env['res.users'].create({'name': 'Bridge operator', 'login': 'bridge-operator', 'groups_id': [(6, 0, [group.id])]})
         contract = self.contract().with_user(user)
@@ -131,7 +145,7 @@ class TestFleetRentalBridge(TransactionCase):
         operation.action_confirm_return()
         self.assertEqual(operation.vehicle_id.operational_status, 'pending_inspection')
 
-    def test_contract_moves_to_in_progress_when_vehicle_delivered(self):
+    def test_contract_moves_to_in_progress_when_vehicle_delivered(self): # Giao xe thành công -> Hợp đồng tự sang 'in_progress'
         contract = self.contract()
         contract.action_confirm()
         self.assertEqual(contract.state, 'confirmed')
@@ -139,7 +153,7 @@ class TestFleetRentalBridge(TransactionCase):
         operation.action_confirm_delivery()
         self.assertEqual(contract.state, 'in_progress')
 
-    def test_contract_moves_to_in_progress_when_one_of_multiple_vehicles_delivered(self):
+    def test_contract_moves_to_in_progress_when_one_of_multiple_vehicles_delivered(self): # Hợp đồng nhiều xe: chỉ cần 1 xe giao -> Hợp đồng sang 'in_progress'
         model = self.env['fleet.vehicle.model'].search([], limit=1)
         veh2 = self.env['fleet.vehicle'].create({
             'model_id': model.id, 'odometer': 200,
@@ -165,7 +179,10 @@ class TestFleetRentalBridge(TransactionCase):
         self.assertEqual(contract.state, 'in_progress')
         self.assertEqual(ticket.state, 'in_progress')
 
-    def test_incident_quantity_and_penalty_calculation(self):
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    # TEST 8 – 10: TÍNH TIỀN PHẠT SỰ CỐ, LỌC HỢP ĐỒNG KHẢ DỤNG & ĐỒNG BỘ SỰ CỐ SANG FLEET
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    def test_incident_quantity_and_penalty_calculation(self): # Kiểm tra đơn giá * số lượng = tổng tiền phạt sự cố
         catalog = self.env['motorbike.rental.price.catalog'].create({
             'name': 'Trễ giờ thử nghiệm',
             'code': 'TEST-TRE-GIO',
@@ -186,7 +203,7 @@ class TestFleetRentalBridge(TransactionCase):
         self.assertEqual(incident.unit_price, 50000)
         self.assertEqual(incident.penalty_amount, 250000)
 
-    def test_available_contracts_only_shows_confirmed(self):
+    def test_available_contracts_only_shows_confirmed(self): # Chỉ hiện hợp đồng 'confirmed' chưa có phiếu vận hành
         brand = self.env['fleet.vehicle.model.brand'].create({'name': 'Brand Extra'})
         model = self.env['fleet.vehicle.model'].create({'name': 'Bike Extra', 'brand_id': brand.id, 'vehicle_type': 'bike'})
         veh2 = self.env['fleet.vehicle'].create({
@@ -208,7 +225,7 @@ class TestFleetRentalBridge(TransactionCase):
         ticket._compute_available_contract_ids()
         self.assertIn(draft_contract.id, ticket.available_contract_ids.ids)
 
-    def test_incident_needs_repair_syncs_to_fleet_service(self):
+    def test_incident_needs_repair_syncs_to_fleet_service(self): # Kiểm tra phân luồng Cần sửa -> đẩy Fleet / Không cần sửa -> resolved & khóa xóa sau đồng bộ
         contract = self.contract()
         contract.action_confirm()
         operation = self.operation(contract)
@@ -279,7 +296,10 @@ class TestFleetRentalBridge(TransactionCase):
         incident_unsynced.unlink()
         incident_no_repair.unlink()
 
-    def test_contract_filter_same_customer_vehicle_time_overlap(self):
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    # TEST 11 – 15: LỌC TRÙNG HỢP ĐỒNG, NGOẠI QUAN TỪ FLEET, KHÓA XÓA/HỦY PHIẾU & BIÊN LAI THU HỒI
+    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    def test_contract_filter_same_customer_vehicle_time_overlap(self): # Kiểm tra lọc danh sách hợp đồng khả dụng khi cùng khách/xe
         # Hợp đồng 1 đã tạo phiếu giao xe
         contract1 = self.env['rental.contract'].create({
             'customer_id': self.customer.id,

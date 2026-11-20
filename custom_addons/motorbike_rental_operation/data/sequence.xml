@@ -1,16 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
+    <!-- BỘ SINH MÃ TỰ ĐỘNG (IR.SEQUENCE) CHO TOÀN BỘ CHỨNG TỪ MODULE VẬN HÀNH -->
+    <!-- noupdate="0": Cho phép cập nhật lại cấu hình sequence khi nâng cấp module -->
+    <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
     <data noupdate="0">
-        <!-- Sequence for Phiếu Vận Hành -->
+        <!-- Sequence sinh mã Phiếu Vận Hành (OP-00001) - gọi ở rental_operation_ticket.py -->
         <record id="seq_rental_operation_ticket" model="ir.sequence">
             <field name="name">Mã Phiếu Vận Hành</field>
             <field name="code">rental.operation.ticket</field>
             <field name="prefix">OP-</field>
-            <field name="padding">5</field>
-            <field name="company_id" eval="False"/>
+            <field name="padding">5</field> <!-- Độ dài 5 chữ số: 00001 -->
+            <field name="company_id" eval="False"/> <!-- Dùng chung toàn hệ thống, không tách theo công ty -->
         </record>
 
-        <!-- Sequence for Sự cố &amp; Hư hỏng -->
+        <!-- Sequence sinh mã Nhật ký Sự cố & Hư hỏng (INC-00001) - gọi ở rental_incident_log.py -->
         <record id="seq_rental_incident_log" model="ir.sequence">
             <field name="name">Mã sự cố</field>
             <field name="code">rental.operation.incident.log</field>
@@ -19,7 +23,7 @@
             <field name="company_id" eval="False"/>
         </record>
 
-        <!-- Sequence for Bảng giá Sự cố (Mã sự cố tự động) -->
+        <!-- Sequence sinh mã Bảng giá Sự cố (SC-0001) - gọi ở price_catalog.py -->
         <record id="seq_motorbike_rental_price_catalog" model="ir.sequence">
             <field name="name">Mã sự cố Bảng giá</field>
             <field name="code">motorbike.rental.price.catalog.incident</field>
@@ -28,16 +32,16 @@
             <field name="company_id" eval="False"/>
         </record>
 
-        <!-- Sequence for Biên Lai Giao Xe -->
+        <!-- Sequence sinh mã Biên Lai Giao Xe (BLGX-2026-0001) - gọi ở rental_delivery_receipt.py -->
         <record id="seq_rental_delivery_receipt" model="ir.sequence">
             <field name="name">Mã Biên Lai Giao Xe</field>
             <field name="code">rental.delivery.receipt</field>
-            <field name="prefix">BLGX-%(year)s-</field>
+            <field name="prefix">BLGX-%(year)s-</field> <!-- %(year)s tự chèn năm hiện tại -->
             <field name="padding">4</field>
             <field name="company_id" eval="False"/>
         </record>
 
-        <!-- Sequence for Biên Lai Thu Hồi Xe -->
+        <!-- Sequence sinh mã Biên Lai Thu Hồi Xe (BLTH-2026-0001) - gọi ở rental_return_receipt.py -->
         <record id="seq_rental_return_receipt" model="ir.sequence">
             <field name="name">Mã Biên Lai Thu Hồi Xe</field>
             <field name="code">rental.return.receipt</field>
@@ -46,7 +50,7 @@
             <field name="company_id" eval="False"/>
         </record>
 
-        <!-- Sequence for Đổi Xe -->
+        <!-- Sequence sinh mã Phiếu Đổi Xe (DX-2026-0001) - gọi ở rental_vehicle_exchange.py -->
         <record id="seq_rental_vehicle_exchange" model="ir.sequence">
             <field name="name">Mã Đổi Xe</field>
             <field name="code">rental.vehicle.exchange</field>
