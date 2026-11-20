@@ -35,7 +35,7 @@ class RentalIncidentLog(models.Model):
                     charge_name = f"{incident.price_catalog_id.name}: {incident.name}" if incident.price_catalog_id else f"Phạt sự cố: {incident.name}"
                     
                     # Bắn sang bảng motorbike.rental.charge
-                    charge = self.env['motorbike.rental.charge'].create({
+                    charge = self.env['motorbike.rental.charge'].sudo().create({  # Hệ thống đồng bộ phí; nhân viên vận hành không có quyền sửa Finance.
                         'name': charge_name,
                         'customer_id': customer.id,
                         'contract_id': contract.id if contract else False,
@@ -54,7 +54,9 @@ class RentalIncidentLog(models.Model):
 
         return records
 
-    def write(self, vals):  # Đồng bộ tiền phạt sang phụ phí nháp và chặn đổi tiền khi phụ phí đã chốt.
+    def write(self, vals):
+        # Kiểm tra quyền sửa sự cố trước khi hệ thống đồng bộ khoản phí liên quan.
+        self.check_access("write")  # Đồng bộ tiền phạt sang phụ phí nháp và chặn đổi tiền khi phụ phí đã chốt.
         # self là tập các sự cố đang được sửa.
         # vals là dictionary chứa tên trường và giá trị mới.
         # Ví dụ {"penalty_amount": 500000} là đổi tiền phạt thành 500.000.
@@ -66,7 +68,7 @@ class RentalIncidentLog(models.Model):
         # Chỉ kiểm tra số tiền nếu lần lưu này có sửa trường tiền phạt.
         if "penalty_amount" in vals:
             for incident in self:  # Lần lượt kiểm tra từng sự cố.
-                charge = incident.charge_id  # Khoản phụ phí đã liên kết với sự cố.
+                charge = incident.charge_id.sudo()  # Khoản phụ phí đã liên kết với sự cố.
 
                 # Chưa có khoản phí liên kết thì không có bản ghi để đồng bộ.
                 if not charge:
@@ -101,7 +103,7 @@ class RentalIncidentLog(models.Model):
 
         if "fault_party" in vals:  # Chỉ xử lý khi người vận hành đổi bên chịu lỗi.
             for incident in self:  # Một lần lưu có thể sửa nhiều sự cố.
-                charge = incident.charge_id  # Lấy phụ phí đang liên kết với sự cố.
+                charge = incident.charge_id.sudo()  # Lấy phụ phí đang liên kết với sự cố.
                 if incident.fault_party != "customer" and charge and charge.state != "cancelled":  # Lỗi công ty có phí chưa hủy.
                     if charge.state != "draft" or charge.invoice_id:  # Phí đã chốt không được tự đổi thành 0đ.
                         raise UserError("Phụ phí đã chốt, không thể đổi bên chịu lỗi.")  # Lỗi sẽ hoàn tác cả thay đổi bên chịu lỗi.
@@ -123,7 +125,7 @@ class RentalIncidentLog(models.Model):
 
         if {"quantity", "unit_price", "price_catalog_id"} & vals.keys():  # Nếu lần lưu có đổi số lượng, đơn giá hoặc bảng giá.
             for incident in self:  # Xử lý lần lượt từng sự cố đang được lưu.
-                charge = incident.charge_id  # Lấy phụ phí Finance đã tạo cho sự cố này.
+                charge = incident.charge_id.sudo()  # Lấy phụ phí Finance đã tạo cho sự cố này.
                 if not charge or charge.state == "cancelled":  # Không có phí hoặc phí đã hủy thì bỏ qua.
                     continue  # Chuyển sang sự cố tiếp theo.
 
@@ -143,7 +145,7 @@ class RentalIncidentLog(models.Model):
         # Chỉ chạy khi lần lưu này có thay đổi trạng thái sự cố.
         if "status" in vals:
             for incident in self:
-                charge = incident.charge_id
+                charge = incident.charge_id.sudo()
 
                 if not charge:  # Không có khoản phí thì không cần đổi trạng thái phí.
                     continue

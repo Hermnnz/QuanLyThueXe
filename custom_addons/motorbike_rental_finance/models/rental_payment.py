@@ -106,6 +106,7 @@ class MotorbikeRentalPayment(models.Model):
               AND contract_id IS NOT NULL
         """)
 
+    """ràng buộc amount"""
     @api.constrains('amount')
     def _check_amount(self):
         for record in self:
@@ -113,6 +114,12 @@ class MotorbikeRentalPayment(models.Model):
                 raise ValidationError("Số tiền thanh toán phải lớn hơn 0!")
 
     # constrains yêu cầu Odoo kiểm tra khi tạo phiếu hoặc sửa các trường bên dưới.
+    
+    
+    
+    """Hàm này đảm bảo mỗi hợp đồng chỉ có một phiếu cọc, tính cả phiếu Nháp, Đã xác nhận và Đã hủy.
+    Nếu tạo hoặc sửa làm xuất hiện phiếu cọc thứ hai, hệ thống báo lỗi và không lưu."""
+    
     @api.constrains("contract_id", "transaction_type")
     def _check_single_deposit(self):  # Mỗi hợp đồng chỉ được có một phiếu cọc, kể cả phiếu đã hủy.
         for payment in self:  # Kiểm tra từng phiếu vừa được tạo hoặc cập nhật.
@@ -127,6 +134,12 @@ class MotorbikeRentalPayment(models.Model):
                 if count > 1:  # Có phiếu cọc thứ hai thì báo lỗi, Odoo hoàn tác lần lưu.
                     raise ValidationError("Mỗi hợp đồng chỉ được có một phiếu cọc.")
 
+
+
+    
+    """Hàm này đảm bảo mỗi hợp đồng chỉ có một phiếu thu tiền thuê, tính cả phiếu Nháp, Đã xác nhận và Đã hủy.
+    Nếu tạo hoặc sửa làm xuất hiện phiếu thứ hai, hệ thống báo lỗi và không lưu để tránh thu trùng."""
+    
     # Odoo chạy kiểm tra này khi tạo phiếu hoặc đổi hợp đồng/loại giao dịch.
     @api.constrains("contract_id", "transaction_type")
     def _check_single_rental_payment(self):  # Mỗi hợp đồng chỉ có một phiếu thu tiền thuê, kể cả phiếu đã hủy.
@@ -140,6 +153,13 @@ class MotorbikeRentalPayment(models.Model):
                 if count > 1:  # Phiếu thứ hai sẽ làm thu trùng tiền thuê.
                     raise ValidationError("Mỗi hợp đồng chỉ được có một phiếu thu tiền thuê.")
 
+
+
+
+    """Hàm này chỉ cho phép tạo hoặc cập nhật phiếu thu thêm/hoàn tiền qua luồng quyết toán trên hóa đơn cuối hợp đồng.
+    Ngoại lệ: hoàn cọc để hủy hợp đồng đã ký nhưng chưa bắt đầu giao xe thì không cần qua hóa đơn. 
+    Thao tác ngoài các luồng này sẽ bị chặn và báo lỗi."""
+    
     # constrains chạy khi tạo phiếu hoặc thay đổi loại giao dịch/trạng thái.
     @api.constrains("transaction_type", "state")
     def _check_invoice_settlement(self):  # Chỉ cho hóa đơn quyết toán tiền, trừ phiếu hoàn cọc trước khi giao xe.
@@ -153,6 +173,17 @@ class MotorbikeRentalPayment(models.Model):
                 if self.env.context.get("_invoice_settlement") is not _INVOICE_SETTLEMENT:
                     raise UserError("Hãy xác nhận thu/hoàn tiền trên hóa đơn cuối hợp đồng.")
 
+
+
+
+        """
+        Hàm này kiểm soát việc sửa phiếu tiền, bảo vệ các khoản đã chốt:
+        Không cho hủy trực tiếp phiếu đã xác nhận.
+        Phiếu cọc và tiền thuê phải được xác nhận qua thao tác ký hợp đồng.
+        Hợp đồng đã hủy thì không được mở lại hoặc xác nhận phiếu; không được chuyển phiếu sang hợp đồng đã hoàn tất.
+        Khóa thông tin giao dịch trên phiếu đã xác nhận khi hợp đồng hoàn tất/đã hủy; riêng cọc và tiền thuê thì khóa ngay từ lúc ký.
+        Các phiếu bị khóa vẫn sửa được ghi chú. Thay đổi không hợp lệ sẽ báo lỗi và không lưu.
+        """
     def write(self, vals):  # Kiểm tra khi sửa phiếu tiền: chặn mở phiếu của hợp đồng đã hủy và giữ nguyên các khoản đã chốt.
         # write là hàm Odoo gọi khi lưu thay đổi vào bản ghi đã tồn tại.
         # self là các phiếu tiền đang được sửa, có thể gồm nhiều phiếu.
@@ -236,7 +267,14 @@ class MotorbikeRentalPayment(models.Model):
         # Chỉ chạy tới đây khi không có thay đổi bị cấm ở tất cả phiếu đang sửa.
         # Trường note (ghi chú) không nằm trong danh sách khóa nên vẫn lưu được.
         return super().write(vals)
-
+    
+    
+    
+    
+    
+    """Hàm này chặn xóa phiếu tiền đã xác nhận để giữ lịch sử giao dịch.
+    Nếu xóa nhiều phiếu mà có một phiếu đã xác nhận, toàn bộ thao tác bị chặn. 
+    Phiếu chưa xác nhận được xóa theo quy tắc của Odoo."""
     def unlink(self):  # Chặn xóa phiếu đã xác nhận để không mất dấu vết tiền thuê, cọc và khoản hoàn.
         if self.filtered(lambda payment: payment.state == "confirmed"):  # Trong tập sắp xóa có ít nhất một phiếu đã chốt.
             raise UserError("Phiếu tiền đã xác nhận không được xóa; bạn vẫn có thể sửa ghi chú.")  # Dừng trước khi xóa bất kỳ phiếu nào.
@@ -248,6 +286,17 @@ class MotorbikeRentalPayment(models.Model):
     # Đổi hợp đồng hoặc loại giao dịch đều cần lấy lại thông tin và số tiền tương ứng.
     # Hàm này điền dữ liệu trên màn hình; Odoo chỉ lưu khi nhân viên bấm Lưu.
     # Các luồng tạo tiền bằng code (tự tạo cọc/xác nhận hóa đơn) vẫn truyền giá trị như trước.
+    
+    """Hàm này tự điền thông tin trên phiếu khi chọn hoặc đổi hợp đồng, 
+    loại giao dịch:
+
+    Lấy khách hàng và đồng tiền từ hợp đồng.
+    Thu cọc/tiền thuê: điền số tiền tương ứng trên hợp đồng.
+    Hoàn tiền: hợp đồng đã ký thì điền tiền cọc; trạng thái khác thì lấy số dư cần hoàn.
+    Thu thêm: điền số tiền khách còn thiếu.
+    Bỏ chọn hợp đồng thì xóa khách, đưa số tiền về 0 và dùng đồng tiền công ty.
+    Đây chỉ là tự điền trên màn hình, chưa xác nhận thu hoặc hoàn tiền."""
+    
     @api.onchange("contract_id", "transaction_type")
     def _onchange_contract_payment(self):  # Tự điền khách hàng, đồng tiền và số tiền theo hợp đồng cùng loại giao dịch được chọn.
         # self là bản ghi thanh toán đang hiển thị trên form Odoo.
@@ -287,7 +336,22 @@ class MotorbikeRentalPayment(models.Model):
         else:  # else là nhánh còn lại: chưa chọn loại giao dịch nên chưa biết phải lấy khoản tiền nào.
             self.amount = 0.0  # Xóa số cũ để không giữ nhầm tiền của loại giao dịch trước.
 
+
+
+
+
     # 6. Các hàm Action / Nghiệp vụ (nút bấm button)
+    
+    
+    
+        """
+        Hàm này xác nhận phiếu thu/hoàn tiền.
+    Riêng hoàn cọc cho hợp đồng đã ký, hàm kiểm tra: chưa giao xe, 
+    có đúng một phiếu cọc đã xác nhận, đúng khách và đồng tiền, hoàn đủ cọc và chưa hoàn lần nào.
+
+    Đủ điều kiện thì xác nhận phiếu hoàn, tự hủy hợp đồng và đánh dấu đã quyết toán; 
+    tiền thuê vẫn giữ nguyên. Các phiếu khác được chuyển sang Đã xác nhận theo các kiểm tra hiện có.
+        """
     
     def action_confirm(self):  # Xác nhận phiếu tiền; phiếu hoàn cọc trước giao xe sẽ tự hủy hợp đồng sau khi hoàn.
         for record in self:  # Xử lý từng phiếu được chọn trên màn hình Finance hoặc hợp đồng.
@@ -309,6 +373,15 @@ class MotorbikeRentalPayment(models.Model):
             else:  # Các phiếu khác tiếp tục dùng quy trình xác nhận hiện có.
                 record.state = "confirmed"  # Phiếu cọc/thuê cần dấu từ nút Ký hợp đồng; hóa đơn dùng luồng riêng.
 
+
+
+
+
+        """
+        Hàm hủy: chuyển các phiếu được chọn sang trạng thái Đã hủy.
+        Hàm về nháp: chuyển các phiếu được chọn về trạng thái Nháp để chỉnh sửa.
+        """
+
     def action_cancel(self):
         for record in self:
             record.state = 'cancelled'
@@ -318,7 +391,15 @@ class MotorbikeRentalPayment(models.Model):
             record.state = 'draft'  
           
           
-            
+          
+          
+          
+    """
+    Hàm tạo mã
+    Hàm này điều chỉnh bộ đánh số phiếu để tiếp nối dữ liệu cũ khi cài hoặc cập nhật module.
+    Với từng loại phiếu cọc, tiền thuê, hoàn tiền và thu thêm, 
+    hàm tìm số thứ tự lớn nhất đã dùng rồi đặt số tiếp theo lớn hơn số đó. Tính cả phiếu đã hủy để tránh trùng mã, và không giảm bộ đếm hiện tại. 
+    """
     @api.model
     def _initialize_payment_sequences(self):  # Đặt bộ cấp số tiếp nối số thứ tự lớn nhất trong mã cũ khi cài hoặc cập nhật module.
         # @api.model cho biết hàm làm việc ở cấp model, không cần chọn một phiếu tiền cụ thể.
@@ -362,6 +443,19 @@ class MotorbikeRentalPayment(models.Model):
             if sequence.number_next_actual <= largest_number:
                 sequence.write({"number_next_actual": largest_number + 1})
 
+    
+    
+    
+    
+    """
+    Hàm này kiểm tra và tự cấp mã khi tạo phiếu tiền mới:
+
+    Chặn tạo phiếu cho hợp đồng đã hủy hoặc hoàn tất.
+    Phiếu cọc và tiền thuê chỉ được tạo khi hợp đồng còn Nháp.
+    Tự cấp mã theo loại giao dịch và ngày thanh toán, kiểm tra tránh trùng mã đã có hoặc đang tạo cùng đợt.
+    Nếu đã nhập sẵn mã cụ thể thì giữ nguyên.
+    Sau đó lưu các phiếu vào hệ thống.
+    """
     # model_create_multi cho phép Odoo tạo nhiều thanh toán trong một lần gọi hàm.
     @api.model_create_multi
     def create(self, vals_list):  # Chặn phiếu mới cho hợp đồng đã hủy/hoàn tất, kiểm tra tiền thuê và tự cấp mã phiếu.

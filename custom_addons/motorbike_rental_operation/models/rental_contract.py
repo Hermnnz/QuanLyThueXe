@@ -23,9 +23,9 @@ class RentalContract(models.Model):
 
         # action_confirm là hàm được viết trong motorbike_rental_core gồm các kiểm tra liên quan, SUPER CHINHS LAF MODEL CORE CHA
         result = super().action_confirm()  # Chỉ tạo phiếu sau khi hợp đồng và hai khoản tiền đã được xác nhận.
-        
-        Ticket = self.env['rental.operation.ticket']  # Model lưu phiếu vận hành.
-        VehicleLine = self.env['rental.operation.ticket.vehicle']  # Lấy model chi tiết xe vận hành
+        # Hệ thống tạo phiếu sau khi đã kiểm tra quyền ký; nhân viên hợp đồng không được tự sửa vận hành.
+        Ticket = self.env['rental.operation.ticket'].sudo()  # Model lưu phiếu vận hành.
+        VehicleLine = self.env['rental.operation.ticket.vehicle']  # Lấy model chi tiết xe vận hành (đọc tình trạng ngoại quan xe).
 
         for contract in self:  # Một thao tác có thể xác nhận nhiều hợp đồng.
 
@@ -86,7 +86,8 @@ class RentalContract(models.Model):
         res = super(RentalContract, self).action_cancel() if hasattr(super(RentalContract, self), 'action_cancel') else True
         for contract in self:
             tickets = self.env['rental.operation.ticket'].search([('contract_id', '=', contract.id)])
-            tickets.action_contract_cancelled()
+            # Đồng bộ hủy từ hợp đồng; không cấp quyền sửa phiếu vận hành cho nhân viên hợp đồng.
+            tickets.sudo().action_contract_cancelled()
         return res
     # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     #
@@ -112,7 +113,7 @@ class RentalContract(models.Model):
         if vals.get('state') == 'cancelled':
             for contract in self:
                 tickets = self.env['rental.operation.ticket'].search([('contract_id', '=', contract.id)])
-                tickets.action_contract_cancelled() # Khóa phiếu vận hành sang contract_cancelled
+                tickets.sudo().action_contract_cancelled()  # Khóa phiếu vận hành sang contract_cancelled (hủy tự động sau khi hợp đồng đã hủy hợp lệ).
         return res
 
 

@@ -16,4 +16,18 @@
         <field name="category_id" ref="module_category_motorbike_rental"/>
         <field name="implied_ids" eval="[(4, ref('group_rental_user'))]"/>
     </record>
+    <!-- Menu Fleet gốc có nhánh mở cho người nội bộ; chỉ bộ phận xe được mở ứng dụng này. -->
+    <record id="fleet.menu_root" model="ir.ui.menu">
+        <field name="groups_id" eval="[(6, 0, [ref('motorbike_fleet_management.group_fleet_staff'), ref('motorbike_fleet_management.group_fleet_manager')])]"/>
+    </record>
+    <!-- Quyền đọc xe để chọn trên hợp đồng không bao gồm quyền sửa/xóa hồ sơ xe. -->
+    <record id="rule_contract_staff_no_fleet_edit" model="ir.rule">
+        <field name="name">Contract department: read vehicle references only</field>
+        <field name="model_id" ref="fleet.model_fleet_vehicle"/>
+        <field name="domain_force">[('id', '=', 0)] if user.has_group('motorbike_rental_core.group_rental_user') and not user.has_group('motorbike_fleet_management.group_fleet_staff') else []</field>
+        <field name="perm_read" eval="False"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
 </odoo>

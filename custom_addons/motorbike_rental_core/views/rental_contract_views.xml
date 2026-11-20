@@ -63,7 +63,8 @@
                         <group string="Chi phí">
                             <field name="currency_id" invisible="1"/>
                             <field name="rental_days" readonly="state != 'draft'"/>
-                            <field name="deposit_amount" readonly="state != 'draft'"/>
+                            <!-- Cọc tự tính 1 triệu/xe gốc; chỉ hiển thị, không cho nhập tay. -->
+                            <field name="deposit_amount" readonly="1"/>
                             <field name="total_amount"/>
                         </group>
                     </group>
@@ -86,8 +87,13 @@
                             <list editable="bottom">
                                 <field name="vehicle_type_id" domain="[('active', '=', True), ('currency_id', '=', parent.currency_id)]" options="{'no_create': True}"/>
                                 <field name="vehicle_model_id" column_invisible="True"/>
-                                <field name="vehicle_id" string="Xe thuê" domain="[('active', '=', True), ('model_id', '=', vehicle_model_id)]" options="{'no_create': True}"/>
+                                <!-- Danh sách được Core tính theo tình trạng Fleet, lịch thuê và các xe đã chọn. -->
+                                <field name="available_vehicle_ids" column_invisible="True"/>
+                                <field name="vehicle_id" string="Xe thuê" domain="[('id', 'in', available_vehicle_ids)]" options="{'no_create': True}"/>
                                 <field name="daily_rate" readonly="1"/>
+                                <!-- Mỗi xe giữ hạn trả và số ngày thuê riêng sau khi gia hạn. -->
+                                <field name="return_deadline" readonly="1"/>
+                                <field name="rental_days" readonly="1" optional="show"/>
                                 <field name="subtotal" readonly="1"/>
                                 <field name="subfleet" column_invisible="True"/>
                                 <field name="notes" string="Ghi chú từng xe" optional="show" width="260px"/>
@@ -101,6 +107,7 @@
                                 <field name="requested_by"/>
                                 <field name="requested_at"/>
                                 <field name="requested_end_date"/>
+                                <field name="line_ids" widget="many2many_tags"/> <!-- Lịch sử phải thể hiện đúng xe đã được gia hạn. -->
                                 <field name="additional_days"/>
                                 <field name="additional_amount"/>
                                 <field name="state" widget="badge"/>
@@ -158,7 +165,8 @@
     <menuitem id="menu_motorbike_rental_root" name="Cho thuê xe" sequence="35" groups="motorbike_rental_core.group_rental_user"/>
     <menuitem id="menu_rental_management" name="Quản lý thuê xe" parent="menu_motorbike_rental_root" sequence="10"/>
     <menuitem id="menu_rental_calendar" name="Lịch thuê xe" parent="menu_rental_management" action="action_rental_contract_calendar" sequence="5"/>
-    <menuitem id="menu_rental_contract" name="Hợp đồng thuê xe" parent="menu_rental_management" action="action_rental_contract" sequence="10"/>
+    <!-- sequence=1 đặt Hợp đồng trước Yêu cầu thuê xe và Lịch thuê xe để ứng dụng mở trang hợp đồng đầu tiên. -->
+    <menuitem id="menu_rental_contract" name="Hợp đồng thuê xe" parent="menu_rental_management" action="action_rental_contract" sequence="1"/>
     <menuitem id="menu_rental_configuration" name="Cấu hình" parent="menu_motorbike_rental_root" sequence="90" groups="motorbike_rental_core.group_rental_manager"/>
     <menuitem id="menu_rental_vehicle_type" name="Bảng giá thuê theo dòng xe" parent="menu_rental_configuration" action="action_rental_vehicle_type" sequence="20" groups="motorbike_rental_core.group_rental_manager"/>
 </odoo>

@@ -27,7 +27,7 @@
             <form string="Yêu cầu gia hạn thuê xe">
                 <header>
                     <button name="action_reject" type="object" string="Từ chối"
-                            groups="motorbike_rental_core.group_rental_manager"
+                            groups="motorbike_rental_core.group_rental_user"
                             invisible="not id or state != 'pending'"/>
                     <button name="action_cancel" type="object" string="Hủy yêu cầu"
                             invisible="not id or state != 'pending'"/>
@@ -44,6 +44,10 @@
                         <group string="Thông tin thuê">
                             <field name="contract_id" readonly="id"/>
                             <field name="customer_id"/>
+                            <!-- Chọn tất cả nằm ngay trong dropdown; cờ select_all chỉ dùng nội bộ để lưu đúng nhóm xe. -->
+                            <field name="eligible_line_ids" invisible="1"/>
+                            <field name="select_all" invisible="1"/>
+                            <field name="line_ids" widget="extension_vehicle_selection" domain="[('id', 'in', eligible_line_ids)]" readonly="state != 'pending'" options="{'no_create': True, 'no_open': True}" required="1"/>
                             <field name="original_end_date"/>
                             <field name="requested_end_date"
                                    readonly="state in ('approved', 'rejected', 'cancelled')"
@@ -56,6 +60,8 @@
                             <field name="original_rental_days"/>
                             <field name="additional_days"/>
                             <field name="additional_amount"/>
+                            <!-- Nếu các xe đang khác hạn, tiền tăng được tính riêng từng xe. -->
+                            <div class="text-muted" colspan="2">Các xe được chọn dùng chung hạn trả mới. Tiền tăng tính riêng theo hạn hiện tại của từng xe; số ngày tăng hiển thị mức lớn nhất trong nhóm.</div>
                             <field name="requested_by"/>
                             <field name="requested_at"/>
                             <field name="reviewed_by"/>
@@ -66,7 +72,7 @@
                            invisible="state not in ('pending', 'rejected')">
                         <field name="rejection_reason"
                                readonly="state in ('approved', 'rejected', 'cancelled')"
-                               groups="motorbike_rental_core.group_rental_manager"/>
+                               groups="motorbike_rental_core.group_rental_user"/>
                     </group>
                 </sheet>
                 <!-- Nút xử lý ở chân cửa sổ thay cho nút Lưu mặc định của Odoo. -->

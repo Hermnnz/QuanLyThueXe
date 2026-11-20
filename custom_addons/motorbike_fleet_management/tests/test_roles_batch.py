@@ -15,6 +15,7 @@ class TestFleetRoleBatch(TransactionCase):
                 'company_id': cls.env.company.id, 'company_ids': [Command.set(cls.env.company.ids)],
                 'groups_id': [Command.set(cls.env.ref(group).ids)]})
         cls.staff = user('batch.staff.test','motorbike_fleet_management.group_fleet_staff')
+        cls.technician = user('batch.tech.test','motorbike_fleet_management.group_motorbike_technician')
         cls.manager = user('batch.manager.test','motorbike_fleet_management.group_fleet_manager')
         brand = cls.env['fleet.vehicle.model.brand'].create({'name':'Batch test'})
         cls.model = cls.env['fleet.vehicle.model'].create({'name':'EV','brand_id':brand.id,'vehicle_type':'bike'})
@@ -24,15 +25,21 @@ class TestFleetRoleBatch(TransactionCase):
             'operational_status':'available','technical_ready':True,**values})
 
     def job(self, vehicle, **values):
-        return self.env['fleet.vehicle.log.services'].create({'vehicle_id':vehicle.id,**values})
+        vals = {'vehicle_id': vehicle.id, 'technician_id': self.technician.partner_id.id}
+        vals.update(values)
+        return self.env['fleet.vehicle.log.services'].create(vals)
 
     def test_staff_can_create_but_not_edit_delete_or_fake_history(self):
         self.assertFalse(self.staff.has_group('fleet.fleet_group_manager'))
         vehicle = self.env['fleet.vehicle'].with_user(self.staff).create({
             'model_id':self.model.id,'is_electric_motorbike':True})
         service = self.env['fleet.vehicle.log.services'].with_user(self.staff).create({'vehicle_id':vehicle.id})
-        for record, values in [(vehicle,{'license_plate':'DENIED'}),(vehicle,{'active':False}),
-                               (service,{'description':'DENIED'}),(service,{'state':'done'})]:
+        vehicle.write({'license_plate':'29-E1 999.99'})
+        self.assertEqual(vehicle.license_plate,'29-E1 999.99')
+        service.write({'description':'Khách báo phanh kêu'})
+        self.assertEqual(service.description,'Khách báo phanh kêu')
+        for record, values in [(vehicle,{'active':False}),(vehicle,{'technical_ready':True}),
+                               (service,{'amount':100000}),(service,{'state':'done'})]:
             with self.assertRaises(AccessError),self.cr.savepoint():record.write(values)
         with self.assertRaises(AccessError),self.cr.savepoint():service.unlink()
         with self.assertRaises(AccessError),self.cr.savepoint():service.action_cancel()
@@ -118,7 +125,7 @@ class TestFleetRoleBatch(TransactionCase):
     def test_staff_forms_not_editable_and_corner_badges_exist(self):
         for model in ['fleet.vehicle','fleet.vehicle.log.services']:
             arch=self.env[model].with_user(self.staff).get_view(view_type='form')['arch']
-            self.assertEqual(etree.fromstring(arch.encode()).get('edit'),'false')
+            self.assertEqual(etree.fromstring(arch.encode()).get('delete'),'false')
         arch=self.env.ref('motorbike_fleet_management.vehicle_kanban_electric').arch_db
         self.assertIn('o_fleet_kanban_ribbon',arch)
         self.assertIn('o_fleet_secondary_badges',arch)

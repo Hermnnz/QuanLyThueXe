@@ -1,5 +1,5 @@
 .o_fleet_vehicle_kanban {
-    .o_kanban_record { position: relative; }
+    .o_kanban_record, .card, article, [role="article"] { position: relative; }
     .o_fleet_kanban_ribbon {
         position: absolute;
         top: 0;

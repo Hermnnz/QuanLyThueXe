@@ -53,7 +53,7 @@ các quyền dùng:
     <record id="group_motorbike_finance_user" model="res.groups">
 
 
-        <field name="name">Nhân viên tài chính</field>
+        <field name="name">Nhân viên hợp đồng–tài chính</field>
 
         <!-- Liên kết với nhóm quyền của module Finance đã tạo ở trên -->
         <field name="category_id"
@@ -61,7 +61,7 @@ các quyền dùng:
 
         <!-- Nhân viên tài chính kế thừa quyền của người dùng nội bộ -->
         <field name="implied_ids"
-               eval="[(4, ref('base.group_user'))]"/>
+               eval="[(4, ref('motorbike_rental_core.group_rental_user')), (4, ref('account.group_account_invoice')), (4, ref('base.group_partner_manager'))]"/>
     </record>
 
 
@@ -79,4 +79,12 @@ các quyền dùng:
                eval="[(4, ref('group_motorbike_finance_user'))]"/>
     </record>
 
+    <!-- Quản lý chung kế thừa quyền hai bộ phận; vẫn giữ khóa nghiệp vụ sau hoàn tất. -->
+    <record id="motorbike_rental_core.group_rental_manager" model="res.groups">
+        <field name="implied_ids" eval="[(4, ref('group_motorbike_finance_manager')), (4, ref('motorbike_fleet_management.group_fleet_manager'))]"/>
+    </record>
+    <!-- Chỉ quản lý được mở dashboard tổng hợp. -->
+    <record id="spreadsheet_dashboard_account.dashboard_invoicing" model="spreadsheet.dashboard">
+        <field name="group_ids" eval="[(6, 0, [ref('motorbike_rental_core.group_rental_manager')])]"/>
+    </record>
 </odoo>

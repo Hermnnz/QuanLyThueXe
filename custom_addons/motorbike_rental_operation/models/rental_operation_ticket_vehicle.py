@@ -239,7 +239,7 @@ class RentalOperationTicketVehicle (models.Model):
             if rec.status == 'renting':
                 rec._sync_contract_in_progress()
                 if rec.vehicle_id:
-                    rec.vehicle_id.write({'operational_status': 'renting'})
+                    rec.vehicle_id.sudo().write({'operational_status': 'renting'})
 
         return records
 
@@ -391,10 +391,9 @@ class RentalOperationTicketVehicle (models.Model):
                 'status': 'delivering',
                 'is_selected': False,
             })
-
             # 3. Cập nhật sang bảng Fleet: đánh dấu xe đang chạy trên đường
             if rec.vehicle_id and not rec.subfleet: # Loại trừ xe B vì xe A phải được thu hồi trước thì xe B mới được chuyển sang đang thuê
-                rec.vehicle_id.write({'operational_status': 'renting'})
+                rec.vehicle_id.sudo().write({'operational_status': 'renting'})
 
         # 4. Tự động đồng bộ trạng thái của Biên lai giao xe
         self._sync_delivery_receipt_state()
@@ -459,7 +458,7 @@ class RentalOperationTicketVehicle (models.Model):
 
             # 6. Chuyển trạng thái xe vật lý bên Fleet sang "Đang thuê" (renting)
             if rec.vehicle_id:
-                rec.vehicle_id.write({'operational_status': 'renting'}) # Lúc này xe B mới chuyển sang đang thuê
+                rec.vehicle_id.sudo().write({'operational_status': 'renting'}) # Lúc này xe B mới chuyển sang đang thuê
 
         # 7. Đồng bộ biên lai và kích hoạt kiểm tra hoàn tất đổi xe
         self._sync_delivery_receipt_state()  # Cập nhật biên lai giao xe
@@ -493,7 +492,7 @@ class RentalOperationTicketVehicle (models.Model):
                         )[:1]
                         if not original:
                             raise UserError(_('Không tìm thấy xe A trong hợp đồng.'))
-                        ex.contract_line_b_id = self.env['rental.contract.line'].with_context(
+                        ex.contract_line_b_id = self.env['rental.contract.line'].sudo().with_context(
                             allow_vehicle_exchange=True
                         ).create({
                             'contract_id': ticket.contract_id.id,
@@ -501,6 +500,8 @@ class RentalOperationTicketVehicle (models.Model):
                             'vehicle_type_id': original.vehicle_type_id.id,
                             'daily_rate': original.daily_rate,
                             'subfleet': True,
+                            'return_deadline': original.return_deadline,  # Xe B kế thừa hạn trả của A, không lấy hạn muộn nhất của xe khác.
+                            'billing_line_id': (original.billing_line_id or original).id,  # A→B→C vẫn chỉ tính tiền vào cùng một dòng thuê gốc.
                             'notes': _('Đổi xe: thay cho %s') % ex.vehicle_a_id.display_name,
                         })
                     ex.write({'status': 'done'}) # Xác nhận đổi xe thành công
@@ -559,10 +560,9 @@ class RentalOperationTicketVehicle (models.Model):
                 if all_returned:
                     if not rec.ticket_id.actual_return_date:
                         rec.ticket_id.actual_return_date = fields.Datetime.now()
-
             # Đẩy dữ liệu xe sang Fleet là cần kiểm tra (pending_inspection)
-            if rec.vehicle_id: 
-                rec.vehicle_id.write({
+            if rec.vehicle_id:
+                rec.vehicle_id.sudo().write({
                     'operational_status': 'pending_inspection',
                     'technical_ready': False,
                 })
@@ -610,16 +610,17 @@ class RentalOperationTicketVehicle (models.Model):
         # >>>>>>>>>>>>>>>
 
         # Gọi super().write để ghi dữ liệu vào DB
-        res = super(RentalOperationTicketVehicle, self).write(vals) 
+        # Quyền sửa dòng vận hành đã được kiểm tra trước khi đồng bộ trạng thái xe bằng quyền hệ thống.
+        res = super(RentalOperationTicketVehicle, self).write(vals)
 
         # Đồng bộ trạng thái sang Fleet, Hợp đồng và Biên lai
         if 'status' in vals:
             for rec in self:
                 if rec.vehicle_id:
                     if vals['status'] == 'renting' or (vals['status'] == 'delivering' and not rec.subfleet):
-                        rec.vehicle_id.write({'operational_status': 'renting'})
+                        rec.vehicle_id.sudo().write({'operational_status': 'renting'})
                     elif vals['status'] == 'returned':
-                        rec.vehicle_id.write({
+                        rec.vehicle_id.sudo().write({
                             'operational_status': 'pending_inspection', # Trạng thái xe sang Chờ kiểm tra
                             'technical_ready': False, # Reset điều kiện kỹ thuật về False
                         })
