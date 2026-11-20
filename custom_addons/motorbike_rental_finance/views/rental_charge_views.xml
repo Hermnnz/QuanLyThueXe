@@ -1,4 +1,12 @@
 <odoo>
+
+    <!--cấu hình giao diện danh sách phụ phí
+
+    Nó hiển thị các cột: tên phụ phí, khách hàng, hợp đồng, danh mục giá, số lượng, 
+    đơn giá, thành tiền, đồng tiền, ngày ghi nhận và trạng thái.
+    Danh sách sắp xếp ngày mới nhất lên đầu; cùng ngày thì khoản tạo sau đứng trước.-->
+
+    <!--List view-->
     <record id="view_motorbike_rental_charge_list"  model="ir.ui.view">
         <field name="name">motorbike.rental.charge.list</field>
         <field name="model">motorbike.rental.charge</field>
@@ -19,6 +27,8 @@
         </field>
     </record> 
 
+
+    <!--Form view-->
     <record id="view_motorbike_rental_charge_form" model="ir.ui.view">
         <field name="name">motorbike.rental.charge.form</field>
         <field name="model">motorbike.rental.charge</field>
@@ -65,6 +75,8 @@
         </field>
     </record>
 
+
+    <!--Search View-->
     <record id="view_motorbike_rental_charge_search" model="ir.ui.view">
 
     <field name="name">motorbike.rental.charge.search</field>

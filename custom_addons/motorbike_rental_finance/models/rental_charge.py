@@ -111,6 +111,21 @@ class MotorbikeRentalCharge(models.Model):
 
         return super().create(vals_list)  # Đủ điều kiện thì tạo như bình thường.
 
+    
+    
+    
+    
+    
+    
+        """
+        Hàm này kiểm soát việc sửa phụ phí:
+
+        Không cho chuyển phụ phí sang hợp đồng đã hoàn tất.
+        Phụ phí đang thuộc hợp đồng đã hoàn tất thì chỉ được sửa ghi chú, không được sửa tiền, 
+        trạng thái hay chuyển sang hợp đồng khác.
+        Nếu không vi phạm thì lưu thay đổi bình thường.
+        Mục đích là giữ nguyên dữ liệu phụ phí sau khi kết thúc hợp đồng.
+        """
     def write(self, vals):  # Chặn chuyển phụ phí vào hợp đồng hoàn tất; phụ phí đã thuộc hợp đồng hoàn tất chỉ được sửa ghi chú.
         # write là hàm Odoo gọi khi lưu thay đổi.
         # self là các khoản phụ phí đang được sửa.
@@ -151,6 +166,11 @@ class MotorbikeRentalCharge(models.Model):
         # Chỉ lưu khi tất cả khoản phụ phí đều vượt qua kiểm tra.
         return super().write(vals)
 
+
+
+        """
+         chặn xóa phụ phí thuộc hợp đồng đã hoàn tất.
+        """
     def unlink(self):  # Không cho xóa phụ phí thuộc hợp đồng đã hoàn tất.
         # unlink là hàm Odoo gọi khi người dùng hoặc code yêu cầu xóa bản ghi.
         # Phải kiểm tra cả thao tác xóa một khoản và xóa nhiều khoản cùng lúc.
@@ -166,12 +186,26 @@ class MotorbikeRentalCharge(models.Model):
         # Các quyền xóa và kiểm tra sẵn có của Odoo vẫn được áp dụng.
         return super().unlink()
 
+
+
     # 5. Các hàm tính toán ( @api.depends , @api.onchange )
+    
+        """
+        Hàm này tự tính thành tiền phụ phí = Số lượng x Đơn giá.
+        Khi số lượng hoặc đơn giá thay đổi, Odoo tự tính lại. Ví dụ: 2 x 100.000 đồng = 200.000 đồng.
+        """
     @api.depends("quantity", "unit_price")
     def _compute_amount(self):
         for record in self:
             record.amount = record.quantity * record.unit_price
 
+    
+    
+        """
+        Hàm này tự điền khách hàng và đồng tiền của hợp đồng vào phiếu
+        phụ phí khi bạn chọn hoặc đổi hợp đồng trên giao diện, 
+        giúp tránh nhập lại và chọn nhầm
+        """
     @api.onchange("contract_id")
     def _onchange_contract_id(self):
         """Tự động điền Khách hàng và Tiền tệ khi chọn Hợp đồng."""
@@ -180,19 +214,46 @@ class MotorbikeRentalCharge(models.Model):
             if self.contract_id.currency_id:
                 self.currency_id = self.contract_id.currency_id
 
+
+
+
+        """
+        Hàm này tự điền đơn giá và tên phụ phí từ danh mục giá đã chọn. 
+        Khi đổi danh mục giá trên giao diện, hai thông tin này được cập nhật theo.
+        """
     @api.onchange("price_catalog_id")
     def _onchange_price_catalog_id(self):
         if self.price_catalog_id:
             self.unit_price = self.price_catalog_id.unit_price
             self.name = self.price_catalog_id.name
 
+
+
+
+
     # 6. Các hàm Action / Nghiệp vụ (nút bấm button)
+    
+    
+        """
+        Hàm này xác nhận khoản phụ phí để được tính vào số tiền khách phải thanh toán.
+        Nếu hợp đồng đã quyết toán, hệ thống chặn xác nhận thêm phí và báo lỗi. 
+        Nếu chưa, phụ phí được chuyển sang Đã xác nhận.
+        """
     def action_confirm(self):
         for record in self:
             if record.contract_id and record.contract_id.settlement_status == "settled":
                 raise UserError("Không thể xác nhận thêm phí cho hợp đồng đã quyết toán!")
             record.state = "confirmed"
 
+
+
+
+        """
+        Hàm này hủy khoản phụ phí, nhưng sẽ chặn nếu:
+        Phụ phí đã gắn với hóa đơn chưa hủy: phải hủy hóa đơn trước.
+        Hợp đồng đã quyết toán.
+        Nếu không vướng hai điều kiện trên, phụ phí được chuyển sang Đã hủy.
+        """
     def action_cancel(self):
         for record in self:
             if record.invoice_id and record.invoice_id.state != "cancel":
@@ -201,6 +262,16 @@ class MotorbikeRentalCharge(models.Model):
                 raise UserError("Không thể hủy khoản phí của hợp đồng đã quyết toán!")
             record.state = "cancelled"
 
+
+
+
+        """
+        Hàm này đưa phụ phí về trạng thái Nháp để chỉnh sửa, nhưng chặn nếu:
+
+        Phụ phí gắn với hóa đơn chưa hủy.
+        Hợp đồng đã quyết toán.
+        Nếu không vướng hai điều kiện trên, phụ phí được chuyển về Nháp.
+        """
     def action_draft(self):
         for record in self:
             if record.invoice_id and record.invoice_id.state != "cancel":
