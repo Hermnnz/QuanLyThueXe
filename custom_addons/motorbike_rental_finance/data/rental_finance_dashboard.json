@@ -1,4 +1,5 @@
 {
+  "_comment": "File cấu hình Dashboard tài chính dạng bảng tính của Odoo: quy định bố cục, thẻ chỉ tiêu, biểu đồ, công thức và bộ lọc. Odoo dùng cấu hình này để lấy số liệu hóa đơn và nghiệp vụ thuê xe từ các model rồi hiển thị lên Dashboard. File không lưu sẵn số liệu kinh doanh và không tạo hay sửa chứng từ.",
   "version": 21,
   "sheets": [
     {

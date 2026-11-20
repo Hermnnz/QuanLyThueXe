@@ -3,13 +3,26 @@
     <record id="view_move_form_inherit_rental_finance" model="ir.ui.view">
         <field name="name">account.move.form.inherit.rental.finance</field>
         <field name="model">account.move</field>
+
         <field name="inherit_id" ref="account.view_move_form"/>
         <field name="arch" type="xml">
             <!-- Thêm trường Hợp đồng thuê xe ngay trên đầu form -->
             <xpath expr="//field[@name='partner_id']" position="after">
-                <field name="contract_id" 
-                       options="{'no_create': True}" 
+                <field name="contract_id"
+                       options="{'no_create': True}"
                        placeholder="Chọn hợp đồng để tự nạp tiền thuê và phụ phí"/>
+            </xpath>
+
+            <!-- Hiển thị tiền cọc và tiền thuê đã thu thực tế ngay dưới ngày đến hạn. -->
+            <xpath expr="//div[@name='due_date']" position="after">
+                <!-- Giữ nhãn đậm rõ như các dòng trên, dù số tiền bên cạnh chỉ được xem. -->
+                <label for="rental_received_amount"
+                       invisible="not contract_id or move_type != 'out_invoice'"
+                       style="color: #212529; opacity: 1;"/>
+                <field name="rental_received_amount"
+                       invisible="not contract_id or move_type != 'out_invoice'"
+                       nolabel="1"
+                       readonly="1"/>
             </xpath>
 
             <!-- Ẩn cột Sản phẩm (bàn ghế tủ demo Odoo) -->
@@ -79,6 +92,114 @@
                            invisible="rental_balance &gt;= 0"
                            readonly="state != 'draft'"/>
                 </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Phần đơn giản hóa kế toán được chuyển nguyên từ file account_move_off.xml cũ. -->
+
+
+    <record id="account.action_move_force_register_payment" model="ir.actions.server">
+        <field name="binding_model_id" eval="False"/>
+    </record>
+
+    <!-- Kế thừa form Finance đã có để sử dụng trường contract_id (hợp đồng thuê).
+         Mỗi record bên dưới là một bản ghi cấu hình giao diện, không phải hóa đơn mới. -->
+    <record id="view_rental_invoice_form_off" model="ir.ui.view">
+        <field name="name">rental.invoice.form.off</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="motorbike_rental_finance.view_move_form_inherit_rental_finance"/>
+        <field name="arch" type="xml">
+            <!-- xpath tìm nút cần sửa; position="attributes" chỉ sửa thuộc tính của nút.
+                 invisible là điều kiện ẩn; add nối thêm điều kiện vào quy tắc ẩn gốc.
+                 separator=" or " nghĩa là ẩn nếu điều kiện gốc đúng HOẶC có hợp đồng thuê.
+                 Nhờ giữ điều kiện gốc, hóa đơn không có hợp đồng vẫn dùng quy tắc Odoo. -->
+            <xpath expr="//button[@id='account_invoice_payment_btn']" position="attributes">
+                <attribute name="invisible" add="contract_id" separator=" or "/>
+            </xpath>
+
+            <!-- Odoo có một nút Pay thứ hai khi khách có khoản tiền chờ đối soát. -->
+            <xpath expr="//button[@id='account_invoice_payment_secondary_btn']" position="attributes">
+                <attribute name="invisible" add="contract_id" separator=" or "/>
+            </xpath>
+
+            <!-- amount_residual là công nợ kế toán gốc; không dùng số này để quyết toán thuê xe. -->
+            <xpath expr="//field[@name='amount_residual']" position="attributes">
+                <attribute name="invisible" add="contract_id" separator=" or "/>
+            </xpath>
+
+            <!-- Ẩn bảng thanh toán kế toán; phần thu/hoàn của Finance vẫn hiển thị như trước. -->
+            <xpath expr="//field[@name='invoice_payments_widget']" position="attributes">
+                <attribute name="invisible" add="contract_id" separator=" or "/>
+            </xpath>
+
+            <!-- Ẩn công cụ gán tiền chờ đối soát vào hóa đơn, tránh thao tác theo hai luồng tiền. -->
+            <xpath expr="//field[@name='invoice_outstanding_credits_debits_widget']" position="attributes">
+                <attribute name="invisible" add="contract_id" separator=" or "/>
+            </xpath>
+        </field>
+    </record>
+
+
+
+    <!-- Chỉnh danh sách hóa đơn khách hàng mà menu Hóa đơn của Finance đang sử dụng.
+         Phạm vi danh sách này gồm mọi hóa đơn khách hàng, không riêng từng dòng có hợp đồng. -->
+    <record id="view_rental_invoice_list_simple" model="ir.ui.view">
+        <field name="name">rental.invoice.list.simple</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_out_invoice_tree"/>
+        <field name="arch" type="xml">
+            <!-- Hóa đơn có ngày lập mới nhất lên đầu; cùng ngày thì hóa đơn tạo sau lên trước. -->
+            <xpath expr="//list" position="attributes">
+                <attribute name="default_order">invoice_date desc, id desc</attribute>
+            </xpath>
+
+            <!-- Ẩn nút Pay xuất hiện khi chọn các dòng hóa đơn trong danh sách. -->
+            <xpath expr="//button[@name='action_force_register_payment']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <!-- column_invisible="1" ẩn cả cột; người dùng không bật lại bằng tùy chọn cột. -->
+            <xpath expr="//field[@name='amount_residual_signed']" position="attributes">
+                <attribute name="column_invisible">1</attribute>
+            </xpath>
+
+            <!-- Ẩn hạn thanh toán kế toán để hóa đơn đã quyết toán không bị hiểu là nợ quá hạn. -->
+            <xpath expr="//field[@name='invoice_date_due']" position="attributes">
+                <attribute name="column_invisible">1</attribute>
+            </xpath>
+
+            <!-- replace thay cột thanh toán bằng trạng thái hóa đơn: Nháp/Đã xác nhận/Đã hủy.
+                 badge hiển thị trạng thái dưới dạng nhãn; không sửa trạng thái trong database. -->
+            <xpath expr="//field[@name='status_in_payment']" position="replace">
+                <field name="state" string="Trạng thái hóa đơn" widget="badge"/>
+            </xpath>
+        </field>
+    </record>
+
+
+
+
+    <!-- Bộ lọc này được dùng chung; chỉ ẩn ba mục dưới đây khi mở hóa đơn khách hàng. -->
+    <record id="view_rental_invoice_search_simple" model="ir.ui.view">
+        <field name="name">rental.invoice.search.simple</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_account_invoice_filter"/>
+        <field name="arch" type="xml">
+            <!-- context là thông tin màn hình đang mở; out_invoice nghĩa là hóa đơn khách hàng.
+                 == là so sánh: đúng loại hóa đơn khách hàng thì ẩn bộ lọc công nợ gốc. -->
+            <xpath expr="//filter[@name='open']" position="attributes">
+                <attribute name="invisible">context.get('default_move_type') == 'out_invoice'</attribute>
+            </xpath>
+
+            <!-- Không sử dụng bộ lọc Đang thanh toán của kế toán cho màn hình hóa đơn khách hàng. -->
+            <xpath expr="//filter[@name='in_payment']" position="attributes">
+                <attribute name="invisible">context.get('default_move_type') == 'out_invoice'</attribute>
+            </xpath>
+
+            <!-- Không lọc hóa đơn đã quyết toán theo nghiệp vụ thuê xe thành công nợ quá hạn. -->
+            <xpath expr="//filter[@name='late']" position="attributes">
+                <attribute name="invisible">context.get('default_move_type') == 'out_invoice'</attribute>
             </xpath>
         </field>
     </record>

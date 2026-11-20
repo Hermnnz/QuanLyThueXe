@@ -65,40 +65,11 @@ class RentalContract(models.Model):
 
     # 4. Các hàm Constraints ( @api.constrains , _sql_constraints )
 
-    def _check_returned_before_invoice(self):  # Kiểm tra hợp đồng thu đủ xe chưa trước khi lập hóa đơn
-        for contract in self:
-            # Một hợp đồng có thể có nhiều phiếu; phải xét tất cả phiếu
-            # liên quan, không chỉ lấy phiếu đầu tiên hoặc phiếu đã xong.
-            tickets = self.env['rental.operation.ticket'].search([
-                ('contract_id', '=', contract.id),
-            ])
-            operation_lines = tickets.mapped('vehicle_detail_ids')
-
-            # Đối chiếu danh sách xe thực tế: một phiếu đã trả hết xe của
-            # riêng nó vẫn chưa đủ nếu còn xe hợp đồng chưa có dòng vận hành.        
-            contract_vehicles = contract.line_ids.mapped('vehicle_id')
-            operation_vehicles = operation_lines.mapped('vehicle_id')
-            missing_vehicles = contract_vehicles - operation_vehicles
-
-            # Không cho qua trường hợp danh sách rỗng. Với các dòng đã có,
-            # chỉ 'returned' là xác nhận thu hồi; waiting/delivering/renting
-            # đều còn thiếu bước nhận trả. Không suy ra đã trả từ trạng thái
-            # Fleet, vì xe trả về vẫn có thể đang pending_inspection.
-            if (
-                not contract_vehicles
-                or not operation_lines
-                or missing_vehicles
-                or any(line.status != 'returned' for line in operation_lines)
-            ):
-                raise UserError(
-                    'Chưa thể lập hóa đơn cho hợp đồng %s. '
-                    'Cần xác nhận thu hồi đầy đủ các xe trước.'
-                    % contract.name
-                )
 
 
 
-    """ tự tạo hoặc cập nhật phiếu thu tiền thuê theo hợp đồng:
+    """ 
+    tự tạo hoặc cập nhật phiếu thu tiền thuê theo hợp đồng:
 
 - Chỉ xử lý hợp đồng còn **Nháp**.
 - Nếu đã có phiếu **xác nhận thu tiền** thì giữ nguyên.
@@ -128,7 +99,7 @@ Mục đích: **giữ phiếu thu khớp với hợp đồng khi chỉnh sửa, 
             values = {"customer_id": contract.customer_id.id, "currency_id": contract.currency_id.id, "amount": amount}  # Lấy đúng khách, tiền tệ và số tiền.
             if rent:  # Đã có phiếu chưa thu tiền.
                 rent.write({**values, "state": "draft"})  # Cập nhật phiếu cũ.
-            else:  # Chưa có phiếu tiền thuê.
+            else:  # Chưa có phiếu tiền thuê. (tạo phiếu thuê)
                 Payment.create({**values, "contract_id": contract.id, "transaction_type": "rental_payment", "payment_method": "cash", "state": "draft"})  # Tạo phiếu Nháp.
 
 
@@ -391,7 +362,7 @@ Mục đích: **giữ phiếu thu khớp với hợp đồng khi chỉnh sửa, 
         return super().unlink()  # Không có phiếu tiền thì dùng quy tắc xóa hợp đồng của Core.
 
 
-        """
+    """
         Hàm này chạy mỗi khi cập nhật hợp đồng, để:
 
     Ký hợp đồng: kiểm tra đã thu đủ cọc và tiền thuê.
@@ -401,18 +372,12 @@ Mục đích: **giữ phiếu thu khớp với hợp đồng khi chỉnh sửa, 
 
         """
     def write(self, vals):  # Đồng bộ cọc nháp và kiểm tra thu đủ tiền trước khi ký, xác nhận hóa đơn trước khi đóng hợp đồng.
-        """write là hàm Odoo gọi khi cập nhật một hoặc nhiều bản ghi đã có.
-
-        self là tập hợp đồng cần sửa. vals là dictionary (tập cặp khóa/giá trị)
-        chứa các trường muốn sửa, ví dụ {"state": "done"} là đổi sang Hoàn tất.
-        Kiểm tra ở write giúp cả nút trên giao diện lẫn thao tác cập nhật qua
-        code đều phải tuân theo điều kiện kết thúc, thay vì chỉ ẩn nút Hoàn tất.
-        """
+       
         # get("state") lấy giá trị của khóa state; nếu lần lưu này không đổi trạng thái thì trả về None.
         # done là giá trị kỹ thuật của trạng thái Hoàn tất; chỉ nhánh này cần kiểm tra hóa đơn kết thúc.
         if vals.get("state") == "done":
             for contract in self:  # Lần lượt kiểm tra từng hợp đồng nếu Odoo đang cập nhật nhiều hợp đồng.
-                contract._check_returned_before_invoice()  # Bắt buộc đã xác nhận thu hồi đầy đủ xe.
+                self.env["account.move"]._check_returned_before_invoice(contract)  # Bắt buộc đã xác nhận thu hồi đầy đủ xe.
 
                 # invoice_ids là tập hóa đơn liên kết với hợp đồng qua trường contract_id.
                 # filtered lọc bản ghi; lambda invoice: ... là hàm ngắn kiểm tra mỗi hóa đơn.
@@ -461,54 +426,6 @@ Mục đích: **giữ phiếu thu khớp với hợp đồng khi chỉnh sửa, 
 
     # 5. Các hàm tính toán ( @api.depends , @api.onchange )
     
-        """
-        Hàm này tính số tiền thực tế doanh nghiệp còn giữ của khách trong một hợp đồng:
-        Tiền cọc + tiền thuê + tiền thu thêm - tiền đã hoàn.
-        Chỉ tính phiếu đã xác nhận, đúng khách, đúng đồng tiền và có số tiền hợp lệ;
-        bỏ qua phiếu Nháp hoặc Đã hủy.
-        """
-    def _get_confirmed_net_received(self):  # Tính tiền thực thu ròng của một hợp đồng từ các phiếu thu/hoàn đã xác nhận.
-        """Trả về tiền đã nhận của khách trừ tiền đã hoàn cho khách.
-
-        Tiền nhận gồm ba loại: cọc, thanh toán tiền thuê và thu thêm.
-        Tiền hoàn chỉ được trừ khi phiếu hoàn đã được xác nhận; việc tạo
-        phiếu hoàn nháp chưa có nghĩa là doanh nghiệp đã trả tiền cho khách.
-        Giá trị cọc ghi trên hợp đồng là số phải thu, không chứng minh đã thu,
-        nên hàm này chỉ đọc các phiếu tiền thực tế trong payment_ids.
-        """
-        self.ensure_one()  # Mỗi lần gọi chỉ tính một hợp đồng để không trộn tiền của nhiều khách/hợp đồng.
-
-        # payment_ids chỉ chứa phiếu liên kết với hợp đồng hiện tại qua contract_id.
-        # filtered giữ lại phiếu thỏa mãn đồng thời tất cả điều kiện bên dưới.
-        payments = self.payment_ids.filtered(
-            lambda payment: (
-                payment.state == "confirmed"  # Chỉ tính tiền đã xác nhận; bỏ qua phiếu nháp và phiếu đã hủy.
-                and payment.customer_id == self.customer_id  # Bỏ phiếu gắn nhầm khách dù cùng hợp đồng.
-                and payment.currency_id == self.currency_id  # Không cộng trực tiếp các đồng tiền khác nhau.
-                and math.isfinite(payment.amount)  # Loại NaN/vô cực để không làm hỏng kết quả cộng tiền.
-                and payment.amount > 0  # Số tiền trên mỗi phiếu phải dương; loại giao dịch quyết định chiều thu/hoàn.
-            )
-        )
-
-        # Ba loại phiếu này đều là tiền doanh nghiệp đã nhận từ khách.
-        # mapped("amount") lấy danh sách số tiền; sum cộng chúng, trả về 0 nếu không có phiếu.
-        received = sum(payments.filtered(
-            lambda payment: payment.transaction_type in (
-                "deposit",  # Tiền cọc thực tế đã nhận, có thể được thu qua nhiều phiếu.
-                "rental_payment",  # Tiền thuê khách đã trả trước; phải trừ khi quyết toán để tránh thu lại.
-                "additional_payment",  # Tiền khách đã nộp bổ sung để thanh toán phần còn thiếu.
-            )
-        ).mapped("amount"))
-
-        # Tiền hoàn đã xác nhận là tiền đã trả ra, làm giảm số tiền đang giữ của khách.
-        refunded = sum(payments.filtered(
-            lambda payment: payment.transaction_type == "refund"  # Chỉ chọn phiếu hoàn từ tập phiếu hợp lệ ở trên.
-        ).mapped("amount"))  # Cộng số tiền đã hoàn; phiếu hoàn nháp không nằm trong tập payments.
-
-        return received - refunded  # Trả số tiền thực thu ròng, chưa làm tròn để chỉ làm tròn số dư cuối cùng.
-
-
-
     # Các trường bên dưới thay đổi thì Odoo phải tính lại số dư được lưu trong database.
     # Không phụ thuộc deposit_amount: thay số cọc phải thu không đồng nghĩa tiền thực thu thay đổi.
     @api.depends(
@@ -525,38 +442,15 @@ Mục đích: **giữ phiếu thu khớp với hợp đồng khi chỉnh sửa, 
         "payment_ids.customer_id",  # Sửa khách trên phiếu thì cần kiểm tra lại phiếu có khớp hợp đồng không.
         "payment_ids.currency_id",  # Sửa đồng tiền trên phiếu thì cần kiểm tra lại khả năng cộng vào số dư.
     )
+    # Đồng bộ các trường hợp đồng từ kết quả quyết toán của model hóa đơn.
     
-    
-
-    def _compute_settlement_preview(self):  # Tính tổng phụ phí đã duyệt và số dư còn phải thu thêm hoặc hoàn cho từng hợp đồng.
+    def _compute_settlement_preview(self): 
         """
-        Hàm này tính tổng phụ phí đã duyệt và số tiền cần thu thêm hoặc hoàn lại khách.
-
-            Số dư = Tiền thuê + Phụ phí đã duyệt - Tiền thực thu ròng.
-
-            Dương: khách phải trả thêm.
-            Âm: doanh nghiệp phải hoàn khách.
-            Bằng 0: đã thanh toán đủ.
-            Kết quả được làm tròn theo đồng tiền và cập nhật lên hợp đồng.
+        Lấy kết quả quyết toán từ model hóa đơn và cập nhật tổng phụ phí,
+        số dư trên hợp đồng.
         """
-        
-        # Odoo có thể yêu cầu tính nhiều hợp đồng cùng lúc; phải gán đủ hai trường cho từng bản ghi.
+        Invoice = self.env["account.move"]
         for contract in self:
-            # Chỉ phụ phí đã xác nhận mới là khoản khách phải trả; bỏ qua phụ phí nháp/đã hủy.
-            penalties = sum(
-                contract.charge_ids.filtered(
-                    lambda charge: charge.state == "confirmed"  # Giữ lại các khoản đã được duyệt.
-                ).mapped("amount")  # Lấy số tiền từng khoản để cộng thành tổng phụ phí.
-            )
-
-            # Trừ cả tiền thuê đã thu trước và cọc thực thu, tránh tính tiền thuê lần thứ hai.
-            # Khoản thu thêm/hoàn đã xác nhận cũng được phản ánh qua hàm tính tiền thực thu ròng.
-            balance = (
-                contract.total_amount  # Tiền thuê phải trả theo hợp đồng.
-                + penalties  # Cộng phụ phí đã duyệt để ra toàn bộ nghĩa vụ thanh toán.
-                - contract._get_confirmed_net_received()  # Trừ tiền đã nhận sau khi trừ các khoản đã hoàn.
-            )
-
-            contract.total_penalty_amount = penalties  # Cập nhật tổng phụ phí hiển thị trên hợp đồng.
-            # Làm tròn theo quy tắc của đồng tiền, tránh tạo khoản thu/hoàn do sai số số thực.
-            contract.settlement_balance = contract.currency_id.round(balance)
+            penalties, balance = Invoice._get_rental_settlement_totals(contract)
+            contract.total_penalty_amount = penalties
+            contract.settlement_balance = balance

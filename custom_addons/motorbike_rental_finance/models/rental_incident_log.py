@@ -14,6 +14,20 @@ class RentalIncidentLog(models.Model):
         copy=False,     # Không copy khi duplicate biên bản sự cố
     )
 
+    
+    
+    
+    """
+    Hàm create() tự động tạo khoản phí bồi thường khi lập biên bản sự cố.
+
+    Gọi super() để tạo biên bản theo luồng gốc.
+    Lấy tiền phạt; nếu chưa có thì lấy đơn giá từ bảng giá.
+    Nếu lỗi do khách, tiền phạt > 0 và xác định được khách hàng, tạo khoản phí ở trạng thái nháp để kế toán duyệt.
+    Lưu khoản phí vào charge_id của sự cố để liên kết, theo dõi.
+    @api.model_create_multi cho phép xử lý nhiều biên bản trong một lần tạo.
+
+
+    """
     # BẮT SỰ KIỆN: Lắng nghe mỗi khi có bản ghi Sự cố được tạo ra
     @api.model_create_multi
     def create(self, vals_list):
@@ -22,7 +36,7 @@ class RentalIncidentLog(models.Model):
 
         # 2. Finance tự động lắng nghe và bốc dữ liệu sang bảng của mình
         for incident in records:
-            # Lấy số tiền phạt: Giang đã đổi 'cost' thành 'penalty_amount'
+            # Lấy số tiền phạt: 'penalty_amount'
             penalty = incident.penalty_amount or (incident.price_catalog_id.unit_price if incident.price_catalog_id else 0.0)
 
             # Điều kiện: Có tiền phạt và lỗi do khách hàng
@@ -54,6 +68,24 @@ class RentalIncidentLog(models.Model):
 
         return records
 
+    
+    
+    
+    
+    
+    
+    
+    """
+    đồng bộ khoản phí bồi thường khi sửa biên bản sự cố:
+
+    Đổi tiền phạt: cập nhật phí nháp; chặn nếu phí đã xác nhận hoặc gắn hóa đơn.
+    Đổi lỗi sang bên khác khách hàng: hủy phí nháp; phí đã chốt thì chặn đổi.
+    Đổi số lượng, đơn giá hoặc bảng giá: đồng bộ tiền mới; nếu bằng 0 thì hủy phí nháp.
+    Đổi trạng thái sự cố: đã giải quyết thì xác nhận phí nháp; chuyển khỏi đã giải quyết thì đưa phí đã xác nhận về nháp.
+    Hàm vẫn gọi super().write(vals) để lưu sự cố theo luồng gốc.
+
+
+    """
     def write(self, vals):
         # Kiểm tra quyền sửa sự cố trước khi hệ thống đồng bộ khoản phí liên quan.
         self.check_access("write")  # Đồng bộ tiền phạt sang phụ phí nháp và chặn đổi tiền khi phụ phí đã chốt.
