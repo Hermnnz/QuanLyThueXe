@@ -22,7 +22,7 @@ class FleetVehicle(models.Model):
     def write(self, vals):
         res = super().write(vals)
         if 'description' in vals:
-            TicketVehicle = self.env['rental.operation.ticket.vehicle']
+            TicketVehicle = self.env['rental.operation.ticket.vehicle'].sudo() # Dùng sudo() để nhân viên kỹ thuật Fleet sửa mô tả xe vẫn đồng bộ sang vận hành không bị lỗi phân quyền
             for vehicle in self:
                 new_note = TicketVehicle._get_vehicle_exterior_condition(vehicle)
                 pending_lines = TicketVehicle.search([
